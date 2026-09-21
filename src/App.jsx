@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import Home from './pages/Home'
-import SoftwarePlaceholder from './pages/SoftwarePlaceholder'
+import SoftwareDetalhe from './pages/SoftwareDetalhe'
 import NotFound from './pages/NotFound'
 import { SOFTWARES } from './data/softwares'
 
@@ -15,7 +15,7 @@ function App() {
             <Route
               key={software.id}
               path={software.rota}
-              element={<SoftwarePlaceholder software={software} />}
+              element={<SoftwareDetalhe software={software} />}
             />
           ))}
           <Route path="*" element={<NotFound />} />

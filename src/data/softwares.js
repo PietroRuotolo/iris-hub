@@ -13,6 +13,11 @@ export const SOFTWARES = [
     descricao: 'Protótipo de teste de tamborilar dedos, com detecção das mãos pela webcam.',
     status: 'desenvolvimento',
     Icone: Hand,
+    detalhes: {
+      secoes: [
+        { titulo: 'Em construção', pendente: 'A página deste software será preenchida em breve.' },
+      ],
+    },
   },
   {
     id: 'jogo-ritmo',
@@ -23,6 +28,11 @@ export const SOFTWARES = [
     descricao: 'Jogo de ritmo controlado pelo olhar, que gera dados de acompanhamento para triagem neurológica.',
     status: 'desenvolvimento',
     Icone: Eye,
+    detalhes: {
+      secoes: [
+        { titulo: 'Em construção', pendente: 'A página deste software será preenchida em breve.' },
+      ],
+    },
   },
   {
     id: 'backend',
@@ -33,6 +43,35 @@ export const SOFTWARES = [
     descricao: 'API que recebe e serve os dados de sessão dos testes para os demais softwares.',
     status: 'desenvolvimento',
     Icone: Server,
+    detalhes: {
+      aviso: 'O back-end não tem tela própria: ele funciona nos bastidores, consumido por outros softwares através da API.',
+      secoes: [
+        {
+          titulo: 'O que é',
+          texto: 'API em Java com Spring Boot que centraliza os dados do ecossistema iris, como as sessões geradas pelos testes do neuro-demo e do jogo de ritmo.',
+        },
+        {
+          titulo: 'Papel no ecossistema',
+          itens: [
+            'Recebe os dados de sessão dos testes (por exemplo, acertos, erros e tempo de resposta).',
+            'Disponibiliza esses dados para os apps web do ecossistema.',
+            'Mantém um único modelo de dados para pacientes e sessões.',
+          ],
+        },
+        {
+          titulo: 'Stack',
+          itens: ['Java', 'Spring Boot'],
+        },
+        {
+          titulo: 'Status da API',
+          pendente: 'Um painel de status (health check) só será criado se o back-end precisar de uma tela própria. Decisão em aberto.',
+        },
+        {
+          titulo: 'Repositório',
+          pendente: 'O link será adicionado quando o projeto for publicado.',
+        },
+      ],
+    },
   },
 ]
 
