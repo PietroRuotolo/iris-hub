@@ -14,8 +14,42 @@ export const SOFTWARES = [
     status: 'desenvolvimento',
     Icone: Hand,
     detalhes: {
+      aviso: 'Este app roda localmente no seu computador, usando a webcam. Ele não funciona dentro do navegador: aqui você encontra a descrição, os requisitos e a demonstração.',
       secoes: [
-        { titulo: 'Em construção', pendente: 'A página deste software será preenchida em breve.' },
+        {
+          titulo: 'O que é',
+          texto: 'Protótipo de teste de tamborilar dedos (finger tapping). A webcam captura as mãos e o software acompanha o movimento dos dedos durante o teste.',
+        },
+        {
+          titulo: 'Como funciona',
+          ordenada: true,
+          itens: [
+            'O app abre a webcam e detecta as mãos em tempo real.',
+            'A pessoa executa o movimento de tamborilar os dedos diante da câmera.',
+            'O software acompanha o movimento durante todo o teste.',
+          ],
+        },
+        {
+          titulo: 'Requisitos',
+          itens: [
+            'Computador com webcam',
+            'Boa iluminação e mãos visíveis para a câmera',
+            'Python',
+            'OpenCV e MediaPipe',
+          ],
+        },
+        {
+          titulo: 'Como rodar',
+          pendente: 'As instruções de execução serão publicadas quando o app tiver uma versão distribuível.',
+        },
+        {
+          titulo: 'Download',
+          pendente: 'O link de download será adicionado junto com a primeira versão.',
+        },
+        {
+          titulo: 'Demonstração',
+          midia: { src: null, pendente: 'Vídeo de demonstração em breve' },
+        },
       ],
     },
   },
@@ -29,8 +63,56 @@ export const SOFTWARES = [
     status: 'desenvolvimento',
     Icone: Eye,
     detalhes: {
+      aviso: 'Este app roda localmente no seu computador, usando a webcam. Ele não funciona dentro do navegador: aqui você encontra a descrição, os requisitos e a demonstração.',
       secoes: [
-        { titulo: 'Em construção', pendente: 'A página deste software será preenchida em breve.' },
+        {
+          titulo: 'O que é',
+          texto: 'Jogo de ritmo inspirado no osu!, em que o cursor é substituído pelo olhar. Alvos aparecem na tela e a pessoa deve olhar para eles dentro de uma janela de tempo, sem clicar em nada. O objetivo é gerar dados de acompanhamento que apoiem a triagem de doenças neurodegenerativas.',
+        },
+        {
+          titulo: 'Como funciona',
+          ordenada: true,
+          itens: [
+            'Calibração: a pessoa olha para pontos fixos na tela para ajustar o rastreamento.',
+            'Os alvos aparecem em posições e momentos definidos.',
+            'Se o olhar permanece sobre o alvo por tempo suficiente dentro da janela, conta como acerto; caso contrário, erro.',
+            'Ao final da sessão, uma tela de resumo mostra os resultados.',
+          ],
+        },
+        {
+          titulo: 'Dados registrados',
+          itens: [
+            'Acertos e erros',
+            'Tempo de resposta até o olhar chegar ao alvo',
+            'Precisão do olhar em relação ao alvo',
+            'Estabilidade da fixação',
+          ],
+        },
+        {
+          titulo: 'Requisitos',
+          itens: [
+            'Computador com webcam',
+            'Boa iluminação e cabeça em posição estável',
+            'Python',
+            'OpenCV, MediaPipe, GazeTracking e Pygame',
+          ],
+        },
+        {
+          titulo: 'Precisão do rastreamento',
+          pendente: 'A precisão do rastreamento ocular por webcam comum ainda está em validação. O tamanho dos alvos do jogo depende desse resultado.',
+        },
+        {
+          titulo: 'Como rodar',
+          pendente: 'As instruções de execução serão publicadas quando o app tiver uma versão distribuível.',
+        },
+        {
+          titulo: 'Download',
+          pendente: 'O link de download será adicionado junto com a primeira versão.',
+        },
+        {
+          titulo: 'Demonstração',
+          midia: { src: null, pendente: 'Vídeo de demonstração em breve' },
+        },
       ],
     },
   },
