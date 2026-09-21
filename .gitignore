@@ -1,9 +1,7 @@
-__pycache__/
-*.pyc
-.venv/
-venv/
-.pytest_cache/
-
-# modelo do MediaPipe (baixado automaticamente pelo script da Fase 0)
-fase0/models/
-*.task
+node_modules/
+dist/
+*.local
+.env
+.env.*
+.DS_Store
+*.log

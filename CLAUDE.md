@@ -1,78 +1,81 @@
-# [nome a definir] — Jogo de ritmo por rastreamento ocular
+# iris-hub — Roadmap do menu de navegação
 
 ## Contexto
 
-Quarto componente do ecossistema **iris** (junto com o front-end web, o `neuro-demo` e o back-end Java). É um jogo inspirado no osu!, onde o **cursor é substituído pelo olhar** do paciente: alvos aparecem na tela e a pessoa precisa acompanhá-los/permanecer olhando para eles dentro de uma janela de tempo — sem clique, sem piscar como gatilho. O objetivo não é só entretenimento: é gerar dados de acompanhamento médico (acertos, erros, tempo de resposta) que possam apoiar a triagem de doenças neurodegenerativas, na mesma linha do `neuro-demo`.
+Este projeto acadêmico é composto por **4 softwares de naturezas técnicas diferentes**:
 
-**Mecânica de interação (definida):** sem clique. Um alvo tem uma janela de tempo ativa; se o olhar do paciente permanecer dentro da área do alvo por uma fração mínima dessa janela, conta como acerto. Se o olhar nunca entra na área, ou sai antes do mínimo necessário, conta como erro. Isso aproxima o jogo de paradigmas clínicos reais de perseguição suave do olhar (*smooth pursuit*) em vez de simular um clique artificial com o olho.
+1. **iris (front-end web)** — React 19 + Vite + Tailwind CSS v4 + React Router + Recharts + lucide-react. Já existe (dashboard de acompanhamento médico).
+2. **neuro-demo — app desktop em Python** — usa OpenCV, MediaPipe e webcam (protótipo de teste de tamborilar dedos). Roda localmente como executável, não como página web.
+3. **[nome a definir] — jogo de ritmo por rastreamento ocular** — também Python (OpenCV, MediaPipe, GazeTracking, Pygame), roda localmente. Ver `CLAUDE.md` próprio desse projeto para detalhes.
+4. **[nome a definir] — back-end em Java/Spring Boot** — expõe uma API consumida pelos apps web. Não é, por natureza, uma "tela" navegável.
 
-**Stack decidida:** Python, para manter consistência com o `neuro-demo` e reaproveitar o mesmo domínio de visão computacional já desenvolvido pelo grupo.
-- **OpenCV** — captura de vídeo da webcam
-- **MediaPipe Face Landmarker** (com landmarks de íris) — detecção da posição do olho/pupila
-- **GazeTracking** (biblioteca open-source baseada em dlib) — ponto de partida para estimar direção do olhar; avaliar na Fase 0 se a precisão dela é suficiente antes de construir um estimador próprio
-- **Pygame** — loop de jogo, renderização dos alvos, áudio/ritmo
-- Exportação dos dados de sessão em JSON (consumível depois pelo back-end Java ou pelo hub)
+Nenhum dos 4 está terminado (o iris é o mais avançado). Este arquivo existe para que o "menu" (repositório **iris-hub**) seja construído desde já com a arquitetura certa, mesmo sem o conteúdo final de cada peça pronto — evitando redesenhar o hub depois.
 
-## Regra inegociável: Fase 0 vem antes do jogo
+**Realidade arquitetural (importante):** um menu web único não consegue "conter" os 4 softwares do mesmo jeito. O que ele pode fazer, de forma honesta, é:
+- **Hospedar de verdade** o software que também é web (o iris) como rota interna.
+- **Consumir** o back-end Java por trás dos panos (chamadas de API), sem ele ser um "item de menu" — a menos que o back-end ganhe algum painel próprio (ex: status/monitoramento), que aí sim vira uma rota.
+- **Apontar para** os apps Python desktop (neuro-demo e o jogo de ritmo): como eles não rodam no navegador, o hub oferece uma tela explicativa (o que é, como baixar/rodar localmente, vídeo ou GIF de demonstração) em vez de "abrir" o app de fato.
 
-**Não construir o jogo completo antes de validar a precisão do rastreamento.** Eye-tracking por webcam comum tem erro de alguns centímetros na tela — se esse erro for maior que o tamanho dos alvos do jogo, o jogo mede o rastreador, não o paciente. Isso invalida o propósito clínico do projeto. A Fase 0 é um protótipo mínimo e descartável, não o início do jogo de verdade.
+Isso não é uma limitação do hub — é a natureza de misturar web, desktop e back-end. Melhor deixar isso explícito agora do que descobrir depois de construído.
+
+## Identidade visual (obrigatório reaproveitar do iris)
+
+O hub deve parecer a "casa" de onde o iris (e os outros softwares) saem — mesma linguagem visual, não um projeto à parte.
+
+- Fonte de títulos: **Poppins** (`--font-display`). Fonte de corpo: **Inter** (`--font-body`).
+- Paleta (tokens do `iris/src/index.css`): `--color-bg`, `--color-surface`, `--color-navy`, `--color-ink`, `--color-ink-soft`, `--color-good`, `--color-good-bg`, `--color-warn`, `--color-warn-bg`.
+- Cards: `rounded-2xl bg-[var(--color-surface)] shadow-sm`. Ícones: `lucide-react`.
+- **Ação da Fase 0** (abaixo): extrair esses tokens do `iris` para um lugar compartilhado, em vez de copiar e colar — assim, se a paleta mudar, muda em um lugar só para todos os softwares web.
+
+## Estrutura de pastas proposta
+
+Um monorepo simples, onde cada software mantém sua própria stack, e o hub é o único que roda como "porta de entrada":
+
+```
+projeto/
+├── iris-hub/         # o app do menu (React + Vite + Tailwind) — este roadmap
+├── iris/             # front-end existente
+├── neuro-demo/        # app Python (desktop) — teste de tamborilar dedos
+├── [jogo-ritmo]/       # app Python (desktop) — jogo de ritmo por rastreamento ocular
+├── backend/            # Java/Spring Boot
+└── shared/
+    └── design-tokens/  # tokens de cor/fonte compartilhados (Fase 0)
+```
+
+Só o `iris-hub` e o `iris` são "apps web" de fato. `backend` roda como servidor (o hub e o iris falam com ele via API). `neuro-demo` e o jogo de ritmo rodam localmente na máquina do usuário.
 
 ## Fases
 
-### Fase 0 — Protótipo de validação de precisão (obrigatória, primeiro que tudo)
-- Script simples: um único alvo aparece em posições conhecidas na tela, a pessoa olha para ele, o sistema registra onde *estima* que o olhar está.
-- Calcular o erro médio (em pixels ou cm) entre a posição real do alvo e a posição estimada, em várias regiões da tela (centro, cantos, bordas).
-- Testar com e sem óculos, em pelo menos duas condições de iluminação.
-- **Critério de decisão:** definir com o grupo (ou orientador) qual erro máximo é aceitável dado o tamanho de alvo que o jogo pretende usar. Se o erro medido for maior que isso, o projeto precisa ajustar expectativas (alvos maiores, calibração mais robusta, ou reconsiderar o escopo) antes de seguir para a Fase 1.
-- Entregável desta fase: um relatório curto (pode ser um `.md` no repositório) com os números medidos e a decisão tomada.
+### Fase 0 — Design system compartilhado
+- Extrair os tokens do `iris/src/index.css` (`@theme`) para `shared/design-tokens/tokens.css`.
+- `iris` e `iris-hub` importam desse arquivo compartilhado em vez de duplicar a paleta.
+- Sem isso, qualquer ajuste de cor precisa ser replicado manualmente em cada app — fonte comum de inconsistência.
 
-### Fase 1 — Módulo de rastreamento ocular (core, reutilizável)
-- Isolar a lógica de captura + estimativa de olhar em um módulo próprio (`gaze/`), independente do jogo — assim pode ser testado sozinho e reaproveitado.
-- Rotina de **calibração por sessão**: a pessoa olha para um conjunto de pontos fixos (ex: 5 ou 9 pontos) antes de começar; o sistema usa isso para ajustar o mapeamento olhar → coordenadas de tela.
-- Pensar em acessibilidade da calibração para o público idoso: instruções claras em voz/texto grande, tempo generoso, possibilidade de recalibrar sem reiniciar tudo.
-- Saída do módulo: um stream de coordenadas (x, y) estimadas + timestamp, que o jogo consome.
+### Fase 1 — Casca do hub (menu funcional, sem conteúdo real ainda)
+- Criar o app `iris-hub` (Vite + React + Tailwind v4 + React Router), usando o design system da Fase 0.
+- Tela inicial: cards para os 4 softwares, cada um com nome, descrição curta e status (`Disponível` / `Em desenvolvimento`).
+- Cada card navega para uma rota interna própria (`/iris`, `/neuro-demo`, `/jogo-ritmo`, `/backend` ou nomes finais quando definidos).
+- Como nenhum software está pronto (exceto o iris, parcialmente), cada rota mostra por enquanto uma tela de "placeholder" (nome, descrição, status) — não é gambiarra, é o contrato que as próximas fases vão preencher.
+- Navegação lateral ou superior fixa, permitindo voltar ao menu principal a qualquer momento (mesmo princípio de barra lateral já usado no iris).
 
-### Fase 2 — Loop de jogo (Pygame)
-- Spawn de alvos em posições e tempos definidos (padrão inicial simples e previsível; complexidade/ritmo variável fica para depois).
-- Cada alvo tem: posição, raio de tolerância, janela de tempo ativa (início/fim), fração mínima de permanência do olhar dentro da área para contar acerto.
-- Renderização visual simples e de alto contraste (público idoso) — alvo grande, cores nítidas, sem excesso de elementos na tela.
-- Áudio de ritmo/feedback (acerto/erro) opcional nesta fase, mas planejar o gancho desde já.
+### Fase 2 — Integração real do iris
+- Definir se o `iris` passa a viver **dentro** do `iris-hub` como módulo importado (mesmo app React, uma rota `/iris/*` delegando pro router interno do iris) ou se continua um projeto separado, publicado à parte, e o hub apenas linka/redireciona para a URL dele.
+- Recomendação: manter o `iris` como projeto independente publicado separadamente, e o hub linka para ele (via `<a>` externo ou iframe, dependendo do hospedeiro escolhido) — isso evita ter que fundir dois React Routers e duas bases de código em uma só, o que é mais trabalho do que o benefício justifica num projeto acadêmico com prazo.
+- Se a decisão for fundir de verdade num único app, ajustar esta fase para: mover as páginas do iris para dentro de `iris-hub/src/pages/iris/` e apontar as rotas.
 
-### Fase 3 — Coleta e exportação de dados da sessão
+### Fase 3 — Painel do back-end (se aplicável)
+- Se o back-end Java ganhar necessidade de alguma tela própria (ex: status da API, health check, métricas), criar uma rota `/backend` no hub que consome esses endpoints.
+- Se o back-end permanecer "invisível" (só consumido pelo iris via API), a rota do card no menu pode virar apenas uma página informativa técnica ("O que é", stack usada, link pro repositório), sem funcionalidade interativa — está tudo bem, nem todo software precisa de UI própria dentro do menu.
 
-O valor clínico do jogo depende de capturar mais do que "acertou/errou". A literatura de rastreamento ocular em Parkinson e Alzheimer aponta métricas específicas como biomarcadores (latência sacádica, precisão/amplitude, estabilidade de fixação, ganho de perseguição suave) — o jogo deve registrar dados suficientes para calculá-las, já que o custo de captura é baixo (o stream de coordenadas do olhar já existe pela Fase 1).
-
-Por alvo, registrar:
-- **Acerto/erro** (binário, já planejado).
-- **Tempo de resposta** — tempo entre o alvo aparecer e o olhar entrar pela primeira vez na área dele (equivalente à latência sacádica).
-- **Precisão espacial** — distância entre o centro do alvo e a posição média do olhar enquanto ele estava dentro da janela ativa (não só "entrou na área", mas o quão preciso foi o alcance).
-- **Estabilidade durante a fixação** — variância da posição do olhar enquanto ele deveria permanecer sobre o alvo (tremor/oscilação vs. fixação firme).
-- Se houver alvos em movimento contínuo (perseguição suave): registrar a diferença entre a velocidade/trajetória do olhar e a do alvo ao longo do tempo, não só o ponto final.
-
-Ao fim da sessão, agregar: total de acertos, total de erros, tempo de resposta médio e variabilidade (desvio padrão) do tempo de resposta — a variabilidade é tratada na literatura como sinal distinto da média, não descartar.
-
-- Exportar em JSON, com estrutura pensada para ser consumida futuramente pelo back-end Java (ex: `{ pacienteId, data, acertos, erros, tempoRespostaMedioMs, tempoRespostaDesvioPadraoMs, detalhePorAlvo: [{ acerto, tempoRespostaMs, precisaoPx, variabilidadeFixacaoPx }, ...] }` — ajustar nomes conforme o modelo de dados real do back-end quando existir).
-- Tela de resumo pós-sessão (ainda que simples, em Pygame) mostrando esses números para quem aplicou o teste.
-
-### Fase 4 — Conexão com o lado médico
-- Definir junto ao grupo como os dados desta sessão se conectam ao paciente no `iris` (front-end web): mesmo `pacienteId`? Uma nova métrica no `PatientDetail`? Isso depende do modelo de dados do back-end, que deve ser decidido em conjunto — não assumir sozinho.
-- Documentar a relação entre a mecânica do jogo e os paradigmas clínicos que ela busca refletir (perseguição suave do olhar), para justificar academicamente a escolha de design.
-- Assim como o `neuro-demo`, este software não roda dentro do navegador — no hub (`hub/`), ele aparece como uma tela informativa com descrição, instruções de execução local e, quando houver, uma demonstração em vídeo — não como uma rota web funcional.
-
-### Fase 5 — Curva de dificuldade e refinamento (só após Fases 0–4 validadas)
-- Variação de velocidade/quantidade de alvos.
-- Possível adaptação de dificuldade com base no desempenho (opcional, avaliar se cabe no escopo/prazo).
-
-### Fase 6 (opcional, avaliar escopo/prazo) — Modo antissacada
-Paradigma clínico com o maior peso diagnóstico diferencial na literatura (ex: distinguir Parkinson de atrofia de múltiplos sistemas), mas com mecânica **inversa** ao jogo principal — não é "olhe para o alvo", é "quando o alvo aparecer de um lado, olhe para o lado oposto". Por mudar a instrução e a lógica de acerto, tratar como um modo/fase separada, não misturar com a mecânica de ritmo do jogo principal.
-- Alvo aparece à esquerda ou direita da tela; sucesso = olhar se move para o lado espelhado, não para o alvo.
-- Métricas: acerto/erro (foi para o lado certo?), latência, e erros de "sacada reflexa" (quando o olhar vai primeiro na direção errada — para o alvo — antes de se corrigir, se der para detectar isso no rastreamento).
-- Avaliar com o grupo se cabe no prazo da entrega atual ou fica como extensão futura do projeto.
+### Fase 4 — Páginas dos apps Python (neuro-demo e jogo de ritmo)
+- Criar rotas `/neuro-demo` e `/jogo-ritmo` no hub, cada uma com: descrição do que o app faz, requisitos para rodar (Python, dependências), instruções ou link de download, e uma demonstração em vídeo/GIF do funcionamento.
+- **Caminho futuro opcional (não prometer para a entrega atual):** o MediaPipe tem uma versão para navegador (Tasks Vision API, JS/WASM) que permite detecção de mãos e de olhos direto no browser via `getUserMedia`. Se houver tempo depois da entrega, dá para migrar um ou ambos os apps para uma versão web e integrá-los de verdade como rotas do hub — mas isso é uma reescrita, não uma portabilidade trivial, e não deve ser assumido como certo neste roadmap.
 
 ## Convenções para o Claude Code seguir
 
-- Nomes de variáveis/funções: seguir a convenção já usada no `neuro-demo`, se houver um padrão estabelecido; caso contrário, código em inglês e textos de interface/dados em português, para manter consistência com o restante do ecossistema iris.
-- Estrutura modular desde o início (`gaze/`, `game/`, `data/`) — não misturar a lógica de rastreamento com a lógica de jogo no mesmo arquivo, já que o módulo de rastreamento precisa ser testável isoladamente (Fase 0/1).
-- Não pular a Fase 0. Se for pedido para "já construir o jogo", a resposta correta é lembrar que a validação de precisão vem primeiro e perguntar se ela já foi feita.
-- Antes de decidir a estrutura exata do JSON de exportação (Fase 3) ou a integração com o paciente (Fase 4), **parar e confirmar com o usuário** — essas decisões dependem do modelo de dados do back-end Java, que é responsabilidade de outra parte do grupo.
-- Ao final de cada fase, sugerir mensagens de commit (Conventional Commits) e rodar os testes/validações manuais descritas na própria fase antes de seguir para a próxima.
+- Textos de interface em português.
+- Só usar os tokens de `shared/design-tokens/tokens.css` — nunca cores cruas.
+- Componentes pequenos, mobile-first (mesmo padrão de `max-w-md` do iris), evoluindo pra layout de duas colunas em telas largas quando fizer sentido (mesmo princípio já usado na sidebar do iris).
+- Rodar `npm run build` ao fim de cada fase antes de considerar concluída.
+- Cada fase deste roadmap é uma unidade de trabalho separada — não pular fases nem misturar num único commit gigante. Sugerir mensagens de commit (Conventional Commits) ao final de cada fase.
+- Antes de iniciar a Fase 2, 3 ou 4, **parar e confirmar com o usuário** a decisão de integração (link externo vs. fusão de código) em vez de assumir — o roadmap propõe uma recomendação, mas a decisão final é do time.
