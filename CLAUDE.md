@@ -70,6 +70,8 @@ Só o `iris-hub` e o `iris` são "apps web" de fato. `backend` roda como servido
 - Se o back-end permanecer "invisível" (só consumido pelo iris via API), a rota do card no menu pode virar apenas uma página informativa técnica ("O que é", stack usada, link pro repositório), sem funcionalidade interativa — está tudo bem, nem todo software precisa de UI própria dentro do menu.
 
 ### Fase 4 — Páginas dos apps Python (neuro-demo e jogo de ritmo)
+**Decisão do time:** o neuro-demo foi retirado do hub; permanece apenas o jogo de ritmo.
+
 - Criar rotas `/neuro-demo` e `/jogo-ritmo` no hub, cada uma com: descrição do que o app faz, requisitos para rodar (Python, dependências), instruções ou link de download, e uma demonstração em vídeo/GIF do funcionamento.
 - **Caminho futuro opcional (não prometer para a entrega atual):** o MediaPipe tem uma versão para navegador (Tasks Vision API, JS/WASM) que permite detecção de mãos e de olhos direto no browser via `getUserMedia`. Se houver tempo depois da entrega, dá para migrar um ou ambos os apps para uma versão web e integrá-los de verdade como rotas do hub — mas isso é uma reescrita, não uma portabilidade trivial, e não deve ser assumido como certo neste roadmap.
 
