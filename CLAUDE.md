@@ -58,7 +58,9 @@ Só o `iris-hub` e o `iris` são "apps web" de fato. `backend` roda como servido
 - Como nenhum software está pronto (exceto o iris, parcialmente), cada rota mostra por enquanto uma tela de "placeholder" (nome, descrição, status) — não é gambiarra, é o contrato que as próximas fases vão preencher.
 - Navegação lateral ou superior fixa, permitindo voltar ao menu principal a qualquer momento (mesmo princípio de barra lateral já usado no iris).
 
-### Fase 2 — Integração real do iris
+### Fase 2 — Integração real do iris (DESCARTADA)
+**Decisão do time:** o iris serve apenas como referência de identidade visual e **não entra no hub** (nem como rota interna, nem como link). O menu contém somente neuro-demo, jogo de ritmo e back-end. O texto abaixo é histórico e não deve ser executado.
+
 - Definir se o `iris` passa a viver **dentro** do `iris-hub` como módulo importado (mesmo app React, uma rota `/iris/*` delegando pro router interno do iris) ou se continua um projeto separado, publicado à parte, e o hub apenas linka/redireciona para a URL dele.
 - Recomendação: manter o `iris` como projeto independente publicado separadamente, e o hub linka para ele (via `<a>` externo ou iframe, dependendo do hospedeiro escolhido) — isso evita ter que fundir dois React Routers e duas bases de código em uma só, o que é mais trabalho do que o benefício justifica num projeto acadêmico com prazo.
 - Se a decisão for fundir de verdade num único app, ajustar esta fase para: mover as páginas do iris para dentro de `iris-hub/src/pages/iris/` e apontar as rotas.
