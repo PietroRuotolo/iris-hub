@@ -1,58 +1,10 @@
-import { Hand, Eye, Server } from 'lucide-react'
+import { Eye, Server } from 'lucide-react'
 
 // Fonte única dos softwares do hub: alimenta o menu, os cards e as rotas.
 // O iris (front-end web) NÃO faz parte do hub: é apenas a referência visual.
-// Nomes finais de neuro-demo, jogo de ritmo e back-end ainda serão definidos.
+// Nomes finais do jogo de ritmo e do back-end ainda serão definidos.
+// O neuro-demo foi retirado do hub por decisão do time.
 export const SOFTWARES = [
-  {
-    id: 'neuro-demo',
-    rota: '/neuro-demo',
-    nome: 'neuro-demo',
-    tipo: 'App desktop (Python)',
-    categoria: 'desktop',
-    descricao: 'Protótipo de teste de tamborilar dedos, com detecção das mãos pela webcam.',
-    status: 'desenvolvimento',
-    Icone: Hand,
-    detalhes: {
-      aviso: 'Este app roda localmente no seu computador, usando a webcam. Ele não funciona dentro do navegador: aqui você encontra a descrição, os requisitos e a demonstração.',
-      secoes: [
-        {
-          titulo: 'O que é',
-          texto: 'Protótipo de teste de tamborilar dedos (finger tapping). A webcam captura as mãos e o software acompanha o movimento dos dedos durante o teste.',
-        },
-        {
-          titulo: 'Como funciona',
-          ordenada: true,
-          itens: [
-            'O app abre a webcam e detecta as mãos em tempo real.',
-            'A pessoa executa o movimento de tamborilar os dedos diante da câmera.',
-            'O software acompanha o movimento durante todo o teste.',
-          ],
-        },
-        {
-          titulo: 'Requisitos',
-          itens: [
-            'Computador com webcam',
-            'Boa iluminação e mãos visíveis para a câmera',
-            'Python',
-            'OpenCV e MediaPipe',
-          ],
-        },
-        {
-          titulo: 'Como rodar',
-          pendente: 'As instruções de execução serão publicadas quando o app tiver uma versão distribuível.',
-        },
-        {
-          titulo: 'Download',
-          pendente: 'O link de download será adicionado junto com a primeira versão.',
-        },
-        {
-          titulo: 'Demonstração',
-          midia: { src: null, pendente: 'Vídeo de demonstração em breve' },
-        },
-      ],
-    },
-  },
   {
     id: 'jogo-ritmo',
     rota: '/jogo-ritmo',
@@ -130,7 +82,7 @@ export const SOFTWARES = [
       secoes: [
         {
           titulo: 'O que é',
-          texto: 'API em Java com Spring Boot que centraliza os dados do ecossistema iris, como as sessões geradas pelos testes do neuro-demo e do jogo de ritmo.',
+          texto: 'API em Java com Spring Boot que centraliza os dados do ecossistema iris, como as sessões geradas pelo jogo de ritmo.',
         },
         {
           titulo: 'Papel no ecossistema',
