@@ -1,22 +1,15 @@
-import { Activity, Hand, Eye, Server } from 'lucide-react'
+import { Hand, Eye, Server } from 'lucide-react'
 
-// Fonte única dos softwares do ecossistema: alimenta o menu, os cards e as rotas.
+// Fonte única dos softwares do hub: alimenta o menu, os cards e as rotas.
+// O iris (front-end web) NÃO faz parte do hub: é apenas a referência visual.
 // Nomes finais de neuro-demo, jogo de ritmo e back-end ainda serão definidos.
 export const SOFTWARES = [
-  {
-    id: 'iris',
-    rota: '/iris',
-    nome: 'iris',
-    tipo: 'Aplicação web',
-    descricao: 'Dashboard de acompanhamento médico: lista de pacientes, evolução das métricas e anotações clínicas.',
-    status: 'disponivel',
-    Icone: Activity,
-  },
   {
     id: 'neuro-demo',
     rota: '/neuro-demo',
     nome: 'neuro-demo',
     tipo: 'App desktop (Python)',
+    categoria: 'desktop',
     descricao: 'Protótipo de teste de tamborilar dedos, com detecção das mãos pela webcam.',
     status: 'desenvolvimento',
     Icone: Hand,
@@ -26,6 +19,7 @@ export const SOFTWARES = [
     rota: '/jogo-ritmo',
     nome: 'Jogo de ritmo',
     tipo: 'App desktop (Python)',
+    categoria: 'desktop',
     descricao: 'Jogo de ritmo controlado pelo olhar, que gera dados de acompanhamento para triagem neurológica.',
     status: 'desenvolvimento',
     Icone: Eye,
@@ -35,10 +29,17 @@ export const SOFTWARES = [
     rota: '/backend',
     nome: 'Back-end',
     tipo: 'API (Java / Spring Boot)',
-    descricao: 'API consumida pelos apps web e pelos dados de sessão dos testes.',
+    categoria: 'api',
+    descricao: 'API que recebe e serve os dados de sessão dos testes para os demais softwares.',
     status: 'desenvolvimento',
     Icone: Server,
   },
+]
+
+export const FILTROS = [
+  { id: 'todos', label: 'Todos' },
+  { id: 'desktop', label: 'Apps desktop' },
+  { id: 'api', label: 'API' },
 ]
 
 export const STATUS = {
