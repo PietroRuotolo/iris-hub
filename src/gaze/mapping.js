@@ -10,7 +10,6 @@ function linhaDesign(f, comCabeca) {
 }
 
 function estatisticasColunas(matriz) {
-  const n = matriz.length
   const m = matriz[0].length
   const medias = new Array(m).fill(0)
   const desvios = new Array(m).fill(0)
