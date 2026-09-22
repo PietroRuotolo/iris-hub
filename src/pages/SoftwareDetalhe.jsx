@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Check, Clock, Info, Play } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Clock, Info, Play } from 'lucide-react'
 import StatusBadge from '../components/StatusBadge'
 
 function Pendente({ texto }) {
@@ -30,7 +30,7 @@ function Midia({ midia }) {
   )
 }
 
-function Secao({ titulo, texto, itens, ordenada, pendente, midia }) {
+function Secao({ titulo, texto, itens, ordenada, pendente, midia, link }) {
   const Lista = ordenada ? 'ol' : 'ul'
 
   return (
@@ -58,6 +58,15 @@ function Secao({ titulo, texto, itens, ordenada, pendente, midia }) {
 
         {midia && <Midia midia={midia} />}
         {pendente && <Pendente texto={pendente} />}
+
+        {link && (
+          <Link
+            to={link.to}
+            className="flex items-center justify-center gap-2 rounded-xl bg-[var(--color-navy)] px-4 py-3 text-sm font-semibold text-[var(--color-surface)] outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--color-navy)] focus-visible:ring-offset-2"
+          >
+            {link.label} <ArrowRight size={16} />
+          </Link>
+        )}
       </div>
     </section>
   )

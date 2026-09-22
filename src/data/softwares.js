@@ -9,13 +9,13 @@ export const SOFTWARES = [
     id: 'jogo-ritmo',
     rota: '/jogo-ritmo',
     nome: 'Jogo de ritmo',
-    tipo: 'App desktop (Python)',
-    categoria: 'desktop',
+    tipo: 'Aplicação web (webcam)',
+    categoria: 'web',
     descricao: 'Jogo de ritmo controlado pelo olhar, que gera dados de acompanhamento para triagem neurológica.',
     status: 'desenvolvimento',
     Icone: Eye,
     detalhes: {
-      aviso: 'Este app roda localmente no seu computador, usando a webcam. Ele não funciona dentro do navegador: aqui você encontra a descrição, os requisitos e a demonstração.',
+      aviso: 'Roda direto no navegador, usando a webcam (MediaPipe Tasks Vision). Nenhuma imagem sai do computador: o rastreamento acontece localmente.',
       secoes: [
         {
           titulo: 'O que é',
@@ -43,23 +43,19 @@ export const SOFTWARES = [
         {
           titulo: 'Requisitos',
           itens: [
-            'Computador com webcam',
+            'Navegador com câmera (Chrome ou Edge recomendados)',
             'Boa iluminação e cabeça em posição estável',
-            'Python',
-            'OpenCV, MediaPipe, GazeTracking e Pygame',
+            'Conexão com internet (carrega o modelo do MediaPipe)',
           ],
         },
         {
-          titulo: 'Precisão do rastreamento',
-          pendente: 'A precisão do rastreamento ocular por webcam comum ainda está em validação. O tamanho dos alvos do jogo depende desse resultado.',
+          titulo: 'Fase 0 — validação de precisão',
+          texto: 'Antes de qualquer mecânica de jogo, é preciso medir o erro do rastreamento ocular pela webcam. Este protótipo mede esse erro e decide se o tamanho de alvo planejado é viável.',
+          link: { to: '/jogo-ritmo/fase-0', label: 'Testar precisão do rastreamento' },
         },
         {
-          titulo: 'Como rodar',
-          pendente: 'As instruções de execução serão publicadas quando o app tiver uma versão distribuível.',
-        },
-        {
-          titulo: 'Download',
-          pendente: 'O link de download será adicionado junto com a primeira versão.',
+          titulo: 'Mecânica do jogo',
+          pendente: 'Ainda não construída: depende do resultado da Fase 0 (erro medido define o tamanho mínimo dos alvos).',
         },
         {
           titulo: 'Demonstração',
@@ -111,7 +107,7 @@ export const SOFTWARES = [
 
 export const FILTROS = [
   { id: 'todos', label: 'Todos' },
-  { id: 'desktop', label: 'Apps desktop' },
+  { id: 'web', label: 'Aplicações web' },
   { id: 'api', label: 'API' },
 ]
 
