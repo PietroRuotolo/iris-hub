@@ -69,11 +69,20 @@ Só o `iris-hub` e o `iris` são "apps web" de fato. `backend` roda como servido
 - Se o back-end Java ganhar necessidade de alguma tela própria (ex: status da API, health check, métricas), criar uma rota `/backend` no hub que consome esses endpoints.
 - Se o back-end permanecer "invisível" (só consumido pelo iris via API), a rota do card no menu pode virar apenas uma página informativa técnica ("O que é", stack usada, link pro repositório), sem funcionalidade interativa — está tudo bem, nem todo software precisa de UI própria dentro do menu.
 
-### Fase 4 — Páginas dos apps Python (neuro-demo e jogo de ritmo)
-**Decisão do time:** o neuro-demo foi retirado do hub; permanece apenas o jogo de ritmo.
+### Fase 4 — Páginas dos apps Python (neuro-demo e jogo de ritmo) — SUPERADA para o jogo de ritmo
+**Decisão do time:** o neuro-demo foi retirado do hub; permanece apenas o jogo de ritmo. Para o jogo de ritmo, o "caminho futuro opcional" abaixo virou o caminho atual: ele foi **reescrito para web** (MediaPipe Tasks Vision, JS/WASM) e entra como rota de verdade em `/jogo-ritmo`, não como página informativa apontando para um app desktop. O texto original desta fase (link/instruções para um app Python) segue abaixo como histórico.
 
 - Criar rotas `/neuro-demo` e `/jogo-ritmo` no hub, cada uma com: descrição do que o app faz, requisitos para rodar (Python, dependências), instruções ou link de download, e uma demonstração em vídeo/GIF do funcionamento.
 - **Caminho futuro opcional (não prometer para a entrega atual):** o MediaPipe tem uma versão para navegador (Tasks Vision API, JS/WASM) que permite detecção de mãos e de olhos direto no browser via `getUserMedia`. Se houver tempo depois da entrega, dá para migrar um ou ambos os apps para uma versão web e integrá-los de verdade como rotas do hub — mas isso é uma reescrita, não uma portabilidade trivial, e não deve ser assumido como certo neste roadmap.
+
+### Fase 4b — Jogo de ritmo como rota web (`/jogo-ritmo`)
+**Decisão do time (2026-09-22):** o jogo de ritmo passa a ser 100% web, embutido no hub, substituindo o plano Python/Pygame do `CLAUDE.md` original do jogo. Regras herdadas desse roadmap que continuam valendo aqui: **a Fase 0 (validação de precisão) é obrigatória antes de qualquer mecânica de jogo**, e ao final dela o resultado deve decidir o tamanho mínimo de alvo antes de seguir.
+
+- **Módulo `src/gaze/`**: matemática de features/mapeamento (`features.js`, `mapping.js`, `linalg.js`, testados com vitest) + integração de câmera (`useFaceLandmarker.js`, MediaPipe Tasks Vision) + condução de sequência de alvos (`useSequenciaDeAlvos.js`) + agregação de resultados (`relatorio.js`). Não misturar essa lógica com componentes de página, pelo mesmo motivo do roadmap original: precisa ser testável isolada.
+- **Fase 0 (`/jogo-ritmo/fase-0`, feita)**: formulário de condição (rótulo, óculos, iluminação, tamanho de tela opcional) → calibração de 9 pontos → validação de 10 pontos (regiões diferentes da calibração) → tela de resultado com erro médio, critério de decisão (limite em px, ajustável) e histórico de execuções (localStorage) exportável como relatório Markdown. Rota fora do `Layout` (tela cheia), porque as posições dos alvos usam o viewport inteiro.
+- **Validado até agora:** pipeline ponta a ponta em Chrome headless com câmera simulada via CDP (carrega o modelo, abre a câmera, roda a sequência de calibração, aciona a tela de falha e o botão de repetir), sem exceções JS. **Ainda não validado com rosto real** — precisão de verdade, tempos de resposta do MediaPipe no hardware do usuário e a decisão de tamanho de alvo dependem de rodar com uma pessoa de verdade.
+- **Antes de começar a mecânica do jogo (Fase 2 do roadmap do jogo)**: rodar a Fase 0 com rosto real, em mais de uma condição de luz/óculos, e só então decidir o tamanho de alvo — não pular essa validação só porque a Fase 0 já existe como código.
+- **Integração com a experiência de demonstração**: quando a mecânica do jogo existir, cada sessão deve ser gravada direto no mesmo store de sessões do hub (`src/services/sessoes.js`, usado por Sessões → Laudo → QR → Reset), sem exigir upload manual de JSON — decisão já tomada com o usuário, pendente de implementação.
 
 ## Convenções para o Claude Code seguir
 
