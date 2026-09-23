@@ -76,12 +76,16 @@ export default function Laudo() {
             Em rede local, use o IP do computador (ex.: http://192.168.0.10:5173). Com localhost, só o próprio computador abre o link.
           </p>
 
+          <p className="mt-5 text-sm text-[var(--color-ink-soft)]">
+            Confirme que a pessoa baixou o PDF no celular antes de liberar a tela para a próxima. O reset não
+            afeta o PDF já baixado — só apaga as sessões carregadas neste computador.
+          </p>
           <BotaoConfirmar
             rotulo="Próxima pessoa"
-            rotuloConfirmar="Toque de novo: apagar resultados"
+            rotuloConfirmar="Toque de novo: apagar sessões"
             aoConfirmar={proximaPessoa}
             Icone={RotateCcw}
-            className="mt-5 w-full"
+            className="mt-3 w-full"
           />
         </aside>
       </div>
