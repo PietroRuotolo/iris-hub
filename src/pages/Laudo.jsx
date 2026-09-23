@@ -5,7 +5,7 @@ import useSessoes from '../hooks/useSessoes'
 import BotaoConfirmar from '../components/BotaoConfirmar'
 import LaudoDocumento from '../components/LaudoDocumento'
 import QrCode from '../components/QrCode'
-import { agregar, codificarResumo } from '../services/laudo'
+import { agregar, agruparPorJogo, codificarResumo } from '../services/laudo'
 import { limparSessoes } from '../services/sessoes'
 
 const CHAVE_BASE = 'iris-hub:endereco-qr'
@@ -23,7 +23,10 @@ export default function Laudo() {
   const navigate = useNavigate()
   const [dataIso] = useState(() => new Date().toISOString())
   const [endereco, setEndereco] = useState(enderecoInicial)
-  const resumo = useMemo(() => agregar(sessoes), [sessoes])
+  const grupos = useMemo(
+    () => agruparPorJogo(sessoes).map(({ jogo, sessoes }) => ({ jogo, resumo: agregar(sessoes) })),
+    [sessoes],
+  )
 
   function alterarEndereco(valor) {
     setEndereco(valor)
@@ -54,7 +57,7 @@ export default function Laudo() {
   }
 
   const base = endereco.trim().replace(/\/+$/, '')
-  const link = `${base}/resultado#d=${codificarResumo(resumo, dataIso)}`
+  const link = `${base}/resultado#d=${codificarResumo(grupos, dataIso)}`
 
   return (
     <>
@@ -63,7 +66,7 @@ export default function Laudo() {
       </Link>
 
       <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
-        <LaudoDocumento resumo={resumo} dataIso={dataIso} />
+        <LaudoDocumento grupos={grupos} dataIso={dataIso} />
 
         <aside className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-sm">
           <h2 className="font-display text-lg font-semibold text-[var(--color-navy)]">Levar o laudo no celular</h2>

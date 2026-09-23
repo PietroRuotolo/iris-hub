@@ -1,12 +1,27 @@
-// Lógica pura da experiência de demonstração: leitura das sessões do jogo,
-// agregação, interpretação (simulada) e codificação do resumo para o QR code.
+// Lógica pura da experiência de demonstração: leitura das sessões dos jogos,
+// agregação por jogo, interpretação (simulada) e codificação do resumo para o QR code.
+//
+// Cada pessoa passa por vários jogos/testes ao longo da experiência; o laudo final
+// combina as sessões de cada um separadamente (não faz sentido somar acertos de
+// jogos diferentes num único número).
 
 const ehNumero = (v) => typeof v === 'number' && Number.isFinite(v)
 const numeroOuNulo = (v) => (ehNumero(v) ? v : null)
 
+// Nomes de exibição dos jogos conhecidos. Um jogo sem entrada aqui ainda funciona:
+// `nomeJogo` cai de volta no próprio id.
+const NOMES_JOGOS = {
+  'jogo-ritmo': 'Jogo de ritmo por rastreamento ocular',
+}
+
+export function nomeJogo(id) {
+  return NOMES_JOGOS[id] ?? id
+}
+
 /**
- * Valida e normaliza o JSON exportado pelo jogo de ritmo.
+ * Valida e normaliza o JSON exportado por um jogo.
  * Campos obrigatórios: acertos e erros. O restante é opcional.
+ * Sem o campo "jogo", assume "jogo-ritmo" (único jogo que já exporta sessões).
  * Lança Error com mensagem em português quando o arquivo não serve.
  */
 export function lerSessao(json) {
@@ -22,6 +37,7 @@ export function lerSessao(json) {
 
   return {
     id: '',
+    jogo: typeof json.jogo === 'string' && json.jogo ? json.jogo : 'jogo-ritmo',
     data: typeof json.data === 'string' ? json.data : null,
     acertos,
     erros,
@@ -33,6 +49,20 @@ export function lerSessao(json) {
       variabilidadeFixacaoPx: numeroOuNulo(a?.variabilidadeFixacaoPx),
     })),
   }
+}
+
+/** Agrupa as sessões por jogo, preservando a ordem em que cada jogo apareceu primeiro. */
+export function agruparPorJogo(sessoes) {
+  const ordem = []
+  const porJogo = new Map()
+  for (const sessao of sessoes) {
+    if (!porJogo.has(sessao.jogo)) {
+      ordem.push(sessao.jogo)
+      porJogo.set(sessao.jogo, [])
+    }
+    porJogo.get(sessao.jogo).push(sessao)
+  }
+  return ordem.map((jogo) => ({ jogo, sessoes: porJogo.get(jogo) }))
 }
 
 function media(valores) {
@@ -109,14 +139,13 @@ export function interpretar(resumo) {
   return { nivel: 'reduzido', titulo: 'Desempenho reduzido', texto: 'A maior parte dos alvos não foi acompanhada no tempo previsto. Sugere-se avaliação com profissional de saúde.', observacoes }
 }
 
-// ---- Codificação do resumo no link do QR code (sem servidor de dados) ----
+// ---- Codificação do laudo no link do QR code (sem servidor de dados) ----
 
 const arredondar = (v) => (v === null ? null : Math.round(v * 10) / 10)
 
-export function codificarResumo(resumo, dataIso) {
-  const compacto = {
-    v: 1,
-    t: dataIso,
+function codificarGrupo({ jogo, resumo }) {
+  return {
+    j: jogo,
     s: resumo.sessoes,
     a: resumo.acertos,
     e: resumo.erros,
@@ -125,29 +154,41 @@ export function codificarResumo(resumo, dataIso) {
     p: arredondar(resumo.precisaoPx),
     f: arredondar(resumo.fixacaoPx),
   }
+}
+
+function decodificarGrupo(c) {
+  if (!ehNumero(c.a) || !ehNumero(c.e) || !ehNumero(c.s)) return null
+  const total = c.a + c.e
+  return {
+    jogo: typeof c.j === 'string' ? c.j : 'jogo-ritmo',
+    resumo: {
+      sessoes: c.s,
+      acertos: c.a,
+      erros: c.e,
+      taxaAcerto: total > 0 ? c.a / total : null,
+      tempoMedioMs: numeroOuNulo(c.m),
+      desvioMs: numeroOuNulo(c.d),
+      precisaoPx: numeroOuNulo(c.p),
+      fixacaoPx: numeroOuNulo(c.f),
+    },
+  }
+}
+
+/** Codifica o laudo (um resumo por jogo) no link do QR code. */
+export function codificarResumo(grupos, dataIso) {
+  const compacto = { v: 2, t: dataIso, g: grupos.map(codificarGrupo) }
   return btoa(JSON.stringify(compacto)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '')
 }
 
-/** Inverso de codificarResumo. Retorna { resumo, dataIso } ou null se o texto for inválido. */
+/** Inverso de codificarResumo. Retorna { grupos, dataIso } ou null se o texto for inválido. */
 export function decodificarResumo(texto) {
   try {
     const base64 = texto.replaceAll('-', '+').replaceAll('_', '/')
     const c = JSON.parse(atob(base64))
-    if (c.v !== 1 || !ehNumero(c.a) || !ehNumero(c.e) || !ehNumero(c.s)) return null
-    const total = c.a + c.e
-    return {
-      dataIso: typeof c.t === 'string' ? c.t : null,
-      resumo: {
-        sessoes: c.s,
-        acertos: c.a,
-        erros: c.e,
-        taxaAcerto: total > 0 ? c.a / total : null,
-        tempoMedioMs: numeroOuNulo(c.m),
-        desvioMs: numeroOuNulo(c.d),
-        precisaoPx: numeroOuNulo(c.p),
-        fixacaoPx: numeroOuNulo(c.f),
-      },
-    }
+    if (c.v !== 2 || !Array.isArray(c.g)) return null
+    const grupos = c.g.map(decodificarGrupo)
+    if (grupos.some((g) => g === null)) return null
+    return { dataIso: typeof c.t === 'string' ? c.t : null, grupos }
   } catch {
     return null
   }

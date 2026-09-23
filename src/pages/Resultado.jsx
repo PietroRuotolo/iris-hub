@@ -16,7 +16,7 @@ export default function Resultado() {
     <div className="mx-auto min-h-screen w-full max-w-md px-4 py-6">
       <p className="mb-4 font-display text-lg font-semibold text-[var(--color-navy)]">iris hub</p>
       {dados ? (
-        <LaudoDocumento resumo={dados.resumo} dataIso={dados.dataIso} />
+        <LaudoDocumento grupos={dados.grupos} dataIso={dados.dataIso} />
       ) : (
         <div className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-sm">
           <h1 className="font-display text-xl font-semibold text-[var(--color-navy)]">Link inválido</h1>

@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertCircle, Download, FileText, Trash2, Upload } from 'lucide-react'
+import { AlertCircle, Check, Clock, Download, FileText, Trash2, Upload } from 'lucide-react'
 import useSessoes from '../hooks/useSessoes'
 import BotaoConfirmar from '../components/BotaoConfirmar'
-import { lerSessao } from '../services/laudo'
+import { SOFTWARES } from '../data/softwares'
+import { lerSessao, nomeJogo } from '../services/laudo'
 import { adicionarSessoes, limparSessoes, removerSessao } from '../services/sessoes'
 
 async function lerArquivos(arquivos) {
@@ -37,10 +38,32 @@ export default function Sessoes() {
     <>
       <h1 className="font-display text-2xl font-semibold text-[var(--color-navy)]">Sessões</h1>
       <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
-        Carregue o arquivo JSON que o jogo de ritmo exporta ao fim de cada sessão. Quando terminar, gere o laudo.
+        A pessoa passa por cada jogo da experiência; carregue aqui o arquivo JSON que cada um exporta ao final.
+        Quando todos estiverem carregados, gere o laudo combinando os resultados.
       </p>
 
-      <div className="mt-5 rounded-2xl bg-[var(--color-surface)] p-5 shadow-sm">
+      <ul className="mt-4 space-y-2">
+        {SOFTWARES.map((software) => {
+          const carregado = sessoes.some((s) => s.jogo === software.id)
+          return (
+            <li
+              key={software.id}
+              className="flex items-center gap-3 rounded-2xl bg-[var(--color-surface)] p-4 shadow-sm"
+            >
+              {carregado ? (
+                <Check size={18} className="shrink-0 text-[var(--color-good)]" />
+              ) : (
+                <Clock size={18} className="shrink-0 text-[var(--color-warn)]" />
+              )}
+              <span className="text-sm text-[var(--color-ink)]">
+                {software.nome} — {carregado ? 'sessão carregada' : 'aguardando sessão'}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+
+      <div className="mt-4 rounded-2xl bg-[var(--color-surface)] p-5 shadow-sm">
         <input
           ref={seletor}
           type="file"
@@ -88,7 +111,9 @@ export default function Sessoes() {
           {sessoes.map((s, i) => (
             <li key={s.id} className="flex items-center justify-between gap-3 rounded-2xl bg-[var(--color-surface)] p-4 shadow-sm">
               <div>
-                <p className="font-display font-semibold text-[var(--color-navy)]">Sessão {i + 1}</p>
+                <p className="font-display font-semibold text-[var(--color-navy)]">
+                  {nomeJogo(s.jogo)} <span className="font-normal text-[var(--color-ink-soft)]">· sessão {i + 1}</span>
+                </p>
                 <p className="text-sm text-[var(--color-ink-soft)]">
                   {s.acertos} acertos · {s.erros} erros
                   {s.tempoRespostaMedioMs !== null && ` · ${Math.round(s.tempoRespostaMedioMs)} ms`}
