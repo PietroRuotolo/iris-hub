@@ -1,28 +1,11 @@
 import { AlertTriangle } from 'lucide-react'
-import { ehPadrao, interpretar, nomeJogo } from '../services/laudo'
+import { ehPadrao, formatarDataLaudo, interpretar, linhasResumo, nomeJogo } from '../services/laudo'
 
 const NIVEIS = {
   adequado: 'bg-[var(--color-good-bg)] text-[var(--color-good)]',
   atencao: 'bg-[var(--color-warn-bg)] text-[var(--color-warn)]',
   reduzido: 'bg-[var(--color-warn-bg)] text-[var(--color-warn)]',
   'sem-dados': 'bg-[var(--color-bg)] text-[var(--color-ink-soft)]',
-}
-
-const formatarMs = (v) => (v === null ? null : `${Math.round(v)} ms`)
-const formatarPx = (v) => (v === null ? null : `${v.toFixed(1)} px`)
-
-function linhas(resumo) {
-  const taxa = resumo.taxaAcerto === null ? null : `${Math.round(resumo.taxaAcerto * 100)}%`
-  return [
-    ['Sessões realizadas', String(resumo.sessoes)],
-    ['Acertos', String(resumo.acertos)],
-    ['Erros', String(resumo.erros)],
-    ['Taxa de acerto', taxa],
-    ['Tempo de resposta médio', formatarMs(resumo.tempoMedioMs)],
-    ['Variabilidade do tempo de resposta', formatarMs(resumo.desvioMs)],
-    ['Precisão espacial média', formatarPx(resumo.precisaoPx)],
-    ['Instabilidade média da fixação', formatarPx(resumo.fixacaoPx)],
-  ].filter(([, valor]) => valor !== null)
 }
 
 function SecaoJogo({ jogo, resumo }) {
@@ -46,7 +29,7 @@ function SecaoJogo({ jogo, resumo }) {
       )}
 
       <dl className="mt-3 divide-y divide-navy/10">
-        {linhas(resumo).map(([rotulo, valor]) => (
+        {linhasResumo(resumo).map(([rotulo, valor]) => (
           <div key={rotulo} className="flex items-baseline justify-between gap-4 py-2.5">
             <dt className="text-sm text-[var(--color-ink-soft)]">{rotulo}</dt>
             <dd className="font-display text-base font-semibold text-[var(--color-navy)]">{valor}</dd>
@@ -72,7 +55,7 @@ function SecaoJogo({ jogo, resumo }) {
 // Laudo SIMULADO: uma seção por jogo, cada uma com o resumo agregado das sessões
 // daquele jogo e uma interpretação ilustrativa.
 export default function LaudoDocumento({ grupos, dataIso }) {
-  const data = dataIso ? new Date(dataIso).toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' }) : null
+  const data = formatarDataLaudo(dataIso)
 
   return (
     <article className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-sm">

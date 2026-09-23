@@ -172,6 +172,31 @@ export function montarGrupos(sessoes, jogosEsperados = []) {
   return grupos
 }
 
+// ---- Formatação do laudo (compartilhada entre a tela e o PDF) ----
+
+const formatarMs = (v) => (v === null ? null : `${Math.round(v)} ms`)
+const formatarPx = (v) => (v === null ? null : `${v.toFixed(1)} px`)
+
+/** Linhas [rótulo, valor] do resumo de um jogo, prontas para exibição. Omite métricas ausentes. */
+export function linhasResumo(resumo) {
+  const taxa = resumo.taxaAcerto === null ? null : `${Math.round(resumo.taxaAcerto * 100)}%`
+  return [
+    ['Sessões realizadas', String(resumo.sessoes)],
+    ['Acertos', String(resumo.acertos)],
+    ['Erros', String(resumo.erros)],
+    ['Taxa de acerto', taxa],
+    ['Tempo de resposta médio', formatarMs(resumo.tempoMedioMs)],
+    ['Variabilidade do tempo de resposta', formatarMs(resumo.desvioMs)],
+    ['Precisão espacial média', formatarPx(resumo.precisaoPx)],
+    ['Instabilidade média da fixação', formatarPx(resumo.fixacaoPx)],
+  ].filter(([, valor]) => valor !== null)
+}
+
+/** Data do laudo por extenso, em pt-BR. `null` quando `dataIso` está ausente ou é inválida. */
+export function formatarDataLaudo(dataIso) {
+  return dataIso ? new Date(dataIso).toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' }) : null
+}
+
 // ATENÇÃO: limites ilustrativos, apenas para o laudo SIMULADO da apresentação.
 // Não têm validade clínica.
 export const LIMITES_DEMO = { adequado: 0.8, atencao: 0.5, variabilidadeAlta: 0.5 }
