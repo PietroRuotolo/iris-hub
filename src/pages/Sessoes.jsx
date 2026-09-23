@@ -131,14 +131,14 @@ export default function Sessoes() {
         </ul>
       )}
 
-      {sessoes.length > 0 && (
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <Link
-            to="/laudo"
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--color-good)] px-4 py-3 text-sm font-semibold text-[var(--color-surface)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-navy)]"
-          >
-            <FileText size={18} /> Gerar laudo
-          </Link>
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <Link
+          to="/laudo"
+          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--color-good)] px-4 py-3 text-sm font-semibold text-[var(--color-surface)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-navy)]"
+        >
+          <FileText size={18} /> Gerar laudo
+        </Link>
+        {sessoes.length > 0 && (
           <BotaoConfirmar
             rotulo="Zerar resultados"
             rotuloConfirmar="Toque de novo para apagar tudo"
@@ -146,7 +146,12 @@ export default function Sessoes() {
             Icone={Trash2}
             className="flex-1"
           />
-        </div>
+        )}
+      </div>
+      {sessoes.length === 0 && (
+        <p className="mt-2 text-xs text-[var(--color-ink-soft)]">
+          Sem sessões carregadas, o laudo sai com valores de referência para todos os jogos.
+        </p>
       )}
     </>
   )

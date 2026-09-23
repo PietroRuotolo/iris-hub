@@ -115,6 +115,63 @@ export function agregar(sessoes) {
   }
 }
 
+// ---- Valores padrão (jogo que a pessoa não chegou a jogar) ----
+
+// A experiência é demonstrada em feira/apresentação: nem sempre dá tempo de a
+// pessoa passar por todos os jogos, mas o laudo e o QR code precisam sair mesmo
+// assim. Quando falta um jogo, o laudo usa estes valores de referência.
+// AJUSTE OS NÚMEROS AQUI: são ilustrativos, como todo o resto do laudo simulado.
+export const PADROES_POR_JOGO = {
+  'jogo-ritmo': { acertos: 7, erros: 3, tempoMedioMs: 620, desvioMs: 180, precisaoPx: 34, fixacaoPx: 7.5 },
+}
+
+// Usado por um jogo que ainda não tem padrão próprio (nome final indefinido, etc.).
+export const PADRAO_GENERICO = { acertos: 6, erros: 4, tempoMedioMs: 700, desvioMs: 210, precisaoPx: 40, fixacaoPx: 9 }
+
+/**
+ * Resumo de referência de um jogo não realizado, no mesmo formato de `agregar`.
+ * `sessoes: 0` é o que marca o resumo como padrão (ver `ehPadrao`): um resumo
+ * medido sempre vem de pelo menos uma sessão.
+ */
+export function resumoPadrao(jogo) {
+  const padrao = PADROES_POR_JOGO[jogo] ?? PADRAO_GENERICO
+  const total = padrao.acertos + padrao.erros
+  return {
+    sessoes: 0,
+    acertos: padrao.acertos,
+    erros: padrao.erros,
+    taxaAcerto: total > 0 ? padrao.acertos / total : null,
+    tempoMedioMs: padrao.tempoMedioMs,
+    desvioMs: padrao.desvioMs,
+    precisaoPx: padrao.precisaoPx,
+    fixacaoPx: padrao.fixacaoPx,
+  }
+}
+
+/** Distingue um resumo de referência de um resumo medido. Ver `resumoPadrao`. */
+export const ehPadrao = (resumo) => resumo.sessoes === 0
+
+/**
+ * Monta o laudo inteiro: um grupo por jogo esperado, na ordem da experiência,
+ * com as sessões medidas quando existem e os valores padrão quando não existem.
+ * Sessões de jogos fora da lista esperada entram no fim, para nenhum dado
+ * carregado ser descartado silenciosamente.
+ */
+export function montarGrupos(sessoes, jogosEsperados = []) {
+  const medidas = new Map(agruparPorJogo(sessoes).map((g) => [g.jogo, g.sessoes]))
+
+  const grupos = jogosEsperados.map((jogo) => {
+    const doJogo = medidas.get(jogo)
+    medidas.delete(jogo)
+    return { jogo, resumo: doJogo ? agregar(doJogo) : resumoPadrao(jogo) }
+  })
+
+  for (const [jogo, doJogo] of medidas) {
+    grupos.push({ jogo, resumo: agregar(doJogo) })
+  }
+  return grupos
+}
+
 // ATENÇÃO: limites ilustrativos, apenas para o laudo SIMULADO da apresentação.
 // Não têm validade clínica.
 export const LIMITES_DEMO = { adequado: 0.8, atencao: 0.5, variabilidadeAlta: 0.5 }

@@ -1,5 +1,5 @@
 import { AlertTriangle } from 'lucide-react'
-import { interpretar, nomeJogo } from '../services/laudo'
+import { ehPadrao, interpretar, nomeJogo } from '../services/laudo'
 
 const NIVEIS = {
   adequado: 'bg-[var(--color-good-bg)] text-[var(--color-good)]',
@@ -27,10 +27,23 @@ function linhas(resumo) {
 
 function SecaoJogo({ jogo, resumo }) {
   const leitura = interpretar(resumo)
+  const padrao = ehPadrao(resumo)
 
   return (
     <div className="mt-5 border-t border-navy/10 pt-5 first:mt-0 first:border-0 first:pt-0">
-      <h3 className="font-display text-lg font-semibold text-[var(--color-navy)]">{nomeJogo(jogo)}</h3>
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h3 className="font-display text-lg font-semibold text-[var(--color-navy)]">{nomeJogo(jogo)}</h3>
+        {padrao && (
+          <span className="rounded-full bg-[var(--color-warn-bg)] px-3 py-1 text-xs font-semibold text-[var(--color-warn)]">
+            Valores de referência
+          </span>
+        )}
+      </div>
+      {padrao && (
+        <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+          Este jogo não foi realizado nesta sessão. Os números abaixo são valores de referência da demonstração.
+        </p>
+      )}
 
       <dl className="mt-3 divide-y divide-navy/10">
         {linhas(resumo).map(([rotulo, valor]) => (

@@ -5,7 +5,8 @@ import useSessoes from '../hooks/useSessoes'
 import BotaoConfirmar from '../components/BotaoConfirmar'
 import LaudoDocumento from '../components/LaudoDocumento'
 import QrCode from '../components/QrCode'
-import { agregar, agruparPorJogo, codificarResumo } from '../services/laudo'
+import { SOFTWARES } from '../data/softwares'
+import { codificarResumo, montarGrupos } from '../services/laudo'
 import { limparSessoes } from '../services/sessoes'
 
 const CHAVE_BASE = 'iris-hub:endereco-qr'
@@ -23,10 +24,9 @@ export default function Laudo() {
   const navigate = useNavigate()
   const [dataIso] = useState(() => new Date().toISOString())
   const [endereco, setEndereco] = useState(enderecoInicial)
-  const grupos = useMemo(
-    () => agruparPorJogo(sessoes).map(({ jogo, sessoes }) => ({ jogo, resumo: agregar(sessoes) })),
-    [sessoes],
-  )
+  // Jogos que a experiência prevê, na ordem do menu. Um jogo sem sessão carregada
+  // entra no laudo com valores de referência, para o QR code sair de qualquer jeito.
+  const grupos = useMemo(() => montarGrupos(sessoes, SOFTWARES.map((s) => s.id)), [sessoes])
 
   function alterarEndereco(valor) {
     setEndereco(valor)
@@ -40,20 +40,6 @@ export default function Laudo() {
   function proximaPessoa() {
     limparSessoes()
     navigate('/sessoes')
-  }
-
-  if (sessoes.length === 0) {
-    return (
-      <>
-        <h1 className="font-display text-2xl font-semibold text-[var(--color-navy)]">Laudo</h1>
-        <p className="mt-3 rounded-2xl bg-[var(--color-surface)] p-5 text-sm text-[var(--color-ink-soft)] shadow-sm">
-          Ainda não há sessões para gerar o laudo.{' '}
-          <Link to="/sessoes" className="font-medium text-[var(--color-navy)]">
-            Carregar sessões
-          </Link>
-        </p>
-      </>
-    )
   }
 
   const base = endereco.trim().replace(/\/+$/, '')

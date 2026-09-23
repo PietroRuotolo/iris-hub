@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { agregar, agruparPorJogo, codificarResumo, decodificarResumo, interpretar, lerSessao, nomeJogo } from './laudo'
+import {
+  agregar,
+  agruparPorJogo,
+  codificarResumo,
+  decodificarResumo,
+  ehPadrao,
+  interpretar,
+  lerSessao,
+  montarGrupos,
+  nomeJogo,
+  PADRAO_GENERICO,
+  resumoPadrao,
+} from './laudo'
 
 const sessaoBase = {
   acertos: 6,
@@ -123,5 +135,49 @@ describe('codificarResumo / decodificarResumo', () => {
   it('devolve null para texto inválido', () => {
     expect(decodificarResumo('isto-nao-e-valido')).toBeNull()
     expect(decodificarResumo('')).toBeNull()
+  })
+})
+
+describe('resumoPadrao / ehPadrao', () => {
+  it('produz um resumo com sessoes: 0 e taxaAcerto derivada', () => {
+    const r = resumoPadrao('jogo-ritmo')
+    expect(r.sessoes).toBe(0)
+    expect(ehPadrao(r)).toBe(true)
+    expect(r.taxaAcerto).toBeCloseTo(r.acertos / (r.acertos + r.erros))
+  })
+
+  it('cai no padrão genérico para um jogo desconhecido', () => {
+    const r = resumoPadrao('jogo-futuro')
+    expect(ehPadrao(r)).toBe(true)
+    expect(r.acertos).toBe(PADRAO_GENERICO.acertos)
+  })
+
+  it('um resumo medido não é padrão', () => {
+    expect(ehPadrao(agregar([lerSessao(sessaoBase)]))).toBe(false)
+  })
+})
+
+describe('montarGrupos', () => {
+  it('usa a sessão medida quando existe e o padrão quando falta', () => {
+    const medida = lerSessao({ ...sessaoBase, jogo: 'jogo-ritmo' })
+    const grupos = montarGrupos([medida], ['jogo-ritmo', 'jogo-futuro'])
+    expect(grupos.map((g) => g.jogo)).toEqual(['jogo-ritmo', 'jogo-futuro'])
+    expect(ehPadrao(grupos[0].resumo)).toBe(false)
+    expect(grupos[0].resumo.acertos).toBe(6)
+    expect(ehPadrao(grupos[1].resumo)).toBe(true)
+  })
+
+  it('sem nenhuma sessão, todos os jogos esperados saem com padrão', () => {
+    const grupos = montarGrupos([], ['jogo-ritmo'])
+    expect(grupos).toHaveLength(1)
+    expect(ehPadrao(grupos[0].resumo)).toBe(true)
+  })
+
+  it('inclui no fim sessões de jogos fora da lista esperada', () => {
+    const medida = lerSessao({ ...sessaoBase, jogo: 'jogo-extra' })
+    const grupos = montarGrupos([medida], ['jogo-ritmo'])
+    expect(grupos.map((g) => g.jogo)).toEqual(['jogo-ritmo', 'jogo-extra'])
+    expect(ehPadrao(grupos[0].resumo)).toBe(true)
+    expect(ehPadrao(grupos[1].resumo)).toBe(false)
   })
 })
