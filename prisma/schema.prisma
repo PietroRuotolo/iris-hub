@@ -1,0 +1,64 @@
+// Modelos do banco (MongoDB). Endereço em MONGO_URI (.env da raiz).
+// Prisma 6: a linha 7+ ainda não suporta MongoDB. O MongoDB precisa ser replica set (o Atlas já é).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("MONGO_URI")
+}
+
+type Tela {
+  larguraPx Int
+  alturaPx  Int
+}
+
+/// Resultado de uma calibração do rastreamento ocular.
+model Calibracao {
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  participanteId      String?
+  realizadaEm         DateTime
+  pontosCalibracao    Int
+  erroMedioPx         Float?
+  erroMedioFracaoTela Float?
+  tela                Tela
+
+  @@map("calibracoes")
+}
+
+/// Evento registrado durante uma sessão do jogo (tipos em @iris/contracts: TIPOS_EVENTO_JOGO).
+type EventoJogo {
+  tipo            String
+  instanteMs      Float
+  alvoId          String?
+  tempoRespostaMs Float?
+  precisaoPx      Float?
+}
+
+/// Resumo calculado ao finalizar a sessão.
+type ResumoSessao {
+  acertos                     Int
+  erros                       Int
+  taxaAcerto                  Float?
+  tempoRespostaMedioMs        Float?
+  tempoRespostaDesvioPadraoMs Float?
+  precisaoMediaPx             Float?
+  variabilidadeFixacaoPx      Float?
+}
+
+/// Uma sessão do jogo de ritmo, com os eventos e o resumo embutidos.
+/// status: 'em-andamento' | 'concluida' | 'cancelada' (@iris/contracts: STATUS_SESSAO).
+model Sessao {
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  participanteId String?
+  calibracaoId   String        @db.ObjectId
+  iniciadaEm     DateTime
+  concluidaEm    DateTime?
+  status         String
+  eventos        EventoJogo[]
+  resumo         ResumoSessao?
+
+  @@map("sessoes")
+}

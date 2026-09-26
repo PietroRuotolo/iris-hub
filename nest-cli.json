@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "monorepo": true,
+  "root": "apps/api-gateway",
+  "sourceRoot": "apps/api-gateway/src",
+  "compilerOptions": {
+    "builder": "tsc",
+    "webpack": false,
+    "tsConfigPath": "tsconfig.build.json",
+    "deleteOutDir": false
+  },
+  "projects": {
+    "api-gateway": {
+      "type": "application",
+      "root": "apps/api-gateway",
+      "entryFile": "apps/api-gateway/src/main",
+      "sourceRoot": "apps/api-gateway/src",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.build.json"
+      }
+    },
+    "user-service": {
+      "type": "application",
+      "root": "apps/user-service",
+      "entryFile": "apps/user-service/src/main",
+      "sourceRoot": "apps/user-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.build.json"
+      }
+    },
+    "session-service": {
+      "type": "application",
+      "root": "apps/session-service",
+      "entryFile": "apps/session-service/src/main",
+      "sourceRoot": "apps/session-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.build.json"
+      }
+    },
+    "analytics-worker": {
+      "type": "application",
+      "root": "apps/analytics-worker",
+      "entryFile": "apps/analytics-worker/src/main",
+      "sourceRoot": "apps/analytics-worker/src",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.build.json"
+      }
+    },
+    "config": {
+      "type": "library",
+      "root": "packages/config",
+      "entryFile": "index",
+      "sourceRoot": "packages/config/src",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.build.json"
+      }
+    },
+    "contracts": {
+      "type": "library",
+      "root": "packages/contracts",
+      "entryFile": "index",
+      "sourceRoot": "packages/contracts/src",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.build.json"
+      }
+    },
+    "logger": {
+      "type": "library",
+      "root": "packages/logger",
+      "entryFile": "index",
+      "sourceRoot": "packages/logger/src",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.build.json"
+      }
+    },
+    "shared": {
+      "type": "library",
+      "root": "packages/shared",
+      "entryFile": "index",
+      "sourceRoot": "packages/shared/src",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.build.json"
+      }
+    }
+  }
+}

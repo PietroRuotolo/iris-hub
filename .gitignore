@@ -1,7 +1,26 @@
+# Único .gitignore do monorepo (vale para apps/* e packages/*).
+
+# dependências (um só node_modules, na raiz)
 node_modules/
+
+# builds
 dist/
-*.local
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# testes
+coverage/
+
+# ambiente
 .env
 .env.*
+!.env.example
+
+# diversos
 .DS_Store
 *.log
+*.pem
+.vercel
