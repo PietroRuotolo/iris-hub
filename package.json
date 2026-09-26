@@ -18,6 +18,7 @@
     "start:worker": "node --env-file-if-exists=.env dist/apps/analytics-worker/src/main.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "migration:run": "prisma db push",
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
     "test": "vitest run --project unit",

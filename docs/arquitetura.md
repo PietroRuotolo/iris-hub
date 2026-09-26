@@ -30,7 +30,7 @@ apps/web (Next.js) ──HTTP──▶ apps/api-gateway ──HTTP──▶ apps
 | `packages/config` | Leitura e validação das variáveis de ambiente, com padrões para rodar local. | — |
 | `packages/logger` | Formato comum de logs (uma linha JSON por evento), com adaptador para o NestJS. | — |
 | `packages/shared` | Peças NestJS comuns: módulo compartilhado, filtro de erros, log de requisições, validação, health check e `PrismaService`. | — |
-| MongoDB (Atlas) | Banco dos serviços, acessado pelo Prisma (`prisma/schema.prisma`). Endereço em `MONGO_URI`. | — |
+| MongoDB (Atlas) | Banco dos serviços, acessado pelo Prisma (`prisma/schema.prisma`). Endereço em `MONGO_URI`; `npm run migration:run` sincroniza coleções e índices. | — |
 
 ## Front-end (`apps/web`)
 
