@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "../../shared/design-tokens/tokens.css";
+@import "./design-tokens/tokens.css";
 
 /* Animação local do hub (não faz parte dos tokens compartilhados). */
 @theme {

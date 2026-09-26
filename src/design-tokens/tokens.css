@@ -1,0 +1,38 @@
+/*
+ * Tokens de design do ecossistema iris (paleta e fontes).
+ *
+ * CÓPIA vendorizada de `shared/design-tokens/tokens.css` (pasta irmã de
+ * `iris-hub`, fora deste repositório). Foi vendorizada porque a Vercel só
+ * builda o que está dentro do repositório Git conectado — um import relativo
+ * pra fora do repo (`../../shared/...`) não existe no servidor de build,
+ * só na máquina local de quem tem as duas pastas lado a lado.
+ *
+ * Se a paleta mudar: edite os dois lugares (aqui e em `shared/design-tokens/
+ * tokens.css`), e o mesmo arquivo em `iris`, se/quando ele também precisar.
+ * Não há mais uma fonte única automática entre os apps — ver CLAUDE.md.
+ *
+ * Requer Tailwind CSS v4 (`@import "tailwindcss";` antes deste import).
+ * As fontes (Poppins e Inter) são carregadas via <link> no index.html.
+ */
+
+@theme {
+  --font-display: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-bg: #F3F5F2;
+  --color-surface: #FFFFFF;
+  --color-navy: #17324D;
+  --color-ink: #1D3350;
+  --color-ink-soft: #6A7A85;
+
+  --color-good: #5E9C80;
+  --color-good-bg: #E4EFE8;
+  --color-warn: #D98B5C;
+  --color-warn-bg: #F7E5D7;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+}
