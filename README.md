@@ -5,25 +5,26 @@ Menu de entrada do ecossistema iris. Reaproveita a identidade visual do front-en
 
 ## Rodar
 
+Monorepo com pnpm (ative com `corepack enable pnpm`):
+
 ```bash
-npm install
-npm run dev      # servidor de desenvolvimento
-npm run build    # build de produção
+pnpm install
+pnpm dev          # apps/web (Next.js), o front-end novo
+pnpm dev:legado   # apps/hub-legado (Vite), o app atual, enquanto a migração não termina
+pnpm build        # build de todos os apps
+pnpm lint
+pnpm test
 ```
 
-## Estrutura esperada de pastas
-
-O hub importa os tokens de design por caminho relativo (`../../shared/design-tokens/tokens.css`),
-então a pasta `shared` precisa ficar ao lado do repositório:
-
 ```
-projeto/
-├── iris-hub/
-└── shared/
-    └── design-tokens/tokens.css
+iris-hub/
+├── apps/
+│   ├── web/          # Next.js (em construção)
+│   └── hub-legado/   # app Vite atual
+└── packages/         # pacotes compartilhados (futuro)
 ```
 
-Cores e fontes vêm sempre dos tokens; não use cores fixas nos componentes.
+Cores e fontes vêm sempre dos tokens de design; não use cores fixas nos componentes.
 
 ## Experiência de demonstração (apresentação)
 
