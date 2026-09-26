@@ -1,21 +1,18 @@
 # apps/web
 
-Front-end do iris hub em Next.js (App Router, TypeScript, Tailwind v4). Substitui aos poucos o
-app em `apps/hub-legado`.
+Interface do jogo em Next.js (App Router, TypeScript, Tailwind v4).
 
 ```bash
-pnpm --filter web dev     # servidor de desenvolvimento
+pnpm --filter web dev     # http://localhost:3000
 pnpm --filter web build
 pnpm --filter web lint
 pnpm --filter web test    # lógica pura (vitest)
 ```
 
-Organização por área:
-
-- `src/app/`: rotas.
-- `src/features/<área>/`: telas e lógica de cada área (calibração, rastreamento ocular, jogo, resultados).
-- `src/components/`: peças compartilhadas (menu, cards).
-- `src/lib/`: navegação, integração com a API e com o MediaPipe.
-- `src/types/`: tipos compartilhados.
+- `src/app/`: rotas: `(public)/` (início), `calibracao/` (tela cheia), `jogo/`, `sessao/[id]/resumo/`.
+- `src/features/<área>/`: calibracao, rastreamento-ocular, jogo-ritmo, resultados.
+- `src/components/`: peças compartilhadas (menu lateral, casca das páginas).
+- `src/lib/mediapipe/`: webcam e MediaPipe. `src/lib/api/`: cliente do api-gateway.
+- `src/types/`: tipos do front-end.
 
 Cores e fontes vêm sempre dos tokens (`src/app/tokens.css`); não use cores fixas.
