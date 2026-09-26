@@ -107,6 +107,16 @@ npm run dev:user       # usuários (ainda sem rotas, só /health)
 npm run dev:worker     # worker (ainda sem consumidores)
 ```
 
+## Aplicar o schema ao MongoDB
+
+Depois de alterar `prisma/schema.prisma`, aplique o schema ao banco configurado em `MONGO_URI` com:
+
+```bash
+npm run migration:run
+```
+
+Como o projeto usa MongoDB, o comando executa `prisma db push`: sincroniza coleções e índices definidos no schema; não cria arquivos de migrations relacionais. O modelo `User` cria a coleção `users`, com `_id` UUID v7, `nome` e `email` único.
+
 ## 7. Ver os dados do banco
 
 ```bash

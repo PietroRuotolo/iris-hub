@@ -10,6 +10,15 @@ datasource db {
   url      = env("MONGO_URI")
 }
 
+/// Contas de usuário. O MongoDB chama estas estruturas de coleções, não tabelas.
+model User {
+  id    String @id @default(uuid(7)) @map("_id")
+  nome  String
+  email String @unique
+
+  @@map("users")
+}
+
 type Tela {
   larguraPx Int
   alturaPx  Int
