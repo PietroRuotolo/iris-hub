@@ -4,14 +4,15 @@ import { ehTelaCheia, itemAtivo } from './navegacao'
 describe('ehTelaCheia', () => {
   it('reconhece as rotas sem menu e suas subrotas', () => {
     expect(ehTelaCheia('/calibracao')).toBe(true)
-    expect(ehTelaCheia('/resultado')).toBe(true)
     expect(ehTelaCheia('/calibracao/algo')).toBe(true)
+    expect(ehTelaCheia('/resultado')).toBe(true)
   })
 
   it('não confunde rotas com prefixo parecido', () => {
     expect(ehTelaCheia('/')).toBe(false)
+    expect(ehTelaCheia('/calibracaox')).toBe(false)
+    expect(ehTelaCheia('/jogo')).toBe(false)
     expect(ehTelaCheia('/resultados')).toBe(false)
-    expect(ehTelaCheia('/sessoes')).toBe(false)
   })
 })
 
@@ -23,7 +24,7 @@ describe('itemAtivo', () => {
 
   it('rotas com subrotas continuam ativas', () => {
     expect(itemAtivo('/jogo', '/jogo')).toBe(true)
-    expect(itemAtivo('/sessoes', '/sessoes')).toBe(true)
-    expect(itemAtivo('/sessoes', '/sessoesx')).toBe(false)
+    expect(itemAtivo('/jogo', '/jogo/algo')).toBe(true)
+    expect(itemAtivo('/jogo', '/jogos')).toBe(false)
   })
 })

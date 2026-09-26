@@ -1,4 +1,4 @@
-import { Eye, FileText, Home, ListChecks, type LucideIcon } from 'lucide-react'
+import { Eye, Home, ListChecks, type LucideIcon } from 'lucide-react'
 
 export type ItemMenu = { rota: string; label: string; Icone: LucideIcon }
 export type GrupoMenu = { titulo?: string; itens: ItemMenu[] }
@@ -15,7 +15,6 @@ export const GRUPOS_MENU: GrupoMenu[] = [
     titulo: 'Experiência',
     itens: [
       { rota: '/sessoes', label: 'Sessões', Icone: ListChecks },
-      { rota: '/laudo', label: 'Laudo', Icone: FileText },
     ],
   },
 ]

@@ -8,7 +8,7 @@ const inter = Inter({ variable: '--font-inter', subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'iris hub',
-  description: 'Jogo de ritmo controlado pelo olhar, com calibração, sessões e laudo simulado.',
+  description: 'Jogo de ritmo controlado pelo olhar, com calibração, sessões e resumo simulado.',
 }
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
