@@ -16,12 +16,13 @@ export async function encaminhar(
   metodo: 'GET' | 'POST',
   caminho: string,
   corpo?: unknown,
+  cabecalhos?: Record<string, string>,
 ): Promise<RespostaServico> {
   let resposta: Response
   try {
     resposta = await fetch(new URL(caminho, servico.url), {
       method: metodo,
-      headers: corpo === undefined ? undefined : { 'content-type': 'application/json' },
+      headers: { ...(corpo === undefined ? {} : { 'content-type': 'application/json' }), ...cabecalhos },
       body: corpo === undefined ? undefined : JSON.stringify(corpo),
     })
   } catch {

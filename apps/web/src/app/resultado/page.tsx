@@ -1,4 +1,5 @@
 import { FileDown } from 'lucide-react'
+import Image from 'next/image'
 import ResumoSessao from '@/features/resultados/components/ResumoSessao'
 import { RESUMO_EXEMPLO } from '@/features/resultados/resumo-exemplo'
 
@@ -7,7 +8,7 @@ import { RESUMO_EXEMPLO } from '@/features/resultados/resumo-exemplo'
 export default function Resultado() {
   return (
     <div className="mx-auto min-h-screen w-full max-w-md px-4 py-6">
-      <p className="mb-4 font-display text-lg font-semibold text-[var(--color-navy)]">iris hub</p>
+      <div className="mb-4"><Image src="/logo/iris-hubs-logo-azul-sem-fundo.svg" alt="Iris Hubs" width={120} height={35} /></div>
 
       <div className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-sm">
         <h1 className="font-display text-xl font-semibold text-[var(--color-navy)]">Seu resumo está pronto</h1>

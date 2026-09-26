@@ -26,12 +26,12 @@ afterAll(() => servidor.close())
 
 describe('encaminhar', () => {
   it('repassa método, caminho e corpo, e devolve status e corpo do serviço', async () => {
-    const resposta = await encaminhar({ nome: 'teste', url }, 'POST', '/sessions', { calibracaoId: 'c1' })
-    expect(resposta).toEqual({ status: 200, corpo: { metodo: 'POST', caminho: '/sessions', recebido: { calibracaoId: 'c1' } } })
+    const resposta = await encaminhar({ nome: 'teste', url }, 'POST', '/calibrations', { calibracaoId: 'c1' })
+    expect(resposta).toEqual({ status: 200, corpo: { metodo: 'POST', caminho: '/calibrations', recebido: { calibracaoId: 'c1' } } })
   })
 
   it('erros do serviço chegam como vieram', async () => {
-    const resposta = await encaminhar({ nome: 'teste', url }, 'GET', '/sessions/x?status=404')
+    const resposta = await encaminhar({ nome: 'teste', url }, 'GET', '/calibrations/x?status=404')
     expect(resposta.status).toBe(404)
   })
 

@@ -11,7 +11,7 @@ iris-hub/
 │   ├── web/                 # Next.js: interface do jogo
 │   ├── api-gateway/         # NestJS: entrada única para o front-end
 │   ├── user-service/        # NestJS: contas e participantes
-│   ├── session-service/     # NestJS: calibrações, sessões e eventos do jogo
+│   ├── session-service/     # NestJS: calibrações do rastreamento ocular
 │   └── analytics-worker/    # NestJS: cálculos assíncronos e agregações
 ├── packages/
 │   ├── contracts/           # tipos e contratos das APIs e eventos

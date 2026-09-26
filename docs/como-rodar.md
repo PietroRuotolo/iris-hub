@@ -73,6 +73,14 @@ pronto (os serviços compilam e reiniciam uma vez no começo). Para parar: `Ctrl
 Alterações no código recarregam sozinhas. **Alterações no `.env` exigem reiniciar** (`Ctrl+C` e rodar
 de novo).
 
+## Autenticação
+
+Ao abrir o hub, a pessoa informa o e-mail. Se já estiver cadastrado, o serviço cria uma sessão; caso contrário, o modal pede o nome e cria usuário e sessão. A sessão dura 30 dias, fica em cookie `HttpOnly` e pode ser encerrada pelo menu lateral.
+
+O `user-service` precisa de `MONGO_URI`; o gateway continua exigindo o `x-api-key` já configurado. Em produção, hospede o `user-service` e o gateway em endereços acessíveis ao servidor Next. Configure `USER_SERVICE_URL` no gateway e `NEXT_PUBLIC_API_URL` e `API_KEY` no ambiente do Next/Vercel. A chave fica no servidor e nunca deve usar o prefixo `NEXT_PUBLIC_`.
+
+Este fluxo identifica a conta apenas pelo e-mail digitado; ele não confirma que a pessoa controla aquela caixa de e-mail.
+
 ## 5. Conferir se está funcionando
 
 1. Abra http://localhost:3000: deve aparecer a página inicial do iris hub.

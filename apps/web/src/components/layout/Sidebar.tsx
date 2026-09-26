@@ -1,14 +1,17 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { X } from 'lucide-react'
+import { LogOut, X } from 'lucide-react'
+import { useAuth } from '@/components/auth/AuthGate'
 import { GRUPOS_MENU, itemAtivo } from '@/lib/navegacao'
 
 type Props = { aberta: boolean; aoFechar: () => void }
 
 export default function Sidebar({ aberta, aoFechar }: Props) {
   const caminho = usePathname()
+  const { usuario, sair } = useAuth()
 
   return (
     <>
@@ -22,13 +25,13 @@ export default function Sidebar({ aberta, aoFechar }: Props) {
       />
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[80%] bg-[var(--color-surface)] shadow-sm transition-transform duration-300 lg:translate-x-0 lg:border-r lg:border-navy/10 lg:shadow-none ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[80%] flex-col bg-[var(--color-surface)] shadow-sm transition-transform duration-300 lg:translate-x-0 lg:border-r lg:border-navy/10 lg:shadow-none ${
           aberta ? 'translate-x-0' : '-translate-x-full'
         }`}
         aria-label="Menu de navegação"
       >
         <div className="flex items-center justify-between px-5 pt-6">
-          <span className="font-display text-xl font-semibold text-[var(--color-navy)]">iris hub</span>
+          <Image src="/logo/iris-hubs-logo-azul-sem-fundo.svg" alt="Iris Hubs" width={120} height={35} />
           <button
             onClick={aoFechar}
             className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-bg)] lg:hidden"
@@ -68,6 +71,13 @@ export default function Sidebar({ aberta, aoFechar }: Props) {
             </div>
           ))}
         </nav>
+
+        <div className="mt-auto border-t border-navy/10 p-4">
+          <p className="truncate text-sm font-semibold text-[var(--color-ink)]">{usuario.nome}</p>
+          <button type="button" onClick={() => void sair()} className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-bg)] hover:text-[var(--color-navy)]">
+            <LogOut size={16} /> Sair
+          </button>
+        </div>
       </aside>
     </>
   )

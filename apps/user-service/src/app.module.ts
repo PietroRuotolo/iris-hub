@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common'
-import { ModuloCompartilhado } from '@iris/shared'
+import { ModuloCompartilhado, ModuloPrisma } from '@iris/shared'
+import { AuthModule } from './modules/auth/auth.module.js'
 
-// Módulos: modules/users (participantes) e modules/auth (login, se houver). Ainda sem rotas.
 @Module({
-  imports: [ModuloCompartilhado.paraServico('user-service')],
+  imports: [ModuloCompartilhado.paraServico('user-service'), ModuloPrisma, AuthModule],
 })
 export class AppModule {}

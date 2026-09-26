@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="306" height="88" viewBox="0 0 306 88" role="img" aria-labelledby="title desc">
+  <title id="title">Iris Hubs</title>
+  <desc id="desc">Logo Iris Hubs sem fundo.</desc>
+  <g fill="#17324D">
+    <text x="10" y="58"
+          font-family="Poppins, Inter, Arial, Helvetica, sans-serif"
+          font-size="48"
+          font-weight="700"
+          letter-spacing="-1.6">Iris</text>
+    <text x="108" y="58"
+          font-family="Poppins, Inter, Arial, Helvetica, sans-serif"
+          font-size="48"
+          font-weight="400"
+          letter-spacing="-1.6">Hubs</text>
+  </g>
+</svg>
