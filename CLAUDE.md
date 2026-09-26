@@ -51,6 +51,17 @@ Só o `iris-hub` e o `iris` são "apps web" de fato. `backend` roda como servido
 - `iris` e `iris-hub` importam desse arquivo compartilhado em vez de duplicar a paleta.
 - Sem isso, qualquer ajuste de cor precisa ser replicado manualmente em cada app — fonte comum de inconsistência.
 
+**Ajuste pós-deploy (2026-09-26):** o `iris-hub` **não importa mais** de `shared/design-tokens/tokens.css`
+por caminho relativo (`../../shared/...`). A Vercel builda só o que está dentro do repositório Git
+conectado (`github.com/PietroRuotolo/iris-hub`); `shared/` é uma pasta irmã fora desse repositório
+(hoje sem remoto próprio), então o import falhava em produção com `Can't resolve
+'../../shared/design-tokens/tokens.css'`. O arquivo foi **vendorizado** em `iris-hub/src/design-tokens/
+tokens.css` (cópia, não mais fonte única automática). Se a paleta mudar, edite os dois lugares — e o
+mesmo arquivo em `iris`, se/quando ele precisar. Caminho para restaurar a fonte única de verdade, se
+valer o esforço depois da entrega: publicar `shared/` como repositório próprio no GitHub e trazê-lo
+como git submodule (exige habilitar "Automatically Fetch Submodules" nas configurações do projeto na
+Vercel) — descartado por ora por ser mais setup do que o prazo acadêmico justifica.
+
 ### Fase 1 — Casca do hub (menu funcional, sem conteúdo real ainda)
 - Criar o app `iris-hub` (Vite + React + Tailwind v4 + React Router), usando o design system da Fase 0.
 - Tela inicial: cards para os 4 softwares, cada um com nome, descrição curta e status (`Disponível` / `Em desenvolvimento`).
@@ -87,7 +98,7 @@ Só o `iris-hub` e o `iris` são "apps web" de fato. `backend` roda como servido
 ## Convenções para o Claude Code seguir
 
 - Textos de interface em português.
-- Só usar os tokens de `shared/design-tokens/tokens.css` — nunca cores cruas.
+- Só usar os tokens de `src/design-tokens/tokens.css` (cópia vendorizada, ver nota na Fase 0) — nunca cores cruas.
 - Componentes pequenos, mobile-first (mesmo padrão de `max-w-md` do iris), evoluindo pra layout de duas colunas em telas largas quando fizer sentido (mesmo princípio já usado na sidebar do iris).
 - Rodar `npm run build` ao fim de cada fase antes de considerar concluída.
 - Cada fase deste roadmap é uma unidade de trabalho separada — não pular fases nem misturar num único commit gigante. Sugerir mensagens de commit (Conventional Commits) ao final de cada fase.
