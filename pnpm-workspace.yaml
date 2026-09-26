@@ -1,8 +1,0 @@
-packages:
-  - apps/*
-  - packages/*
-
-# Dependências com scripts de instalação: não rodar (padrão sugerido pelo create-next-app).
-allowBuilds:
-  sharp: false
-  unrs-resolver: false

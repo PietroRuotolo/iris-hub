@@ -1,7 +1,8 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  /* config options here */
-};
+  // Um único tsconfig.json, na raiz do monorepo.
+  typescript: { tsconfigPath: '../../tsconfig.json' },
+}
 
-export default nextConfig;
+export default nextConfig
