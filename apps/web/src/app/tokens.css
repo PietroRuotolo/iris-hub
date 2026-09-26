@@ -1,0 +1,32 @@
+/*
+ * Tokens de design do ecossistema iris (paleta e fontes).
+ *
+ * Cópia de `apps/hub-legado/src/design-tokens/tokens.css` (que por sua vez é cópia de
+ * `shared/design-tokens/tokens.css`). Única diferença: as fontes apontam para as variáveis
+ * do `next/font` (--font-poppins e --font-inter, definidas em src/app/layout.tsx), que
+ * servem Poppins e Inter do próprio site em vez do Google Fonts.
+ *
+ * Se a paleta mudar, mude aqui também.
+ */
+
+@theme {
+  --font-display: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --color-bg: #F3F5F2;
+  --color-surface: #FFFFFF;
+  --color-navy: #17324D;
+  --color-ink: #1D3350;
+  --color-ink-soft: #6A7A85;
+
+  --color-good: #5E9C80;
+  --color-good-bg: #E4EFE8;
+  --color-warn: #D98B5C;
+  --color-warn-bg: #F7E5D7;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+}
