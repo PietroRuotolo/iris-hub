@@ -5,8 +5,7 @@ Monorepo com o front-end do jogo, os serviços de back-end e pacotes compartilha
 `nest-cli.json` e um `vitest.config.ts`. Os pacotes de `packages/` são importados por alias
 (`@iris/config`, `@iris/contracts`, `@iris/logger`, `@iris/shared`).
 
-**Estado atual:** o site tem o layout das telas, sem funcionalidades; o session-service já grava
-calibrações e sessões no MongoDB.
+**Estado atual:** o site tem o layout das telas, sem funcionalidades; o session-service grava calibrações no MongoDB. Sessões de jogo e seus endpoints foram removidos; a coleção `sessions` representa sessões de usuário.
 
 Para rodar, veja [como-rodar.md](como-rodar.md).
 
@@ -14,9 +13,7 @@ Para rodar, veja [como-rodar.md](como-rodar.md).
 
 ```
 apps/web (Next.js) ──HTTP──▶ apps/api-gateway ──HTTP──▶ apps/user-service
-                                                 └────▶ apps/session-service ──fila──▶ apps/analytics-worker
-                                                              │                              │
-                                                              └───────── MongoDB ◀───────────┘
+                                                 └────▶ apps/session-service ──▶ MongoDB
 ```
 
 | Parte | Responsabilidade | Porta |
@@ -24,9 +21,9 @@ apps/web (Next.js) ──HTTP──▶ apps/api-gateway ──HTTP──▶ apps
 | `apps/web` | Interface do jogo: calibração, jogo de ritmo e resumo da sessão. Webcam e MediaPipe rodam no navegador. | 3000 |
 | `apps/api-gateway` | Entrada única para o front-end: encaminha para os serviços, padroniza erros, CORS e (futuramente) autenticação. | 3001 |
 | `apps/user-service` | Contas e participantes (se houver login). | 3002 |
-| `apps/session-service` | Calibrações, sessões e eventos do jogo; publica `sessao.concluida` na fila quando uma sessão termina. | 3003 |
-| `apps/analytics-worker` | Consome a fila e calcula o resumo de cada sessão (acertos, tempos, precisão). Sem HTTP. | — |
-| `packages/contracts` | Tipos e contratos compartilhados (entidades, eventos, nomes de filas). | — |
+| `apps/session-service` | Calibrações do rastreamento ocular. | 3003 |
+| `apps/analytics-worker` | Estrutura inicial para futuros cálculos assíncronos. Sem HTTP ou consumidores implementados. | — |
+| `packages/contracts` | Tipos e contratos compartilhados entre o front-end e os serviços. | — |
 | `packages/config` | Leitura e validação das variáveis de ambiente, com padrões para rodar local. | — |
 | `packages/logger` | Formato comum de logs (uma linha JSON por evento), com adaptador para o NestJS. | — |
 | `packages/shared` | Peças NestJS comuns: módulo compartilhado, filtro de erros, log de requisições, validação, health check e `PrismaService`. | — |
@@ -69,8 +66,7 @@ npm run dev:all          # site em http://localhost:3000, API em http://localhos
 
 1. Ligar as funcionalidades nas telas do `apps/web` (o layout já está pronto).
 2. Webcam e MediaPipe no `apps/web`.
-3. Endpoints do session-service e do gateway; troca dos dados fictícios pela API.
-4. Fila e worker (resumo das sessões). A tecnologia da fila está em aberto.
+3. Endpoints de calibração do session-service e do gateway; troca dos dados fictícios pela API.
 5. Login e user-service, se o projeto precisar.
 
 Decisões registradas em [`docs/decisoes/`](decisoes/).

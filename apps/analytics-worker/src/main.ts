@@ -1,5 +1,4 @@
 import { NestFactory } from '@nestjs/core'
-import { FILAS } from '@iris/contracts'
 import { adaptadorNest, type Logger } from '@iris/logger'
 import { LOGGER } from '@iris/shared'
 import { AppModule } from './app.module.js'
@@ -9,7 +8,7 @@ async function iniciar() {
   const log = app.get<Logger>(LOGGER)
   app.useLogger(adaptadorNest(log))
 
-  log.info('analytics-worker iniciado; consumidores ainda não implementados', { fila: FILAS.sessaoConcluida })
+  log.info('analytics-worker iniciado; consumidores ainda não implementados')
   await app.close()
 }
 

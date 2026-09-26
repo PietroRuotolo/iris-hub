@@ -14,9 +14,20 @@ datasource db {
 model User {
   id    String @id @default(uuid(7)) @map("_id")
   nome  String
-  email String @unique
+  email    String    @unique
 
   @@map("users")
+}
+
+/// Sessão de usuário autenticado, separada das sessões do jogo (`sessoes`).
+model Session {
+  id        String   @id @default(uuid(7)) @map("_id")
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("sessions")
 }
 
 type Tela {
@@ -35,39 +46,4 @@ model Calibracao {
   tela                Tela
 
   @@map("calibracoes")
-}
-
-/// Evento registrado durante uma sessão do jogo (tipos em @iris/contracts: TIPOS_EVENTO_JOGO).
-type EventoJogo {
-  tipo            String
-  instanteMs      Float
-  alvoId          String?
-  tempoRespostaMs Float?
-  precisaoPx      Float?
-}
-
-/// Resumo calculado ao finalizar a sessão.
-type ResumoSessao {
-  acertos                     Int
-  erros                       Int
-  taxaAcerto                  Float?
-  tempoRespostaMedioMs        Float?
-  tempoRespostaDesvioPadraoMs Float?
-  precisaoMediaPx             Float?
-  variabilidadeFixacaoPx      Float?
-}
-
-/// Uma sessão do jogo de ritmo, com os eventos e o resumo embutidos.
-/// status: 'em-andamento' | 'concluida' | 'cancelada' (@iris/contracts: STATUS_SESSAO).
-model Sessao {
-  id             String        @id @default(auto()) @map("_id") @db.ObjectId
-  participanteId String?
-  calibracaoId   String        @db.ObjectId
-  iniciadaEm     DateTime
-  concluidaEm    DateTime?
-  status         String
-  eventos        EventoJogo[]
-  resumo         ResumoSessao?
-
-  @@map("sessoes")
 }
