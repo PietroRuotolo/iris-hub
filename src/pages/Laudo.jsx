@@ -5,7 +5,8 @@ import useSessoes from '../hooks/useSessoes'
 import BotaoConfirmar from '../components/BotaoConfirmar'
 import LaudoDocumento from '../components/LaudoDocumento'
 import QrCode from '../components/QrCode'
-import { agregar, codificarResumo } from '../services/laudo'
+import { SOFTWARES } from '../data/softwares'
+import { codificarResumo, montarGrupos } from '../services/laudo'
 import { limparSessoes } from '../services/sessoes'
 
 const CHAVE_BASE = 'iris-hub:endereco-qr'
@@ -23,7 +24,9 @@ export default function Laudo() {
   const navigate = useNavigate()
   const [dataIso] = useState(() => new Date().toISOString())
   const [endereco, setEndereco] = useState(enderecoInicial)
-  const resumo = useMemo(() => agregar(sessoes), [sessoes])
+  // Jogos que a experiência prevê, na ordem do menu. Um jogo sem sessão carregada
+  // entra no laudo com valores de referência, para o QR code sair de qualquer jeito.
+  const grupos = useMemo(() => montarGrupos(sessoes, SOFTWARES.map((s) => s.id)), [sessoes])
 
   function alterarEndereco(valor) {
     setEndereco(valor)
@@ -39,22 +42,8 @@ export default function Laudo() {
     navigate('/sessoes')
   }
 
-  if (sessoes.length === 0) {
-    return (
-      <>
-        <h1 className="font-display text-2xl font-semibold text-[var(--color-navy)]">Laudo</h1>
-        <p className="mt-3 rounded-2xl bg-[var(--color-surface)] p-5 text-sm text-[var(--color-ink-soft)] shadow-sm">
-          Ainda não há sessões para gerar o laudo.{' '}
-          <Link to="/sessoes" className="font-medium text-[var(--color-navy)]">
-            Carregar sessões
-          </Link>
-        </p>
-      </>
-    )
-  }
-
   const base = endereco.trim().replace(/\/+$/, '')
-  const link = `${base}/resultado#d=${codificarResumo(resumo, dataIso)}`
+  const link = `${base}/resultado#d=${codificarResumo(grupos, dataIso)}`
 
   return (
     <>
@@ -63,7 +52,7 @@ export default function Laudo() {
       </Link>
 
       <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
-        <LaudoDocumento resumo={resumo} dataIso={dataIso} />
+        <LaudoDocumento grupos={grupos} dataIso={dataIso} />
 
         <aside className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-sm">
           <h2 className="font-display text-lg font-semibold text-[var(--color-navy)]">Levar o laudo no celular</h2>
@@ -87,12 +76,16 @@ export default function Laudo() {
             Em rede local, use o IP do computador (ex.: http://192.168.0.10:5173). Com localhost, só o próprio computador abre o link.
           </p>
 
+          <p className="mt-5 text-sm text-[var(--color-ink-soft)]">
+            Confirme que a pessoa baixou o PDF no celular antes de liberar a tela para a próxima. O reset não
+            afeta o PDF já baixado — só apaga as sessões carregadas neste computador.
+          </p>
           <BotaoConfirmar
             rotulo="Próxima pessoa"
-            rotuloConfirmar="Toque de novo: apagar resultados"
+            rotuloConfirmar="Toque de novo: apagar sessões"
             aoConfirmar={proximaPessoa}
             Icone={RotateCcw}
-            className="mt-5 w-full"
+            className="mt-3 w-full"
           />
         </aside>
       </div>
