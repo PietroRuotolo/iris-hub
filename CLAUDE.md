@@ -44,6 +44,23 @@ projeto/
 
 Só o `iris-hub` e o `iris` são "apps web" de fato. `backend` roda como servidor (o hub e o iris falam com ele via API). `neuro-demo` e o jogo de ritmo rodam localmente na máquina do usuário.
 
+## Notas de deploy (Vercel)
+
+Duas pegadinhas já encontradas ao publicar o `iris-hub` na Vercel — não são óbvias a partir do código, então
+ficam registradas aqui pra não se repetir:
+
+1. **Design tokens vendorizados, não importados de `shared/`.** A Vercel só builda o que está dentro do
+   repositório Git conectado; `shared/` é uma pasta irmã fora do repo (sem remoto próprio). Detalhes na nota
+   da Fase 0, abaixo.
+2. **`vercel.json` com rewrite de SPA é obrigatório.** O app usa `BrowserRouter` (rotas reais como
+   `/resultado`, `/jogo-ritmo/fase-0` — não `#/resultado`). Sem rewrite, um GET direto nessas rotas (como o
+   celular faz ao abrir o link do QR code) cai no servidor de arquivos estáticos da Vercel, que não encontra
+   um arquivo físico `/resultado` e devolve 404 — **antes mesmo de o React Router entrar em ação**. O
+   `vercel.json` na raiz do repo resolve isso (`rewrites: [{ source: "/(.*)", destination: "/" }]`, o
+   padrão documentado da própria Vercel para SPA). Se popular alguma rota nova em `src/App.jsx`, ela já
+   funciona sem tocar nesse arquivo — o rewrite é genérico. Só reconsiderar se o projeto ganhar rotas de API
+   próprias (serverless functions), que aí precisam de exceção nesse rewrite pra não caírem no fallback.
+
 ## Fases
 
 ### Fase 0 — Design system compartilhado
