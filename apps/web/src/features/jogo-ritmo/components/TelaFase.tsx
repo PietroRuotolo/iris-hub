@@ -7,7 +7,7 @@ import CabecalhoTelaCheia from '@/features/calibracao/components/CabecalhoTelaCh
 import { paraPixels, type Layout } from '@/features/calibracao/layout'
 import type { Ponto } from '@/features/rastreamento-ocular/features'
 import { criarSuavizador, type MapeamentoOlhar } from '@/features/rastreamento-ocular/mapeamento'
-import { MENSAGEM_DESVIO, desvioDaPose, type DesvioPose, type Pose } from '@/features/rastreamento-ocular/pose'
+import { MENSAGEM_DESVIO, desvioDaPose, type DesvioPose, type LIMITES_POSE, type Pose } from '@/features/rastreamento-ocular/pose'
 import { MENSAGEM_PROBLEMA, type Problema } from '@/features/rastreamento-ocular/qualidade'
 import type { TentativaEnviada } from '@/lib/api/sessoes'
 import type { LeituraOlhar } from '@/lib/mediapipe/useFaceLandmarker'
@@ -59,6 +59,8 @@ export default function TelaFase({
   erroCalibracaoPx,
   modelo,
   poseReferencia,
+  limitesPose,
+  raioMinFracao = 0,
   lerLeitura,
   aoTerminar,
 }: {
@@ -70,15 +72,19 @@ export default function TelaFase({
   erroCalibracaoPx: number | null
   modelo: MapeamentoOlhar
   poseReferencia: Pose
+  /** Quanto a cabeça pode sair da posição antes de pausar (maior no celular). */
+  limitesPose?: typeof LIMITES_POSE
+  /** Raio mínimo dos alvos em fração da área (telas pequenas). */
+  raioMinFracao?: number
   lerLeitura: () => LeituraOlhar
   /** Ao fim da fase: as tentativas e o mapeamento já com a correção contínua (para a próxima fase). */
   aoTerminar: (tentativas: TentativaEnviada[], modelo: MapeamentoOlhar) => void
 }) {
   const [vista, setVista] = useState<Vista | null>(null)
-  const props = useRef({ planejados, layout, viewport, pxPorCm, erroCalibracaoPx, modelo, poseReferencia, lerLeitura, aoTerminar })
+  const props = useRef({ planejados, layout, viewport, pxPorCm, erroCalibracaoPx, modelo, poseReferencia, limitesPose, raioMinFracao, lerLeitura, aoTerminar })
 
   useEffect(() => {
-    props.current = { planejados, layout, viewport, pxPorCm, erroCalibracaoPx, modelo, poseReferencia, lerLeitura, aoTerminar }
+    props.current = { planejados, layout, viewport, pxPorCm, erroCalibracaoPx, modelo, poseReferencia, limitesPose, raioMinFracao, lerLeitura, aoTerminar }
   })
 
   useEffect(() => {
@@ -87,7 +93,7 @@ export default function TelaFase({
     const epoca = Date.now() - inicio // performance.now() → horário real
     const area = p.layout.areaAlvos
     const alvos: Alvo[] = p.planejados.map((planejado) => {
-      const raio = raioEmPx(planejado.raioCm, p.pxPorCm, p.erroCalibracaoPx, area)
+      const raio = raioEmPx(planejado.raioCm, p.pxPorCm, p.erroCalibracaoPx, area, p.raioMinFracao)
       const [cx, cy] = paraPixels(planejado, area, raio + 8)
       return {
         planejado,
@@ -126,7 +132,7 @@ export default function TelaFase({
         const falha = problemas.find((x): x is Exclude<Problema, 'piscada'> => x !== 'piscada')
         semLeituraDesde = falha ? (semLeituraDesde ?? agora) : null
         const motivo: MotivoPausa | null =
-          (pose && desvioDaPose(pose, props.current.poseReferencia)) ||
+          (pose && desvioDaPose(pose, props.current.poseReferencia, props.current.limitesPose)) ||
           (falha && agora - semLeituraDesde! >= SEM_LEITURA_PARA_PAUSAR_MS ? falha : null)
 
         if (!pausa) {

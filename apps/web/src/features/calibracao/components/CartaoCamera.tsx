@@ -27,6 +27,9 @@ export default function CartaoCamera({
     corRodape = 'bg-[var(--color-good)]'
   }
 
+  // Cartão pequeno (celular): só a bolinha de rosto detectado, sem o texto.
+  const pequeno = posicao.largura < 150
+
   return (
     <div
       className="fixed z-10 flex flex-col overflow-hidden rounded-2xl bg-[var(--color-navy)] shadow-sm ring-4 ring-[var(--color-surface)]"
@@ -35,13 +38,16 @@ export default function CartaoCamera({
       <div className="relative aspect-video w-full">
         <video ref={videoRef} muted playsInline className="h-full w-full -scale-x-100 object-cover" />
         {status === 'pronto' && (
-          <span className="absolute right-1.5 top-1.5 flex items-center gap-1.5 rounded-full bg-[var(--color-surface)] px-2 py-0.5 text-[11px] font-medium text-[var(--color-ink)]">
+          <span
+            className="absolute right-1.5 top-1.5 flex items-center gap-1.5 rounded-full bg-[var(--color-surface)] px-2 py-0.5 text-[11px] font-medium text-[var(--color-ink)]"
+            aria-label={temRosto ? 'Rosto detectado' : 'Rosto não detectado'}
+          >
             <span className={`h-2 w-2 rounded-full ${temRosto ? 'bg-[var(--color-good)]' : 'bg-[var(--color-warn)]'}`} />
-            {temRosto ? 'Rosto detectado' : 'Rosto não detectado'}
+            {!pequeno && (temRosto ? 'Rosto detectado' : 'Rosto não detectado')}
           </span>
         )}
       </div>
-      <p className={`flex flex-1 items-center justify-center gap-2 px-3 text-xs font-medium text-[var(--color-surface)] ${corRodape}`}>
+      <p className={`flex flex-1 items-center justify-center gap-2 px-3 font-medium text-[var(--color-surface)] ${pequeno ? 'text-[10px]' : 'text-xs'} ${corRodape}`}>
         {status === 'pronto' && <AudioLines size={14} />}
         <span className="truncate">{rodape}</span>
       </p>

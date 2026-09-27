@@ -3,6 +3,7 @@ import type { FeaturesOlhar, PoseCabeca } from './features'
 import {
   checklistPosicionamento,
   luminancia,
+  poseParada,
   medirLuz,
   medirPonteOculos,
   medirReflexo,
@@ -76,6 +77,12 @@ describe('problemasDaLeitura', () => {
     expect(problemasDaLeitura({ ...features, pose: { ...pose, distanciaCm: 20 } }, false)).toEqual(['perto'])
     expect(problemasDaLeitura({ ...features, pose: { ...pose, yawGraus: 30 } }, false)).toEqual(['virado'])
   })
+
+  it('no celular, 25 cm é uma distância normal', () => {
+    const perto = { ...features, pose: { ...pose, distanciaCm: 25 } }
+    expect(problemasDaLeitura(perto, false)).toEqual(['perto'])
+    expect(problemasDaLeitura(perto, false, { min: 12, max: 70 })).toEqual([])
+  })
 })
 
 describe('checklistPosicionamento', () => {
@@ -97,5 +104,29 @@ describe('checklistPosicionamento', () => {
     expect(falho({}, { rosto: 30, quadro: 30 })).toEqual(['luz'])
     expect(falho({}, luz, { esquerdo: true, direito: false })).toEqual(['reflexo'])
     expect(checklistPosicionamento(null, null, null)).toEqual([expect.objectContaining({ id: 'rosto', ok: false })])
+  })
+})
+
+describe('celular no posicionamento', () => {
+  const luz = { rosto: 140, quadro: 150 }
+  const semReflexo = { esquerdo: false, direito: false }
+  const celular = { distanciaCm: { min: 20, max: 45 }, exigeHorizontal: true, exigeApoio: true }
+  const falhos = (p: PoseCabeca, extra: object) =>
+    checklistPosicionamento(p, luz, semReflexo, { ...celular, ...extra }).filter((i) => !i.ok).map((i) => i.id)
+
+  it('aceita 30 cm, deitado e apoiado', () => {
+    expect(falhos({ ...pose, distanciaCm: 30 }, { horizontal: true, apoiado: true })).toEqual([])
+  })
+
+  it('pede para deitar e apoiar o celular', () => {
+    expect(falhos({ ...pose, distanciaCm: 30 }, { horizontal: false, apoiado: false })).toEqual(['horizontal', 'apoiado'])
+  })
+
+  it('reconhece o aparelho parado ou tremendo', () => {
+    const parado = Array.from({ length: 20 }, () => pose)
+    const tremendo = Array.from({ length: 20 }, (_, i) => ({ ...pose, centroX: 0.5 + (i % 2 ? 0.03 : -0.03) }))
+    expect(poseParada(parado)).toBe(true)
+    expect(poseParada(tremendo)).toBe(false)
+    expect(poseParada(parado.slice(0, 5))).toBeNull()
   })
 })

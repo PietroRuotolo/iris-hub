@@ -21,4 +21,10 @@ describe('desvioDaPose', () => {
     expect(desvioDaPose({ ...ref, pitchGraus: -18 }, ref)).toBe('girar')
     expect(desvioDaPose({ ...ref, centroX: 0.7 }, ref)).toBe('centralizar')
   })
+
+  it('com limites maiores (celular), aceita mais movimento', () => {
+    const mexeu = { ...ref, yawGraus: 18, centroX: 0.68 }
+    expect(desvioDaPose(mexeu, ref)).not.toBeNull()
+    expect(desvioDaPose(mexeu, ref, { distancia: 0.3, rotacaoGraus: 22, posicao: 0.22 })).toBeNull()
+  })
 })

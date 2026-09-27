@@ -15,11 +15,11 @@ export type Problema =
   | 'poucaLuz'
   | 'contraluz'
 
-/** Faixa de distância para calibrar (cm) e limites de rotação da cabeça (graus). */
-export const FAIXA_DISTANCIA_CM = { min: 40, max: 75 }
+/** Limites de rotação da cabeça para calibrar (graus). As faixas de distância vêm do aparelho. */
 export const LIMITE_ROTACAO_GRAUS = { yaw: 12, pitch: 15, roll: 10 }
 /** Fora disto a leitura não vale nem durante o jogo (cabeça muito virada, muito perto ou longe). */
-export const LIMITE_LEITURA = { yaw: 25, pitch: 25, distanciaMin: 28, distanciaMax: 100 }
+export const LIMITE_LEITURA_GRAUS = 25
+const LEITURA_DISTANCIA_PADRAO = { min: 28, max: 100 }
 
 /** Pixel "estourado": o brilho de um reflexo. */
 const BRILHO_REFLEXO = 235
@@ -109,23 +109,55 @@ export function medirPonteOculos(lum: ArrayLike<number>, largura: number, altura
 export const pareceOculos = (bordasPonte: number) => bordasPonte > 0.06
 
 /** Problemas que invalidam uma leitura (ela não entra na calibração nem conta no jogo). */
-export function problemasDaLeitura(features: FeaturesOlhar | null, reflexo: boolean): Problema[] {
+export function problemasDaLeitura(
+  features: FeaturesOlhar | null,
+  reflexo: boolean,
+  distanciaCm: { min: number; max: number } = LEITURA_DISTANCIA_PADRAO,
+): Problema[] {
   if (!features) return ['semRosto']
   const { pose } = features
   const problemas: Problema[] = []
   if (ehPiscada(features)) problemas.push('piscada')
   if (reflexo) problemas.push('reflexo')
-  if (pose.distanciaCm < LIMITE_LEITURA.distanciaMin) problemas.push('perto')
-  if (pose.distanciaCm > LIMITE_LEITURA.distanciaMax) problemas.push('longe')
-  if (Math.abs(pose.yawGraus) > LIMITE_LEITURA.yaw || Math.abs(pose.pitchGraus) > LIMITE_LEITURA.pitch) problemas.push('virado')
+  if (pose.distanciaCm < distanciaCm.min) problemas.push('perto')
+  if (pose.distanciaCm > distanciaCm.max) problemas.push('longe')
+  if (Math.abs(pose.yawGraus) > LIMITE_LEITURA_GRAUS || Math.abs(pose.pitchGraus) > LIMITE_LEITURA_GRAUS) problemas.push('virado')
   return problemas
 }
 
 export interface ItemChecklist {
-  id: 'rosto' | 'distancia' | 'centro' | 'cabeca' | 'luz' | 'reflexo'
+  id: 'rosto' | 'horizontal' | 'apoiado' | 'distancia' | 'centro' | 'cabeca' | 'luz' | 'reflexo'
   ok: boolean
   titulo: string
   detalhe: string
+}
+
+export interface CondicoesAparelho {
+  /** Faixa de distância aceita (cm), do perfil do aparelho. */
+  distanciaCm: { min: number; max: number }
+  /** Pede o aparelho deitado; `horizontal` diz se ele está. */
+  exigeHorizontal?: boolean
+  horizontal?: boolean
+  /** Pede o aparelho apoiado; `apoiado` diz se a imagem do rosto está parada (null: medindo). */
+  exigeApoio?: boolean
+  apoiado?: boolean | null
+}
+
+const COMPUTADOR: CondicoesAparelho = { distanciaCm: { min: 40, max: 75 } }
+
+/** A pose ficou parada no último instante? (aparelho apoiado, sem a mão tremendo) */
+export function poseParada(poses: PoseCabeca[]): boolean | null {
+  if (poses.length < 15) return null
+  const desvio = (valores: number[]) => {
+    const m = valores.reduce((a, b) => a + b, 0) / valores.length
+    return Math.sqrt(valores.reduce((a, b) => a + (b - m) ** 2, 0) / valores.length)
+  }
+  return (
+    desvio(poses.map((p) => p.centroX)) < 0.012 &&
+    desvio(poses.map((p) => p.centroY)) < 0.012 &&
+    desvio(poses.map((p) => p.yawGraus)) < 2 &&
+    desvio(poses.map((p) => p.pitchGraus)) < 2
+  )
 }
 
 /** Checklist da tela "Posicione-se": a calibração só começa com tudo ok. */
@@ -133,13 +165,32 @@ export function checklistPosicionamento(
   pose: PoseCabeca | null,
   luz: MedidaLuz | null,
   reflexo: { esquerdo: boolean; direito: boolean } | null,
+  aparelho: CondicoesAparelho = COMPUTADOR,
 ): ItemChecklist[] {
+  const itensAparelho: ItemChecklist[] = []
+  if (aparelho.exigeHorizontal) {
+    itensAparelho.push({
+      id: 'horizontal',
+      ok: !!aparelho.horizontal,
+      titulo: 'Celular deitado',
+      detalhe: aparelho.horizontal ? 'Na horizontal' : 'Gire o celular para a horizontal: a tela fica maior para os olhos',
+    })
+  }
   if (!pose) {
-    return [{ id: 'rosto', ok: false, titulo: 'Rosto', detalhe: 'Não detectado. Fique de frente para a câmera.' }]
+    return [...itensAparelho, { id: 'rosto', ok: false, titulo: 'Rosto', detalhe: 'Não detectado. Fique de frente para a câmera.' }]
+  }
+  if (aparelho.exigeApoio) {
+    itensAparelho.push({
+      id: 'apoiado',
+      ok: aparelho.apoiado === true,
+      titulo: 'Aparelho apoiado',
+      detalhe:
+        aparelho.apoiado === null ? 'Conferindo…' : aparelho.apoiado ? 'Parado' : 'Apoie o aparelho numa mesa ou suporte: na mão ele treme',
+    })
   }
   const distancia = Math.round(pose.distanciaCm)
-  const perto = pose.distanciaCm < FAIXA_DISTANCIA_CM.min
-  const longe = pose.distanciaCm > FAIXA_DISTANCIA_CM.max
+  const perto = pose.distanciaCm < aparelho.distanciaCm.min
+  const longe = pose.distanciaCm > aparelho.distanciaCm.max
   const centralizado = Math.abs(pose.centroX - 0.5) < 0.2 && Math.abs(pose.centroY - 0.45) < 0.25
   const reta =
     Math.abs(pose.yawGraus) <= LIMITE_ROTACAO_GRAUS.yaw &&
@@ -149,6 +200,7 @@ export function checklistPosicionamento(
   const ladosReflexo = reflexo ? [reflexo.direito && 'direito', reflexo.esquerdo && 'esquerdo'].filter(Boolean) : []
 
   return [
+    ...itensAparelho,
     { id: 'rosto', ok: true, titulo: 'Rosto', detalhe: 'Detectado' },
     {
       id: 'distancia',

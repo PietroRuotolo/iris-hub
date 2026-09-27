@@ -138,7 +138,11 @@ das telas: `apps/web/src/features/historia/slides.ts`.
 3. **Posicione-se:** um checklist ao vivo confere distância (40 a 75 cm, estimada pelo tamanho da
    íris), rosto centralizado, cabeça reta (em graus), luz e reflexo nos olhos (óculos), com os dois
    olhos ampliados na tela. Com tudo verde por 1,5 s, a calibração começa sozinha: 9 pontos. Depois de
-   8 s aparece **Começar mesmo assim**. Só entram na calibração as leituras sem problema (sem
+   8 s aparece **Começar mesmo assim**. A faixa de distância e as tolerâncias dependem do aparelho
+   (detectado pela tela e pelo toque, ajustável em Configurações): **celular** 20–45 cm, deitado e
+   apoiado (o checklist pede os dois), coleta mais longa em cada ponto, alvos com tamanho mínimo
+   proporcional à tela e pausa mais tolerante; **tablet** 30–60 cm, apoiado; **computador** 40–75 cm.
+   Perfis em `apps/web/src/features/configuracoes/aparelho.ts`. Só entram na calibração as leituras sem problema (sem
    piscada, reflexo, cabeça muito virada ou fora da distância); se a calibração falhar, a tela diz o
    motivo e, se for reflexo, oferece **Calibrar ignorando o reflexo**. Depois vem a **conferência**: 5
    pontos com a bolinha do olhar visível. Se a bolinha ficar longe dos pontos, o modelo é reajustado

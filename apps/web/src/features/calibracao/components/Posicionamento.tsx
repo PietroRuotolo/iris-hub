@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, CheckCircle2, Glasses, XCircle } from 'lucide-react'
-import { checklistPosicionamento, type ItemChecklist } from '@/features/rastreamento-ocular/qualidade'
+import type { PerfilAparelho } from '@/features/configuracoes/aparelho'
+import type { PoseCabeca } from '@/features/rastreamento-ocular/features'
+import { checklistPosicionamento, poseParada, type ItemChecklist } from '@/features/rastreamento-ocular/qualidade'
 import type { Caixa, LeituraOlhar } from '@/lib/mediapipe/useFaceLandmarker'
 
 /** Tudo certo por esse tempo e a calibração começa sozinha. */
@@ -24,24 +26,33 @@ interface Estado {
 export default function Posicionamento({
   videoRef,
   lerLeitura,
+  perfil,
+  reservaTopo = 0,
   aoPronto,
 }: {
   videoRef: RefObject<HTMLVideoElement | null>
   lerLeitura: () => LeituraOlhar
+  /** Faixa de distância e exigências do aparelho (celular deitado e apoiado). */
+  perfil: PerfilAparelho
+  /** Espaço no topo para a prévia da câmera não cobrir o texto (telas pequenas). */
+  reservaTopo?: number
   aoPronto: () => void
 }) {
   const [estado, setEstado] = useState<Estado | null>(null)
   const olhoDireito = useRef<HTMLCanvasElement>(null)
   const olhoEsquerdo = useRef<HTMLCanvasElement>(null)
-  const props = useRef({ lerLeitura, aoPronto })
+  const props = useRef({ lerLeitura, aoPronto, perfil })
 
   useEffect(() => {
-    props.current = { lerLeitura, aoPronto }
+    props.current = { lerLeitura, aoPronto, perfil }
   })
 
   useEffect(() => {
     const inicio = performance.now()
     let tudoCertoDesde: number | null = null
+    // Poses do último 1,5 s (a cada frame novo), para saber se o aparelho está parado.
+    const poses: PoseCabeca[] = []
+    let ultimoQuadro = -1
     let terminou = false
     let frameId = 0
 
@@ -60,7 +71,20 @@ export default function Posicionamento({
     const loop = () => {
       const agora = performance.now()
       const leitura = props.current.lerLeitura()
-      const itens = checklistPosicionamento(leitura.pose, leitura.ambiente.luz, leitura.pose ? leitura.ambiente.reflexo : null)
+      const { perfil } = props.current
+      if (leitura.quadro !== ultimoQuadro) {
+        ultimoQuadro = leitura.quadro
+        if (leitura.pose) poses.push(leitura.pose)
+        else poses.length = 0
+        if (poses.length > 45) poses.shift()
+      }
+      const itens = checklistPosicionamento(leitura.pose, leitura.ambiente.luz, leitura.pose ? leitura.ambiente.reflexo : null, {
+        distanciaCm: perfil.distanciaCm,
+        exigeHorizontal: perfil.exigeHorizontal,
+        horizontal: window.innerWidth > window.innerHeight,
+        exigeApoio: perfil.exigeApoio,
+        apoiado: poseParada(poses),
+      })
       const tudoCerto = itens.length > 1 && itens.every((i) => i.ok)
       tudoCertoDesde = tudoCerto ? (tudoCertoDesde ?? agora) : null
       const progresso = tudoCertoDesde === null ? 0 : Math.min(1, (agora - tudoCertoDesde) / TUDO_CERTO_MS)
@@ -90,7 +114,7 @@ export default function Posicionamento({
   const tudoCerto = !!estado && estado.progresso > 0
 
   return (
-    <div className="mx-auto flex h-full max-w-3xl flex-col justify-center px-4 py-6">
+    <div className="mx-auto flex h-full max-w-3xl flex-col overflow-y-auto px-4 py-6 sm:justify-center" style={reservaTopo ? { paddingTop: reservaTopo } : undefined}>
       <Link href="/jogo" className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-[var(--color-navy)]">
         <ArrowLeft size={16} /> Voltar
       </Link>

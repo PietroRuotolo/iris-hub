@@ -43,8 +43,11 @@ export const ENTRE_OLHOS = 168
 export const MIN_ABERTURA = 0.15
 /** Diâmetro da íris humana: quase igual em todo mundo (~11,7 mm). */
 export const DIAMETRO_IRIS_CM = 1.17
-/** Campo de visão horizontal típico de webcam, para converter px em cm. */
-export const FOV_HORIZONTAL_GRAUS = 60
+/**
+ * Campo de visão diagonal típico de câmera (webcam de notebook ~70–78°, câmera frontal de celular
+ * ~75–85°). Pela diagonal, a conta vale com a imagem deitada (computador) ou em pé (celular).
+ */
+export const FOV_DIAGONAL_GRAUS = 76
 
 const sub3 = (a: Ponto3, b: Ponto3): Ponto3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
 const dot3 = (a: Ponto3, b: Ponto3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
@@ -75,15 +78,15 @@ export function diametroIrisPx(p: Ponto3[]): number {
   return (diametro(CONTORNO_IRIS_DIREITA) + diametro(CONTORNO_IRIS_ESQUERDA)) / 2
 }
 
-export function distanciaPelaIris(diametroPx: number, larguraFrame: number, fovGraus = FOV_HORIZONTAL_GRAUS): number {
-  const focalPx = larguraFrame / (2 * Math.tan(((fovGraus / 2) * Math.PI) / 180))
+export function distanciaPelaIris(diametroPx: number, larguraFrame: number, alturaFrame: number, fovDiagonalGraus = FOV_DIAGONAL_GRAUS): number {
+  const focalPx = Math.hypot(larguraFrame, alturaFrame) / (2 * Math.tan(((fovDiagonalGraus / 2) * Math.PI) / 180))
   return (focalPx * DIAMETRO_IRIS_CM) / diametroPx
 }
 
 export function extrairPose(p: Ponto3[], larguraFrame: number, alturaFrame: number): PoseCabeca {
   const { origem, ex, ez } = eixosCabeca(p)
   return {
-    distanciaCm: distanciaPelaIris(diametroIrisPx(p), larguraFrame),
+    distanciaCm: distanciaPelaIris(diametroIrisPx(p), larguraFrame, alturaFrame),
     yawGraus: graus(Math.atan2(ez[0], -ez[2])),
     pitchGraus: graus(Math.atan2(-ez[1], Math.hypot(ez[0], ez[2]))),
     rollGraus: graus(Math.atan2(ex[1], ex[0])),
