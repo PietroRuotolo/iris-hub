@@ -38,6 +38,15 @@
         "tsConfigPath": "tsconfig.build.json"
       }
     },
+    "email-service": {
+      "type": "application",
+      "root": "apps/email-service",
+      "entryFile": "apps/email-service/src/main",
+      "sourceRoot": "apps/email-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.build.json"
+      }
+    },
     "analytics-worker": {
       "type": "application",
       "root": "apps/analytics-worker",
