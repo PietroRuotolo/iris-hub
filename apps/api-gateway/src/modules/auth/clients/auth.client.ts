@@ -23,6 +23,10 @@ export class AuthClient {
     return encaminhar(this.servico, 'GET', '/auth/me', undefined, authorization ? { authorization } : undefined)
   }
 
+  marcarHistoriaVista(authorization?: string) {
+    return encaminhar(this.servico, 'POST', '/auth/me/intro-seen', undefined, authorization ? { authorization } : undefined)
+  }
+
   sair(authorization?: string) {
     return encaminhar(this.servico, 'POST', '/auth/logout', undefined, authorization ? { authorization } : undefined)
   }

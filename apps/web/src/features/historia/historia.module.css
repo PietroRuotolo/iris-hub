@@ -1,0 +1,244 @@
+/*
+ * Animações da história de introdução. Cada tela dura 10 s (--duracao) e tem movimento do começo
+ * ao fim: a câmera "entra" na imagem, a luz passeia, os arcos giram, partículas sobem e o texto
+ * entra, respira e sai. Cores só pelos tokens.
+ */
+
+.palco {
+  --duracao: 10s;
+}
+
+/* Fundo: entra desfocado e de longe, e a câmera avança devagar até o foco (rostos). */
+.fundo {
+  animation: fundo-entra var(--duracao) cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  will-change: transform, filter, opacity;
+}
+
+@keyframes fundo-entra {
+  0% {
+    opacity: 0;
+    transform: scale(1.5);
+    filter: blur(18px) saturate(1.3) brightness(1.15);
+  }
+  12% {
+    opacity: 1;
+    transform: scale(1.16);
+    filter: blur(0) saturate(1.05) brightness(1);
+  }
+  88% {
+    transform: scale(1.34);
+    filter: blur(0) saturate(1) brightness(1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1.46);
+    filter: blur(6px) saturate(1.1) brightness(1.08);
+  }
+}
+
+/* Véu claro: abre a cena no começo e a fecha no fim (a passagem entre as telas). */
+.veu {
+  animation: veu var(--duracao) linear both;
+}
+
+@keyframes veu {
+  0% { opacity: 1; }
+  9% { opacity: 0; }
+  92% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* Brilho suave que atravessa a cena durante toda a tela. */
+.luz {
+  animation: luz var(--duracao) ease-in-out both;
+  background: radial-gradient(circle at center, color-mix(in srgb, var(--color-surface) 55%, transparent) 0%, transparent 60%);
+  mix-blend-mode: soft-light;
+}
+
+@keyframes luz {
+  0% { transform: translate(-30%, -10%) scale(0.8); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translate(35%, 15%) scale(1.3); opacity: 0.6; }
+}
+
+/* Arcos finos: se desenham e giram devagar. */
+.arco {
+  fill: none;
+  stroke: var(--color-surface);
+  stroke-opacity: 0.7;
+  stroke-width: 1.2;
+  stroke-dasharray: 3000;
+  stroke-dashoffset: 3000;
+  animation: arco-desenha 2.6s 0.4s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+
+.arcos {
+  animation: arcos-giram var(--duracao) linear both;
+  transform-origin: 62% 55%;
+}
+
+@keyframes arco-desenha {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes arcos-giram {
+  from { transform: rotate(-6deg) scale(1); }
+  to { transform: rotate(8deg) scale(1.06); }
+}
+
+/* Partículas de luz subindo. */
+.particula {
+  animation: particula var(--vida) var(--espera) linear infinite;
+  background: var(--color-surface);
+  border-radius: 9999px;
+  filter: blur(1.5px);
+  opacity: 0;
+}
+
+@keyframes particula {
+  0% { transform: translate(0, 0) scale(0.6); opacity: 0; }
+  15% { opacity: 0.8; }
+  100% { transform: translate(var(--deriva), -38vh) scale(1.1); opacity: 0; }
+}
+
+/* Topo: logo e frase de apoio. */
+.surge {
+  animation: surge 0.9s var(--atraso, 0s) cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes surge {
+  from { opacity: 0; transform: translateY(-10px); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+
+.espacamento {
+  animation: espacamento 2.4s 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes espacamento {
+  from { opacity: 0; letter-spacing: 0.9em; }
+  to { opacity: 1; letter-spacing: 0.35em; }
+}
+
+/* Barra de progresso da tela atual. */
+.progresso {
+  animation: progresso var(--duracao) linear both;
+  transform-origin: left;
+}
+
+@keyframes progresso {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* Texto: cada palavra sobe de trás de uma máscara e ganha foco. */
+.mascara {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
+}
+
+.palavra {
+  display: inline-block;
+  white-space: pre;
+  animation: palavra 0.9s var(--atraso) cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes palavra {
+  from { transform: translateY(105%) rotate(4deg); opacity: 0; filter: blur(8px); }
+  to { transform: none; opacity: 1; filter: blur(0); }
+}
+
+/* Destaque: entra com impacto (de perto para o lugar) e depois fica com um brilho passando. */
+.destaque {
+  display: inline-block;
+  white-space: pre;
+  color: var(--color-terracota);
+  background-image: linear-gradient(
+    100deg,
+    var(--color-terracota) 0%,
+    var(--color-terracota) 40%,
+    var(--color-terracota-claro) 50%,
+    var(--color-terracota) 60%,
+    var(--color-terracota) 100%
+  );
+  background-size: 250% 100%;
+  background-position: 100% 0;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation:
+    impacto 1.1s var(--atraso) cubic-bezier(0.16, 1, 0.3, 1) both,
+    brilho 3.2s calc(var(--atraso) + 1.2s) ease-in-out infinite;
+}
+
+@keyframes impacto {
+  0% { transform: scale(1.6) translateY(20%); opacity: 0; filter: blur(14px); letter-spacing: 0.08em; }
+  60% { opacity: 1; filter: blur(0); }
+  100% { transform: none; opacity: 1; letter-spacing: normal; }
+}
+
+@keyframes brilho {
+  0% { background-position: 100% 0; }
+  60%,
+  100% { background-position: 0% 0; }
+}
+
+/* O bloco de texto inteiro respira devagar e sai no fim da tela. */
+.texto {
+  animation:
+    respira var(--duracao) ease-in-out both,
+    texto-sai 0.8s calc(var(--duracao) - 0.9s) cubic-bezier(0.64, 0, 0.78, 0) forwards;
+  transform-origin: left center;
+}
+
+@keyframes respira {
+  from { transform: scale(0.985); }
+  to { transform: scale(1.02); }
+}
+
+@keyframes texto-sai {
+  to { opacity: 0; transform: translateY(-18px) scale(1.02); filter: blur(8px); }
+}
+
+.linhaVerde {
+  animation: linha-verde 0.9s var(--atraso) cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: left;
+}
+
+@keyframes linha-verde {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.subtitulo {
+  animation: subtitulo 1.1s var(--atraso) cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes subtitulo {
+  from { opacity: 0; transform: translateY(14px); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+
+/* Movimento reduzido: sem zoom, giros nem partículas; o texto só aparece. */
+@media (prefers-reduced-motion: reduce) {
+  .fundo,
+  .arcos,
+  .luz,
+  .texto {
+    animation: none;
+  }
+  .particula {
+    display: none;
+  }
+  .palavra,
+  .destaque,
+  .subtitulo,
+  .linhaVerde,
+  .surge,
+  .espacamento {
+    animation: surge 0.4s var(--atraso, 0s) both;
+  }
+}

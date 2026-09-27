@@ -23,6 +23,10 @@
   --color-good-bg: #E4EFE8;
   --color-warn: #D98B5C;
   --color-warn-bg: #F7E5D7;
+
+  /* Destaque da história de introdução (terracota mais forte que o warn). */
+  --color-terracota: #C0512B;
+  --color-terracota-claro: #E58A5E;
 }
 
 body {

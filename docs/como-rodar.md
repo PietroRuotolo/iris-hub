@@ -106,6 +106,15 @@ O `user-service` precisa de `MONGO_URI`; o gateway continua exigindo o `x-api-ke
 
 Este fluxo identifica a conta apenas pelo e-mail digitado; ele não confirma que a pessoa controla aquela caixa de e-mail.
 
+## Introdução (história)
+
+No primeiro acesso de cada conta, antes de qualquer tela, aparece a história de introdução: 7 telas
+de 10 s com as imagens de `apps/web/public/history/` e o texto animado por cima. Ela não pode ser
+pulada; ao terminar, a conta registra `historiaVistaEm` (user-service, `POST /auth/me/intro-seen`) e
+ela não aparece de novo. Pelo menu **Introdução** (`/introducao`) a mesma história pode ser vista a
+qualquer momento, com **Voltar**, **Pular** e **Sair** (também pelas setas e `Esc`). Textos e ordem
+das telas: `apps/web/src/features/historia/slides.ts`.
+
 ## Jogar
 
 1. Entre no site (login pelo e-mail) e, se quiser, escolha o tamanho da tela em **Configurações**

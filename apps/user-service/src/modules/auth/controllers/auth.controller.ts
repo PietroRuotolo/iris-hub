@@ -29,6 +29,12 @@ export class AuthController {
     return { usuario: await this.auth.obterUsuario(tokenBearer(authorization)) }
   }
 
+  @Post('me/intro-seen')
+  @HttpCode(HttpStatus.OK)
+  async marcarHistoriaVista(@Headers('authorization') authorization?: string) {
+    return { usuario: await this.auth.marcarHistoriaVista(tokenBearer(authorization)) }
+  }
+
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   async sair(@Headers('authorization') authorization?: string): Promise<void> {

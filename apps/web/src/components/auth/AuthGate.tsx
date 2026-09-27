@@ -5,8 +5,25 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { ArrowLeft, LoaderCircle, LogIn } from 'lucide-react'
 
-export type UsuarioAutenticado = { id: string; nome: string; email: string }
-type ContextoAuth = { usuario: UsuarioAutenticado; sair: () => Promise<void> }
+export type UsuarioAutenticado = { id: string; nome: string; email: string; historiaVista?: boolean }
+type ContextoAuth = {
+  usuario: UsuarioAutenticado
+  sair: () => Promise<void>
+  /** Registra que a pessoa terminou a história de introdução (na conta e neste navegador). */
+  marcarHistoriaVista: () => void
+}
+
+const chaveHistoria = (id: string) => `iris:historia-vista:${id}`
+
+/** Se a conta ainda não registrou, vale também o registro deste navegador (caso o envio tenha falhado). */
+function comHistoriaLocal(usuario: UsuarioAutenticado): UsuarioAutenticado {
+  if (usuario.historiaVista) return usuario
+  try {
+    return { ...usuario, historiaVista: localStorage.getItem(chaveHistoria(usuario.id)) === '1' }
+  } catch {
+    return usuario
+  }
+}
 const AuthContext = createContext<ContextoAuth | null>(null)
 
 export function useAuth() {
@@ -34,7 +51,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       .then(({ resposta, dados }) => {
         if (!ativo) return
         if (resposta.ok && dados.usuario) {
-          setUsuario(dados.usuario)
+          setUsuario(comHistoriaLocal(dados.usuario))
           setEstado('autenticado')
         } else {
           setEstado('email')
@@ -56,7 +73,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   }, [router])
 
   const concluirEntrada = (usuarioAutenticado: UsuarioAutenticado) => {
-    setUsuario(usuarioAutenticado)
+    setUsuario(comHistoriaLocal(usuarioAutenticado))
     setEstado('autenticado')
     router.replace('/')
   }
@@ -120,8 +137,19 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     router.replace('/login')
   }, [router])
 
+  const marcarHistoriaVista = useCallback(() => {
+    if (!usuario) return
+    try {
+      localStorage.setItem(chaveHistoria(usuario.id), '1')
+    } catch {
+      // sem armazenamento, fica só o registro na conta
+    }
+    setUsuario({ ...usuario, historiaVista: true })
+    void fetch('/api/auth/historia', { method: 'POST' }).catch(() => undefined)
+  }, [usuario])
+
   if (estado === 'autenticado' && usuario) {
-    return <AuthContext.Provider value={{ usuario, sair }}>{children}</AuthContext.Provider>
+    return <AuthContext.Provider value={{ usuario, sair, marcarHistoriaVista }}>{children}</AuthContext.Provider>
   }
 
   return (

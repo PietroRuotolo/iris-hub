@@ -10,6 +10,8 @@ export interface UsuarioAutenticado {
   id: string
   nome: string
   email: string
+  /** Já viu a história de introdução (no primeiro acesso ela é obrigatória). */
+  historiaVista: boolean
 }
 
 export interface ResultadoAutenticacao {
@@ -19,7 +21,7 @@ export interface ResultadoAutenticacao {
 }
 
 function resumirUsuario(usuario: User): UsuarioAutenticado {
-  return { id: usuario.id, nome: usuario.nome, email: usuario.email }
+  return { id: usuario.id, nome: usuario.nome, email: usuario.email, historiaVista: usuario.historiaVistaEm !== null }
 }
 
 function hashToken(token: string): string {
@@ -55,6 +57,13 @@ export class AuthService {
     const usuario = await this.repositorio.buscarUsuarioPorId(sessao.userId)
     if (!usuario) throw new UnauthorizedException('Usuário da sessão não existe')
     return resumirUsuario(usuario)
+  }
+
+  /** Marca que a pessoa terminou a história de introdução (a primeira vez vale; as seguintes não mudam nada). */
+  async marcarHistoriaVista(token: string, agora = new Date()): Promise<UsuarioAutenticado> {
+    const usuario = await this.obterUsuario(token)
+    if (usuario.historiaVista) return usuario
+    return resumirUsuario(await this.repositorio.marcarHistoriaVista(usuario.id, agora))
   }
 
   async sair(token: string): Promise<void> {

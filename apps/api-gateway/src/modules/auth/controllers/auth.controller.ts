@@ -40,6 +40,15 @@ export class AuthGatewayController {
     return repassar(await this.auth.obterUsuario(authorization), res)
   }
 
+  @Post('me/intro-seen')
+  @HttpCode(HttpStatus.OK)
+  async marcarHistoriaVista(
+    @Headers('authorization') authorization: string | undefined,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    return repassar(await this.auth.marcarHistoriaVista(authorization), res)
+  }
+
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   async sair(

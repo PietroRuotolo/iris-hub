@@ -6,6 +6,7 @@ describe('ehTelaCheia', () => {
     expect(ehTelaCheia('/partida')).toBe(true)
     expect(ehTelaCheia('/partida/algo')).toBe(true)
     expect(ehTelaCheia('/resultado')).toBe(true)
+    expect(ehTelaCheia('/introducao')).toBe(true)
   })
 
   it('não confunde rotas com prefixo parecido', () => {
