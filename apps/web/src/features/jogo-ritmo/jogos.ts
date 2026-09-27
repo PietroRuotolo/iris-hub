@@ -1,4 +1,4 @@
-import { Eye, type LucideIcon } from 'lucide-react'
+import { Eye, Zap, type LucideIcon } from 'lucide-react'
 
 export type StatusJogo = 'disponivel' | 'desenvolvimento'
 
@@ -23,8 +23,6 @@ export interface Jogo {
   apresentacao: { aviso?: string; secoes: SecaoApresentacao[] }
 }
 
-// Jogos da experiência: alimentam o card da página inicial, a página de apresentação (/jogo) e a
-// lista de Sessões. Hoje só o jogo de ritmo; o nome final dele ainda será definido.
 export const JOGOS: Jogo[] = [
   {
     id: 'jogo-ritmo',
@@ -90,6 +88,50 @@ export const JOGOS: Jogo[] = [
         {
           titulo: 'Demonstração',
           midia: { src: null, pendente: 'Vídeo de demonstração em breve' },
+        },
+      ],
+    },
+  },
+  {
+    id: 'jogo-reflexo',
+    rota: '/jogo-reflexo',
+    nome: 'Jogo de reflexo',
+    tipo: 'Aplicação web (teste de reação)',
+    descricao: 'Avaliação de tempo de reação motora simples a estímulos visuais na tela.',
+    status: 'disponivel',
+    Icone: Zap,
+    apresentacao: {
+      aviso:
+        'Roda direto no navegador. O objetivo é clicar na tela o mais rápido possível assim que a área mudar para verde.',
+      secoes: [
+        {
+          titulo: 'O que é',
+          texto:
+            'Teste psicomotor clássico de tempo de reação visual simples. O participante aguarda a alteração de cor da tela e deve clicar imediatamente após o sinal verde surgir, sem queimar a largada.',
+        },
+        {
+          titulo: 'Jogar',
+          texto:
+            'A partida começa no modo de espera: aguarde o quadrado ficar verde e clique o mais rápido que conseguir. Clicar antes da hora registra falta (cedo demais).',
+          link: { href: '#', label: 'Começar partida' },
+        },
+        {
+          titulo: 'Como funciona',
+          ordenada: true,
+          itens: [
+            'Preparação: o sistema entra em espera por um tempo aleatório entre 2 e 5 segundos.',
+            'Estímulo: a tela fica verde e aparece a palavra "Clique!".',
+            'Acionamento: o tempo de reação até o clique é medido em milissegundos (ms).',
+            'Falta de largada: clicar antes da cor verde anula a tentativa com o aviso "Cedo demais".',
+          ],
+        },
+        {
+          titulo: 'Dados registrados',
+          itens: [
+            'Tempo de resposta em milissegundos (ms)',
+            'Tentativas antecipadas (queimas de largada)',
+            'Classificação do tempo de reação (Excelente, Bom, Regular ou Lento)',
+          ],
         },
       ],
     },

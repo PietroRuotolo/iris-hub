@@ -1,4 +1,4 @@
-import { Clapperboard, Eye, Home, ListChecks, Settings, type LucideIcon } from 'lucide-react'
+import { Clapperboard, Eye, Home, ListChecks, Settings, Zap, type LucideIcon } from 'lucide-react'
 
 export type ItemMenu = { rota: string; label: string; Icone: LucideIcon }
 export type GrupoMenu = { titulo?: string; itens: ItemMenu[] }
@@ -10,6 +10,7 @@ export const GRUPOS_MENU: GrupoMenu[] = [
       { rota: '/', label: 'Início', Icone: Home },
       { rota: '/introducao', label: 'Introdução', Icone: Clapperboard },
       { rota: '/jogo', label: 'Jogo de ritmo', Icone: Eye },
+      { rota: '/jogo-reflexo', label: 'Jogo do reflexo', Icone: Zap },
     ],
   },
   {
