@@ -1,5 +1,5 @@
 // Contratos compartilhados entre o front-end (apps/web) e os serviços (apps/*).
-// Só tipos e constantes: nada aqui depende de framework.
+// Tipos, constantes e regras puras: nada aqui depende de framework.
 
 /** Participante que joga (pode existir sem login). */
 export interface Participante {
@@ -18,3 +18,5 @@ export interface Calibracao {
   erroMedioFracaoTela: number | null
   tela: { larguraPx: number; alturaPx: number }
 }
+
+export * from './sessoes.js'

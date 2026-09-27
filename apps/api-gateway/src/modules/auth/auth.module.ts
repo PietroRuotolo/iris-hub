@@ -7,5 +7,6 @@ import { AuthGatewayController } from './controllers/auth.controller.js'
   imports: [EmailsModule],
   controllers: [AuthGatewayController],
   providers: [AuthClient],
+  exports: [AuthClient],
 })
 export class AuthModule {}

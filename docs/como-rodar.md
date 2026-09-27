@@ -106,6 +106,46 @@ O `user-service` precisa de `MONGO_URI`; o gateway continua exigindo o `x-api-ke
 
 Este fluxo identifica a conta apenas pelo e-mail digitado; ele não confirma que a pessoa controla aquela caixa de e-mail.
 
+## Jogar
+
+1. Entre no site (login pelo e-mail) e, se quiser, escolha o tamanho da tela em **Configurações**
+   (padrão: computador, 24"). O tamanho dos alvos segue essa escolha.
+2. Vá em **Jogo de ritmo → Começar partida** (`/partida`). O navegador pede a câmera.
+3. **Posicione-se:** um checklist ao vivo confere distância (40 a 75 cm, estimada pelo tamanho da
+   íris), rosto centralizado, cabeça reta (em graus), luz e reflexo nos olhos (óculos), com os dois
+   olhos ampliados na tela. Com tudo verde por 1,5 s, a calibração começa sozinha: 9 pontos. Depois de
+   8 s aparece **Começar mesmo assim**. Só entram na calibração as leituras sem problema (sem
+   piscada, reflexo, cabeça muito virada ou fora da distância); se a calibração falhar, a tela diz o
+   motivo e, se for reflexo, oferece **Calibrar ignorando o reflexo**. Depois vem a **conferência**: 5
+   pontos com a bolinha do olhar visível. Se a bolinha ficar longe dos pontos, o modelo é reajustado
+   com esses pontos (os mais recentes pesam mais, e um desvio para o mesmo lado é corrigido) e a
+   conferência repete, até 3 vezes.
+4. **"A calibração está boa?"** (sempre, antes da Fase 1): mexa os olhos e veja se a bolinha
+   acompanha. Se ficar longe, olhe para um dos 9 marcadores e clique nele: o olhar daquele instante vira
+   um ponto de calibração e a bolinha se ajusta na hora. Repita até ficar boa e clique em **Sim, está
+   boa · começar** (ou **Recalibrar do zero**).
+5. Antes de cada uma das 5 fases aparece um modal com a fase e os pontos até agora. **Continuar** ou
+   **Parar**; sem escolha em 5 segundos, o jogo continua. `Esc` encerra a partida.
+   Depois de **Continuar**, um ponto no centro por ~2 s recentraliza a calibração antes da fase (o
+   desvio acumulado é corrigido). Durante a fase, sempre que o olhar para perto de um alvo, o
+   desalinhamento é corrigido aos poucos para os alvos seguintes (nunca muda o resultado do alvo já
+   avaliado). Cada tentativa grava a direção do erro (`desvioXPx`, `desvioYPx`).
+   O olhar é calculado no referencial da cabeça e o modelo considera rotação, posição e distância
+   da cabeça: movimentos pequenos são compensados. Se a cabeça sair muito da posição da calibração
+   (±20% de distância, ±15°, ou fora do centro) ou a leitura falhar por mais de 1 s (rosto sumiu,
+   reflexo), o jogo pausa, diz o que corrigir e continua sozinho quando a pessoa volta.
+6. No fim, a tela de resultado mostra a pontuação de cada fase e a geral, e salva tudo na conta
+   (coleções `sessoes` e `tentativas_alvo`).
+
+Regra de acerto: olhar entra no alvo até 500 ms antes ou depois da batida (quando o anel fecha) e
+fica nele por 250 ms. Cada acerto vale `50 + 30 × notaTempo + 20 × notaPrecisao` (de 50 a 100);
+alvos sem rastreamento suficiente não contam como erro. A fórmula fica em
+`packages/contracts/src/sessoes.ts` e o session-service recalcula os pontos a partir das medidas.
+
+**Testar sem câmera (só em desenvolvimento):** abra `http://localhost:3000/partida?simular`. O mouse
+faz o papel do olhar. Teclas: **C** tira o rosto do centro, **P** aproxima da câmera, **R** liga um
+reflexo nos óculos e **D** desloca a leitura do olho (testa o ajuste por clique). Não existe no build de produção.
+
 ## 5. Conferir se está funcionando
 
 1. Abra http://localhost:3000: deve aparecer a página inicial do iris hub.
@@ -149,7 +189,7 @@ Depois de alterar `prisma/schema.prisma`, aplique o schema ao banco configurado 
 npm run migration:run
 ```
 
-Como o projeto usa MongoDB, o comando executa `prisma db push`: sincroniza coleções e índices definidos no schema; não cria arquivos de migrations relacionais. O modelo `User` cria a coleção `users`, com `_id` UUID v7, `nome` e `email` único.
+Como o projeto usa MongoDB, o comando executa `prisma db push`: sincroniza coleções e índices definidos no schema; não cria arquivos de migrations relacionais. O modelo `User` cria a coleção `users`, com `_id` UUID v7, `nome` e `email` único. As sessões do jogo usam `sessoes` e `tentativas_alvo`; rode o comando uma vez para criar os índices delas.
 
 ## 7. Ver os dados do banco
 
@@ -157,7 +197,7 @@ Como o projeto usa MongoDB, o comando executa `prisma db push`: sincroniza cole�
 npm run prisma:studio
 ```
 
-Abre o Prisma Studio no navegador, com as coleções `calibracoes` e `sessoes`. Se mudar o `MONGO_URI`,
+Abre o Prisma Studio no navegador, com as coleções do banco (`users`, `sessoes`, `tentativas_alvo` etc.). Se mudar o `MONGO_URI`,
 feche o Studio e abra de novo.
 
 ## 8. Testes e verificações

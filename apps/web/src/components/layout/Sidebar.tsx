@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { LogOut, X } from 'lucide-react'
 import { useAuth } from '@/components/auth/AuthGate'
-import { GRUPOS_MENU, itemAtivo } from '@/lib/navegacao'
+import { GRUPOS_MENU, ITEM_CONFIGURACOES, itemAtivo, type ItemMenu } from '@/lib/navegacao'
 
 type Props = { aberta: boolean; aoFechar: () => void }
 
@@ -49,30 +49,18 @@ export default function Sidebar({ aberta, aoFechar }: Props) {
                   {titulo}
                 </p>
               )}
-              {itens.map(({ rota, label, Icone }) => {
-                const ativo = itemAtivo(rota, caminho)
-                return (
-                  <Link
-                    key={rota}
-                    href={rota}
-                    onClick={aoFechar}
-                    aria-current={ativo ? 'page' : undefined}
-                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-base font-medium transition ${
-                      ativo
-                        ? 'bg-[var(--color-bg)] text-[var(--color-navy)]'
-                        : 'text-[var(--color-ink)] active:bg-[var(--color-bg)]'
-                    }`}
-                  >
-                    <Icone size={20} className="text-[var(--color-navy)]" />
-                    {label}
-                  </Link>
-                )
-              })}
+              {itens.map((item) => (
+                <LinkMenu key={item.rota} item={item} caminho={caminho} aoClicar={aoFechar} />
+              ))}
             </div>
           ))}
         </nav>
 
-        <div className="mt-auto border-t border-navy/10 p-4">
+        <div className="mt-auto px-3 pb-2">
+          <LinkMenu item={ITEM_CONFIGURACOES} caminho={caminho} aoClicar={aoFechar} />
+        </div>
+
+        <div className="border-t border-navy/10 p-4">
           <p className="truncate text-sm font-semibold text-[var(--color-ink)]">{usuario.nome}</p>
           <button type="button" onClick={() => void sair()} className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-bg)] hover:text-[var(--color-navy)]">
             <LogOut size={16} /> Sair
@@ -80,5 +68,24 @@ export default function Sidebar({ aberta, aoFechar }: Props) {
         </div>
       </aside>
     </>
+  )
+}
+
+function LinkMenu({ item: { rota, label, Icone }, caminho, aoClicar }: { item: ItemMenu; caminho: string; aoClicar: () => void }) {
+  const ativo = itemAtivo(rota, caminho)
+  return (
+    <Link
+      href={rota}
+      onClick={aoClicar}
+      aria-current={ativo ? 'page' : undefined}
+      className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-base font-medium transition ${
+        ativo
+          ? 'bg-[var(--color-bg)] text-[var(--color-navy)]'
+          : 'text-[var(--color-ink)] active:bg-[var(--color-bg)]'
+      }`}
+    >
+      <Icone size={20} className="text-[var(--color-navy)]" />
+      {label}
+    </Link>
   )
 }

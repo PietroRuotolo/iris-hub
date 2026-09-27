@@ -35,10 +35,14 @@ apps/web (Next.js, /back) ──HTTP──▶ apps/api-gateway ──HTTP──�
 
 Organizado por área:
 
-- `src/app/`: rotas. `(public)/` (início), `calibracao/` (tela cheia, sem menu), `jogo/` e
-  `sessao/[id]/resumo/`.
-- `src/features/<área>/`: componentes e lógica de cada área: `calibracao`, `rastreamento-ocular`,
-  `jogo-ritmo`, `resultados`. Lógica pura fica separada dos componentes, com testes (vitest).
+- `src/app/`: rotas. `(public)/` (início), `jogo/` (apresentação), `partida/` (calibração e fases,
+  tela cheia, sem menu), `configuracoes/` (tamanho da tela) e `sessao/[id]/resumo/`.
+- `src/features/<área>/`: componentes e lógica de cada área. Lógica pura fica separada dos
+  componentes, com testes (vitest):
+  - `rastreamento-ocular`: features do olhar (landmarks → íris) e mapeamento olhar → tela.
+  - `calibracao`: pontos, sequência de alvos, ajuste do mapeamento e qualidade da calibração.
+  - `jogo-ritmo`: as 5 fases (`fases.ts`), a regra de acerto (`avaliacao.ts`) e as telas da partida.
+  - `configuracoes`: tamanho da tela (px por cm), salvo no navegador.
 - `src/components/`: peças compartilhadas (menu lateral e casca das páginas).
 - `src/lib/mediapipe/`: integração com a webcam e o MediaPipe (só no navegador).
 - `src/lib/api/`: cliente do api-gateway. As telas só falam com a API por aqui.
@@ -57,6 +61,21 @@ interceptors, middleware, pipes, utils) e `src/modules/<área>/` (controllers, s
 repositories, dtos/request, dtos/response). O banco é acessado pelo Prisma 6 (a versão 7 ainda não
 suporta MongoDB).
 
+### Sessões do jogo
+
+`session-service` (`modules/sessions`), pelo gateway em `/sessions`, sempre com login (o gateway
+descobre a pessoa pelo token e preenche o `participanteId`):
+
+| Rota | O que faz |
+|---|---|
+| `POST /sessions` | Começa a partida, com a tela e o resumo da calibração |
+| `POST /sessions/:id/phases` | Grava uma fase: recalcula os pontos de cada tentativa e o resumo da fase |
+| `POST /sessions/:id/finish` | Encerra como `CONCLUIDA` ou `CANCELADA` |
+| `GET /sessions/:id` | A sessão, só para a própria pessoa |
+
+Banco: `sessoes` guarda a sessão com a tela, a calibração e o resumo das fases embutidos;
+`tentativas_alvo` guarda um documento por alvo. Amostras contínuas do olhar e vídeo não são salvos.
+
 ## Rodar localmente
 
 Passo a passo completo em [como-rodar.md](como-rodar.md). Resumo:
@@ -69,9 +88,8 @@ npm run dev:all          # site em http://localhost:3000, API em http://localhos
 
 ## Próximos passos
 
-1. Ligar as funcionalidades nas telas do `apps/web` (o layout já está pronto).
-2. Webcam e MediaPipe no `apps/web`.
-3. Endpoints de calibração do session-service e do gateway; troca dos dados fictícios pela API.
-5. Login e user-service, se o projeto precisar.
+1. Testar a partida com pessoas de verdade e ajustar tamanhos, ritmos e a janela de acerto.
+2. Ligar Sessões e o resumo da sessão (`sessao/[id]/resumo`) às sessões salvas.
+3. Login e user-service, se o projeto precisar.
 
 Decisões registradas em [`docs/decisoes/`](decisoes/).
