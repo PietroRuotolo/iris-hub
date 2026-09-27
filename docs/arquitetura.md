@@ -46,7 +46,8 @@ Organizado por área:
 - `src/components/`: peças compartilhadas (menu lateral e casca das páginas).
 - `src/lib/mediapipe/`: integração com a webcam e o MediaPipe (só no navegador).
 - `src/lib/api/`: cliente do api-gateway. As telas só falam com a API por aqui.
-- `src/app/back/[...caminho]/`: repassa `/back/<rota>` para o gateway (`BACKEND_URL`), com o
+- `src/app/back/[...caminho]/`: repassa `/back/<rota>` para o gateway (na Vercel, embutido na própria
+  função; fora dela, `BACKEND_URL` ou `localhost:3001`), com o
   `x-api-key` e o token da sessão adicionados no servidor. O navegador só usa o próprio domínio.
 - `src/lib/server/`: código que só roda no servidor Next (URL do backend, chamadas de autenticação).
 - `src/types/`: tipos do front-end que não estão em `@iris/contracts`.

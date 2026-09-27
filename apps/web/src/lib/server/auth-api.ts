@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { urlBackend } from './backend'
+import { ErroBackend, urlBackend } from './backend'
 
 export const COOKIE_SESSAO = 'iris_session'
 
@@ -16,7 +16,7 @@ export async function chamarAuth(
 
   let resposta: Response
   try {
-    resposta = await fetch(urlBackend(caminho), {
+    resposta = await fetch(await urlBackend(caminho), {
       method: metodo,
       headers: {
         'x-api-key': apiKey,
@@ -26,7 +26,8 @@ export async function chamarAuth(
       body: corpo === undefined ? undefined : JSON.stringify(corpo),
       cache: 'no-store',
     })
-  } catch {
+  } catch (erro) {
+    if (erro instanceof ErroBackend) return NextResponse.json({ erro: erro.message }, { status: 503 })
     return NextResponse.json({ erro: 'Não foi possível conectar ao serviço de autenticação' }, { status: 502 })
   }
 

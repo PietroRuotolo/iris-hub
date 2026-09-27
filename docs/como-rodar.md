@@ -94,15 +94,30 @@ curl localhost:3000/back/health
 
 As rotas de login ficam em `/api/auth/*` (elas guardam o token em cookie); `/back/auth/*` responde 404.
 
-**Deploy:** a Vercel roda só o site. Os serviços NestJS precisam de um processo sempre ligado, então
-ficam em outra hospedagem (Render, Railway, Fly.io etc.). Na Vercel, configure `BACKEND_URL` com a URL
-pública do gateway e a mesma `API_KEY` do gateway.
+**Deploy (Vercel, site e backend no mesmo projeto):** a Vercel não mantém servidores ligados, então
+o `npm run build:vercel` empacota o gateway e os serviços (user, session, email) em
+`apps/web/.backend/backend.cjs`, que vai junto nas funções do site. Na primeira requisição, a função
+sobe o backend dentro dela (cada serviço numa porta livre do 127.0.0.1 da própria função) e repassa
+para ele; as requisições seguintes já o encontram no ar. Configuração do projeto na Vercel:
+
+| Campo | Valor |
+|---|---|
+| Framework Preset | Next.js |
+| Build Command | Override: `npm run build:vercel` |
+| Output Directory | Override: `apps/web/.next` |
+| Root Directory | `./`, com "Include files outside the root directory" ligado |
+| Environment Variables | `MONGO_URI`, `API_KEY`, `EMAIL_API_KEY`, `MICROSOFT_SEND_MAIL_URL` (`BACKEND_URL` não é usado na Vercel) |
+
+No Atlas, em **Network Access**, libere `0.0.0.0/0` (os IPs da Vercel mudam). O build termina
+conferindo se as funções levam o backend e o motor do Prisma para a Vercel; se faltar algo, ele falha
+com a explicação. Para testar o modo embutido localmente: `npm run build:vercel` e depois
+`BACKEND_EMBUTIDO=1 npm run start:web`.
 
 ## Autenticação
 
 Ao abrir o hub, a pessoa informa o e-mail. Se já estiver cadastrado, o serviço cria uma sessão; caso contrário, o modal pede o nome e cria usuário e sessão. A sessão dura 30 dias, fica em cookie `HttpOnly` e pode ser encerrada pelo menu lateral.
 
-O `user-service` precisa de `MONGO_URI`; o gateway continua exigindo o `x-api-key` já configurado. Em produção, hospede o `user-service` e o gateway em endereços acessíveis ao servidor Next. Configure `USER_SERVICE_URL` no gateway e `BACKEND_URL` e `API_KEY` no ambiente do Next/Vercel. A chave fica no servidor e nunca deve usar o prefixo `NEXT_PUBLIC_`.
+O `user-service` precisa de `MONGO_URI`; o gateway continua exigindo o `x-api-key` já configurado. Em produção (Vercel), o backend vai embutido no site (veja o deploy na seção da rota `/back`). A `API_KEY` fica no servidor e nunca deve usar o prefixo `NEXT_PUBLIC_`.
 
 Este fluxo identifica a conta apenas pelo e-mail digitado; ele não confirma que a pessoa controla aquela caixa de e-mail.
 

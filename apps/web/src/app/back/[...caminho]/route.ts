@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
 import type { NextRequest } from 'next/server'
 import { COOKIE_SESSAO } from '@/lib/server/auth-api'
-import { urlBackend } from '@/lib/server/backend'
+import { ErroBackend, urlBackend } from '@/lib/server/backend'
 
 // /back/<rota> → gateway/<rota>, no mesmo domínio do site (sem porta, sem CORS).
 // A API_KEY e o token da sessão são adicionados aqui, no servidor.
@@ -18,7 +18,13 @@ async function repassar(req: NextRequest, { params }: Contexto): Promise<Respons
   const apiKey = process.env.API_KEY
   if (!apiKey) return Response.json({ erro: 'API_KEY não configurada no servidor web' }, { status: 500 })
 
-  const destino = urlBackend('/' + caminho.map(encodeURIComponent).join('/'))
+  let destino: URL
+  try {
+    destino = await urlBackend('/' + caminho.map(encodeURIComponent).join('/'))
+  } catch (erro) {
+    const mensagem = erro instanceof ErroBackend ? erro.message : 'Backend indisponível'
+    return Response.json({ erro: mensagem }, { status: 503 })
+  }
   destino.search = req.nextUrl.search
 
   const headers = new Headers({ 'x-api-key': apiKey })
