@@ -68,16 +68,41 @@ pronto (os serviços compilam e reiniciam uma vez no começo). Para parar: `Ctrl
 | API (gateway) | http://localhost:3001 |
 | user-service | http://localhost:3002 |
 | session-service | http://localhost:3003 |
+| email-service | http://localhost:3004 |
 | analytics-worker | sem endereço (sobe, registra no log e termina) |
 
 Alterações no código recarregam sozinhas. **Alterações no `.env` exigem reiniciar** (`Ctrl+C` e rodar
 de novo).
 
+## Serviço de e-mail
+
+O `email-service` envia templates HTML reutilizáveis pelo Microsoft Graph. Configure no `.env` a `MICROSOFT_SEND_MAIL_URL` (endereço do POST de envio do Graph) e a `EMAIL_API_KEY` (o access token do Graph, sem escrever `Bearer `, com a permissão delegada `Mail.Send`). O envio é o mesmo POST do Graph: `Authorization: Bearer <EMAIL_API_KEY>`. Como access tokens expiram, atualize a `EMAIL_API_KEY` quando o token vencer. Entre o gateway e o `email-service`, a proteção `x-api-key` usa a mesma `API_KEY` do gateway.
+
+O gateway expõe `POST /emails/send`, autenticado com a `API_KEY`. Na chamada interna do gateway ao `email-service`, ele envia `x-api-key` com a mesma `API_KEY`. Quando um usuário novo conclui o cadastro pelo `/auth/register`, o gateway dispara esse template para o e-mail cadastrado; falha de envio é registrada sem desfazer o cadastro. O corpo manual é JSON `{ "para": "pessoa@exemplo.com", "template": "welcome" }`; esse template envia a imagem HTML configurada no próprio template. Os templates ficam em `apps/email-service/src/modules/emails/templates/` e reutilizam componentes de `components/`.
+
+## Rota `/back` (backend pelo site)
+
+O navegador não chama o gateway pela porta 3001. Ele chama `/back/<rota>` no próprio site
+(`http://localhost:3000/back/...` local, `https://<site>.vercel.app/back/...` em produção), e o Next
+repassa para o gateway em `BACKEND_URL`, adicionando no servidor o `x-api-key` e o token da sessão
+(do cookie). Assim não há porta nem CORS no front-end, e a `API_KEY` nunca chega ao navegador.
+
+```bash
+curl localhost:3000/back/health
+# {"status":"ok","servico":"api-gateway"}
+```
+
+As rotas de login ficam em `/api/auth/*` (elas guardam o token em cookie); `/back/auth/*` responde 404.
+
+**Deploy:** a Vercel roda só o site. Os serviços NestJS precisam de um processo sempre ligado, então
+ficam em outra hospedagem (Render, Railway, Fly.io etc.). Na Vercel, configure `BACKEND_URL` com a URL
+pública do gateway e a mesma `API_KEY` do gateway.
+
 ## Autenticação
 
 Ao abrir o hub, a pessoa informa o e-mail. Se já estiver cadastrado, o serviço cria uma sessão; caso contrário, o modal pede o nome e cria usuário e sessão. A sessão dura 30 dias, fica em cookie `HttpOnly` e pode ser encerrada pelo menu lateral.
 
-O `user-service` precisa de `MONGO_URI`; o gateway continua exigindo o `x-api-key` já configurado. Em produção, hospede o `user-service` e o gateway em endereços acessíveis ao servidor Next. Configure `USER_SERVICE_URL` no gateway e `NEXT_PUBLIC_API_URL` e `API_KEY` no ambiente do Next/Vercel. A chave fica no servidor e nunca deve usar o prefixo `NEXT_PUBLIC_`.
+O `user-service` precisa de `MONGO_URI`; o gateway continua exigindo o `x-api-key` já configurado. Em produção, hospede o `user-service` e o gateway em endereços acessíveis ao servidor Next. Configure `USER_SERVICE_URL` no gateway e `BACKEND_URL` e `API_KEY` no ambiente do Next/Vercel. A chave fica no servidor e nunca deve usar o prefixo `NEXT_PUBLIC_`.
 
 Este fluxo identifica a conta apenas pelo e-mail digitado; ele não confirma que a pessoa controla aquela caixa de e-mail.
 
@@ -113,6 +138,7 @@ npm run dev:gateway    # API (gateway)
 npm run dev:session    # sessões e calibrações (precisa do MONGO_URI)
 npm run dev:user       # usuários (ainda sem rotas, só /health)
 npm run dev:worker     # worker (ainda sem consumidores)
+npm run dev:email      # email-service
 ```
 
 ## Aplicar o schema ao MongoDB
