@@ -32,7 +32,7 @@ export const JOGOS: Jogo[] = [
     nome: 'Jogo de ritmo',
     tipo: 'Aplicação web (webcam)',
     descricao: 'Jogo de ritmo controlado pelo olhar, que gera dados de acompanhamento para triagem neurológica.',
-    status: 'desenvolvimento',
+    status: 'disponivel',
     Icone: Eye,
     apresentacao: {
       aviso:
@@ -44,13 +44,19 @@ export const JOGOS: Jogo[] = [
             'Jogo de ritmo inspirado no osu!, em que o cursor é substituído pelo olhar. Alvos aparecem na tela e a pessoa deve olhar para eles dentro de uma janela de tempo, sem clicar em nada. O objetivo é gerar dados de acompanhamento que apoiem a triagem de doenças neurodegenerativas.',
         },
         {
+          titulo: 'Jogar',
+          texto:
+            'A partida começa pela calibração: olhe para cada ponto até o anel fechar. Depois vêm as cinco fases; entre elas, você escolhe continuar ou parar (sem escolha em 5 segundos, o jogo continua). O tamanho dos alvos segue a tela escolhida em Configurações.',
+          link: { href: '/partida', label: 'Começar partida' },
+        },
+        {
           titulo: 'Como funciona',
           ordenada: true,
           itens: [
-            'Calibração: a pessoa olha para pontos fixos na tela para ajustar o rastreamento.',
-            'Os alvos aparecem em posições e momentos definidos.',
-            'Se o olhar permanece sobre o alvo por tempo suficiente dentro da janela, conta como acerto; caso contrário, erro.',
-            'Ao final da sessão, uma tela de resumo mostra os resultados.',
+            'Calibração: a pessoa olha para 9 pontos na tela, e mais 5 para conferir a precisão.',
+            'Os alvos aparecem no ritmo: um anel se fecha até o momento da batida.',
+            'Acerto: entrar no alvo até meio segundo antes ou depois da batida e ficar nele por pelo menos 250 ms.',
+            'Cada acerto vale de 50 a 100 pontos, conforme a pontualidade e a precisão. Ao final, a partida mostra a pontuação de cada fase.',
           ],
         },
         {
@@ -71,15 +77,15 @@ export const JOGOS: Jogo[] = [
           ],
         },
         {
-          titulo: 'Fase 0 — validação de precisão',
-          texto:
-            'Antes de qualquer mecânica de jogo, é preciso medir o erro do rastreamento ocular pela webcam. Este protótipo mede esse erro e decide se o tamanho de alvo planejado é viável.',
-          link: { href: '/calibracao', label: 'Testar precisão do rastreamento' },
-        },
-        {
-          titulo: 'Mecânica do jogo',
-          pendente:
-            'Ainda não construída: depende do resultado da Fase 0 (erro medido define o tamanho mínimo dos alvos).',
+          titulo: 'Fases',
+          ordenada: true,
+          itens: [
+            'Familiarização: alvos grandes, ritmo lento e sequência simples para aprender a jogar com o olhar.',
+            'Ritmo constante: alvos em batidas regulares e posições previsíveis.',
+            'Alternância: o olhar acompanha alvos que mudam de lado e de altura seguindo o ritmo.',
+            'Precisão e velocidade: alvos menores e intervalos mais curtos, aumentando a exigência aos poucos.',
+            'Desafio final: combina posições, ritmos e pausas das fases anteriores.',
+          ],
         },
         {
           titulo: 'Demonstração',
