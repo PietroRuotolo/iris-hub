@@ -18,6 +18,10 @@ export class AuthRepository {
     return this.prisma.user.create({ data: dados })
   }
 
+  marcarHistoriaVista(id: string, quando: Date): Promise<User> {
+    return this.prisma.user.update({ where: { id }, data: { historiaVistaEm: quando } })
+  }
+
   criarSessao(dados: Prisma.SessionCreateInput): Promise<Session> {
     return this.prisma.session.create({ data: dados })
   }

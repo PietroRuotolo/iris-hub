@@ -15,6 +15,8 @@ model User {
   id    String @id @default(uuid(7)) @map("_id")
   nome  String
   email String @unique
+  /// Quando a pessoa terminou de ver a história de introdução (obrigatória no primeiro acesso).
+  historiaVistaEm DateTime?
 
   @@map("users")
 }
