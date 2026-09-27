@@ -18,17 +18,30 @@ export const TAMANHO_STATUS = { largura: 280, altura: 72 }
 const LARGURA_MAX_CABECALHO = 448
 const ALTURA_FAIXA = TAMANHO_CAMERA.altura
 const FOLGA_AREA = 32 // entre a faixa fixa e o início da área dos alvos
+
+/** Telas pequenas (celular em pé ou deitado): câmera menor e faixa do topo mais baixa. */
+const COMPACTO = { camera: { largura: 116, altura: 88 }, faixa: 92, folga: 12 }
+const LARGURA_MIN_CABECALHO_CENTRADO = 320
+
+export const ehCompacto = ({ largura, altura }: { largura: number; altura: number }) => largura < 700 || altura < 520
 const DISTANCIA_STATUS = RAIO_ALVO_CALIBRACAO + 12
 
 const limitar = (valor: number, minimo: number, maximo: number) => Math.min(Math.max(valor, minimo), maximo)
 
 /** Cabeçalho (centro) e câmera (canto direito) na faixa do topo, e a área onde os alvos aparecem. */
 export function calcularLayout({ largura, altura }: { largura: number; altura: number }) {
-  const larguraCabecalho = Math.min(LARGURA_MAX_CABECALHO, largura - 2 * (TAMANHO_CAMERA.largura + 2 * MARGEM))
-  const topoArea = MARGEM + ALTURA_FAIXA + FOLGA_AREA
+  const compacto = ehCompacto({ largura, altura })
+  const camera = compacto ? COMPACTO.camera : TAMANHO_CAMERA
+  const alturaFaixa = compacto ? COMPACTO.faixa : ALTURA_FAIXA
+  const topoArea = MARGEM + alturaFaixa + (compacto ? COMPACTO.folga : FOLGA_AREA)
+  // Cabeçalho centrado quando cabe entre as duas laterais; senão, à esquerda, até a câmera.
+  const lateral = camera.largura + 2 * MARGEM
+  const centrado = largura - 2 * lateral >= LARGURA_MIN_CABECALHO_CENTRADO
+  const larguraCabecalho = centrado ? Math.min(LARGURA_MAX_CABECALHO, largura - 2 * lateral) : largura - lateral - MARGEM
   return {
-    cabecalho: { x: (largura - larguraCabecalho) / 2, y: MARGEM, largura: larguraCabecalho, altura: ALTURA_FAIXA },
-    camera: { x: largura - MARGEM - TAMANHO_CAMERA.largura, y: MARGEM, ...TAMANHO_CAMERA },
+    compacto,
+    cabecalho: { x: centrado ? (largura - larguraCabecalho) / 2 : MARGEM, y: MARGEM, largura: larguraCabecalho, altura: alturaFaixa },
+    camera: { x: largura - MARGEM - camera.largura, y: MARGEM, ...camera },
     areaAlvos: { x: 0, y: topoArea, largura, altura: altura - topoArea },
   }
 }

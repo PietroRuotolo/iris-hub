@@ -20,6 +20,7 @@ export function useSequenciaDeAlvos(
   paraPx: (ponto: PontoTela) => Ponto,
   lerLeitura: () => LeituraOlhar,
   aoFinalizar: (coletas: ColetaPonto[]) => void,
+  tempos: { acomodacaoMs: number; coletaMs: number } = { acomodacaoMs: ACOMODACAO_MS, coletaMs: COLETA_MS },
 ) {
   const [indice, setIndice] = useState(0)
   const [progresso, setProgresso] = useState(0)
@@ -41,12 +42,12 @@ export function useSequenciaDeAlvos(
 
     const loop = () => {
       const decorrido = performance.now() - inicio
-      if (decorrido < ACOMODACAO_MS) {
-        setProgresso(decorrido / ACOMODACAO_MS)
+      if (decorrido < tempos.acomodacaoMs) {
+        setProgresso(decorrido / tempos.acomodacaoMs)
         setProgressoColeta(0)
-      } else if (decorrido < ACOMODACAO_MS + COLETA_MS) {
+      } else if (decorrido < tempos.acomodacaoMs + tempos.coletaMs) {
         setProgresso(1)
-        setProgressoColeta((decorrido - ACOMODACAO_MS) / COLETA_MS)
+        setProgressoColeta((decorrido - tempos.acomodacaoMs) / tempos.coletaMs)
         const { features, problemas, reflexo, quadro } = callbacks.current.lerLeitura()
         // Conta cada frame da câmera uma vez só (a tela pode desenhar mais rápido que a câmera).
         // Só leituras sem problema entram; os problemas ficam contados para explicar uma falha.
@@ -67,7 +68,7 @@ export function useSequenciaDeAlvos(
     }
     frameId = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(frameId)
-  }, [indice, pontos])
+  }, [indice, pontos, tempos.acomodacaoMs, tempos.coletaMs])
 
   return {
     ponto: pontos[indice] as PontoTela | undefined,

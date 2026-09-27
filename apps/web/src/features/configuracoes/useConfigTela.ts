@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useSyncExternalStore } from 'react'
+import { TIPO_TELA_DO_APARELHO, detectarAparelho } from './aparelho'
 import { CONFIG_TELA_PADRAO, normalizarConfigTela, type ConfigTela } from './tela'
 
 // A configuração é do aparelho, não da pessoa: fica no localStorage deste navegador.
@@ -20,7 +21,8 @@ function ler(): ConfigTela {
   if (bruto !== cacheBruto) {
     cacheBruto = bruto
     try {
-      cacheConfig = normalizarConfigTela(bruto ? JSON.parse(bruto) : null)
+      // Sem nada salvo, sugere a tela do aparelho detectado (celular, tablet ou computador).
+      cacheConfig = bruto ? normalizarConfigTela(JSON.parse(bruto)) : { tipo: TIPO_TELA_DO_APARELHO[detectarAparelho()], polegadasManual: null }
     } catch {
       cacheConfig = CONFIG_TELA_PADRAO
     }

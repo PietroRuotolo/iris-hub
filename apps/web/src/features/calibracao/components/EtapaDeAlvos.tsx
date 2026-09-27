@@ -27,6 +27,7 @@ export default function EtapaDeAlvos({
   instrucao = 'Olhe fixamente para o ponto até a captura ser concluída.',
   textos,
   modeloBolinha,
+  tempos,
 }: {
   titulo: string
   pontos: PontoTela[]
@@ -40,8 +41,10 @@ export default function EtapaDeAlvos({
   textos?: TextosStatus
   /** Com um modelo, mostra a bolinha do olhar (conferência da calibração). */
   modeloBolinha?: MapeamentoOlhar
+  /** Tempo para o olho chegar e tempo de coleta em cada ponto (o celular usa mais). */
+  tempos?: { acomodacaoMs: number; coletaMs: number }
 }) {
-  const seq = useSequenciaDeAlvos(pontos, paraPx, lerLeitura, aoFinalizar)
+  const seq = useSequenciaDeAlvos(pontos, paraPx, lerLeitura, aoFinalizar, tempos)
   if (!seq.ponto) return null
   const alvo = paraPx(seq.ponto)
 

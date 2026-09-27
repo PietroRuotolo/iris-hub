@@ -31,15 +31,15 @@ export function poseDeReferencia(poses: Pose[]): Pose {
 }
 
 /** O que corrigir na posição da cabeça, ou null se ela está perto da referência. */
-export function desvioDaPose(atual: Pose, referencia: Pose): DesvioPose | null {
+export function desvioDaPose(atual: Pose, referencia: Pose, limites: typeof LIMITES_POSE = LIMITES_POSE): DesvioPose | null {
   const proporcao = atual.distanciaCm / referencia.distanciaCm
-  if (proporcao < 1 - LIMITES_POSE.distancia) return 'afastar'
-  if (proporcao > 1 + LIMITES_POSE.distancia) return 'aproximar'
-  const giro = (a: number, b: number) => Math.abs(a - b) > LIMITES_POSE.rotacaoGraus
+  if (proporcao < 1 - limites.distancia) return 'afastar'
+  if (proporcao > 1 + limites.distancia) return 'aproximar'
+  const giro = (a: number, b: number) => Math.abs(a - b) > limites.rotacaoGraus
   if (giro(atual.yawGraus, referencia.yawGraus) || giro(atual.pitchGraus, referencia.pitchGraus) || giro(atual.rollGraus, referencia.rollGraus)) {
     return 'girar'
   }
-  if (Math.abs(atual.centroX - referencia.centroX) > LIMITES_POSE.posicao || Math.abs(atual.centroY - referencia.centroY) > LIMITES_POSE.posicao) {
+  if (Math.abs(atual.centroX - referencia.centroX) > limites.posicao || Math.abs(atual.centroY - referencia.centroY) > limites.posicao) {
     return 'centralizar'
   }
   return null

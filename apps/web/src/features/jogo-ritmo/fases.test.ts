@@ -49,4 +49,10 @@ describe('raioEmPx', () => {
   it('não passa de 16% da área', () => {
     expect(raioEmPx(10, 36, null, area)).toBe(128)
   })
+
+  it('numa tela pequena, respeita o mínimo proporcional à área', () => {
+    const celular = { largura: 800, altura: 330 }
+    expect(raioEmPx(0.5, 60, null, celular)).toBe(RAIO_MIN_PX)
+    expect(raioEmPx(0.5, 60, null, celular, 0.16)).toBe(53)
+  })
 })

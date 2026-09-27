@@ -21,7 +21,7 @@ export default function CabecalhoTelaCheia({
       className="fixed flex flex-col items-center justify-center gap-2 text-center"
       style={{ left: posicao.x, top: posicao.y, width: posicao.largura, height: posicao.altura }}
     >
-      <h1 className="font-display text-xl font-semibold text-[var(--color-navy)]">{titulo}</h1>
+      <h1 className={`font-display font-semibold leading-tight text-[var(--color-navy)] ${posicao.altura < 110 ? 'text-base' : 'text-xl'}`}>{titulo}</h1>
       <div className="flex w-full items-center gap-3">
         <div
           className="h-2 flex-1 overflow-hidden rounded-full bg-navy/10"
@@ -39,7 +39,7 @@ export default function CabecalhoTelaCheia({
           {rotulo} <strong className="text-[var(--color-ink)]">{Math.min(atual, total)}</strong> de {total}
         </span>
       </div>
-      <p className="text-sm text-[var(--color-ink-soft)]">{instrucao}</p>
+      <p className={`text-[var(--color-ink-soft)] ${posicao.altura < 110 ? 'text-xs leading-snug' : 'text-sm'}`}>{instrucao}</p>
     </div>
   )
 }

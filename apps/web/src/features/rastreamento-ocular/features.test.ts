@@ -76,8 +76,10 @@ describe('extrairFeatures', () => {
     const perto = extrairFeatures(rostoSintetico({ raioIris: 16 }), 1280, 720).pose.distanciaCm
     const longe = extrairFeatures(rostoSintetico({ raioIris: 8 }), 1280, 720).pose.distanciaCm
     expect(longe).toBeCloseTo(perto * 2, 6)
-    // webcam 1280 px de largura, 60°: íris de 24 px ≈ 54 cm
-    expect(distanciaPelaIris(24, 1280)).toBeCloseTo(54, 0)
+    // webcam 1280x720, 76° na diagonal: íris de 24 px ≈ 46 cm
+    expect(distanciaPelaIris(24, 1280, 720)).toBeCloseTo(45.9, 0)
+    // a mesma câmera em pé (celular) dá a mesma distância
+    expect(distanciaPelaIris(24, 720, 1280)).toBeCloseTo(distanciaPelaIris(24, 1280, 720), 9)
   })
 
   it('detecta piscada', () => {

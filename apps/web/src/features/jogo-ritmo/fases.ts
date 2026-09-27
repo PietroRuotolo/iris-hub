@@ -108,10 +108,18 @@ export const RAIO_MIN_PX = 45
 
 /**
  * Raio do alvo em px: o tamanho em cm convertido pela tela, nunca menor que o erro medido na
- * calibração (senão ninguém acerta) e nunca maior que 16% da área dos alvos.
+ * calibração (senão ninguém acerta) nem que `fracaoMinima` da área (telas pequenas, como a do
+ * celular), e nunca maior que 16% da área dos alvos.
  */
-export function raioEmPx(raioCm: number, pxPorCm: number, erroCalibracaoPx: number | null, area: { largura: number; altura: number }): number {
-  const teto = 0.16 * Math.min(area.largura, area.altura)
-  const piso = Math.max(RAIO_MIN_PX, 0.8 * (erroCalibracaoPx ?? 0))
-  return Math.round(Math.min(Math.max(raioCm * pxPorCm, piso), Math.max(teto, RAIO_MIN_PX)))
+export function raioEmPx(
+  raioCm: number,
+  pxPorCm: number,
+  erroCalibracaoPx: number | null,
+  area: { largura: number; altura: number },
+  fracaoMinima = 0,
+): number {
+  const menorLado = Math.min(area.largura, area.altura)
+  const piso = Math.max(RAIO_MIN_PX, 0.8 * (erroCalibracaoPx ?? 0), fracaoMinima * menorLado)
+  const teto = Math.max(0.16 * menorLado, piso)
+  return Math.round(Math.min(Math.max(raioCm * pxPorCm, piso), teto))
 }

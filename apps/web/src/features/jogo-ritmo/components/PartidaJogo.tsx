@@ -25,6 +25,7 @@ import Posicionamento from '@/features/calibracao/components/Posicionamento'
 import TelaOlharLivre from '@/features/calibracao/components/TelaOlharLivre'
 import { calcularLayout, paraPixels } from '@/features/calibracao/layout'
 import { PONTOS_CALIBRACAO, PONTOS_CONFERENCIA, embaralhar, type PontoTela } from '@/features/calibracao/pontos'
+import { PERFIS, aparelhoDaConfig } from '@/features/configuracoes/aparelho'
 import { polegadasDe, pxPorCm } from '@/features/configuracoes/tela'
 import { useConfigTela } from '@/features/configuracoes/useConfigTela'
 import type { MapeamentoOlhar } from '@/features/rastreamento-ocular/mapeamento'
@@ -105,6 +106,12 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
   const camera = useFaceLandmarker()
   const viewport = useViewport()
   const [configTela] = useConfigTela()
+  // Celular, tablet ou computador (pela tela em Configurações): faixas, tolerâncias e tempos.
+  const perfil = PERFIS[aparelhoDaConfig(configTela)]
+  const { definirAparelho } = camera
+  useEffect(() => {
+    definirAparelho({ leituraDistanciaCm: perfil.leituraDistanciaCm, distanciaCm: perfil.distanciaCm })
+  }, [definirAparelho, perfil])
   const [etapa, setEtapa] = useState<Etapa>('preparando')
   const [tentativaCalibracao, setTentativaCalibracao] = useState(0)
   const [pontosCalibracao, setPontosCalibracao] = useState<PontoTela[]>([])
@@ -299,7 +306,13 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
     <div className="fixed inset-0 overflow-hidden bg-[var(--color-bg)]">
       {etapa === 'preparando' &&
         (camera.status === 'pronto' ? (
-          <Posicionamento videoRef={camera.videoRef} lerLeitura={camera.lerLeitura} aoPronto={comecarCalibracao} />
+          <Posicionamento
+            videoRef={camera.videoRef}
+            lerLeitura={camera.lerLeitura}
+            perfil={perfil}
+            reservaTopo={layout.compacto ? layout.camera.y + layout.camera.altura + 12 : 0}
+            aoPronto={comecarCalibracao}
+          />
         ) : (
           <Preparando status={camera.status} erro={camera.erro} />
         ))}
@@ -358,6 +371,7 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
           viewport={viewport}
           lerLeitura={camera.lerLeitura}
           problema={camera.problema}
+          tempos={perfil.coleta}
           aoFinalizar={aoFinalizarCalibracao}
         />
       )}
@@ -375,6 +389,7 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
           viewport={viewport}
           lerLeitura={camera.lerLeitura}
           problema={camera.problema}
+          tempos={perfil.coleta}
           aoFinalizar={aoFinalizarConferencia}
         />
       )}
@@ -418,6 +433,7 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
           viewport={viewport}
           lerLeitura={camera.lerLeitura}
           problema={camera.problema}
+          tempos={perfil.coleta}
           aoFinalizar={aoRecentralizar}
         />
       )}
@@ -433,6 +449,8 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
           erroCalibracaoPx={calibracao.erroMedioPx}
           modelo={modeloJogo}
           poseReferencia={poseReferencia}
+          limitesPose={perfil.pose}
+          raioMinFracao={perfil.raioMinFracao}
           lerLeitura={camera.lerLeitura}
           aoTerminar={aoTerminarFase}
         />

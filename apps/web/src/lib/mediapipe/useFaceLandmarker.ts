@@ -36,6 +36,11 @@ const QUADROS_POR_ANALISE = 3
 
 export type StatusCamera = 'carregando' | 'pronto' | 'erro'
 
+export interface FaixasAparelho {
+  leituraDistanciaCm: { min: number; max: number }
+  distanciaCm: { min: number; max: number }
+}
+
 export interface Caixa {
   x: number
   y: number
@@ -105,6 +110,8 @@ export function useFaceLandmarker() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const leituraRef = useRef<LeituraOlhar>(LEITURA_VAZIA)
   const ignorarReflexo = useRef(false)
+  // Faixas do aparelho (celular, tablet ou computador): quando a leitura vale e a distância ideal.
+  const aparelho = useRef<FaixasAparelho>({ leituraDistanciaCm: { min: 28, max: 100 }, distanciaCm: { min: 40, max: 75 } })
   const [status, setStatus] = useState<StatusCamera>('carregando')
   const [erro, setErro] = useState<string | null>(null)
   const [temRosto, setTemRosto] = useState(false)
@@ -140,7 +147,8 @@ export function useFaceLandmarker() {
       const teclas = { c: false, d: false, p: false, r: false }
       const atualizar = (novoQuadro = false) => {
         const pose: PoseCabeca = {
-          distanciaCm: teclas.p ? 32 : 55,
+          // No meio da faixa do aparelho; com P, bem mais perto que o mínimo.
+          distanciaCm: (aparelho.current.distanciaCm.min + aparelho.current.distanciaCm.max) / 2 - (teclas.p ? 20 : 0),
           yawGraus: 0,
           pitchGraus: 0,
           rollGraus: 0,
@@ -154,7 +162,7 @@ export function useFaceLandmarker() {
           pose,
         }
         const reflexo = teclas.r && !ignorarReflexo.current
-        const problemas = problemasDaLeitura(f, reflexo)
+        const problemas = problemasDaLeitura(f, reflexo, aparelho.current.leituraDistanciaCm)
         publicar({
           quadro: leituraRef.current.quadro + (novoQuadro ? 1 : 0),
           features: problemas.length ? null : f,
@@ -265,7 +273,7 @@ export function useFaceLandmarker() {
               }
 
               const reflexoVisto = ambiente.reflexo.direito || ambiente.reflexo.esquerdo
-              const problemas = problemasDaLeitura(f, reflexoVisto && !ignorarReflexo.current)
+              const problemas = problemasDaLeitura(f, reflexoVisto && !ignorarReflexo.current, aparelho.current.leituraDistanciaCm)
               publicar({
                 quadro: leituraRef.current.quadro + 1,
                 features: problemas.length ? null : f,
@@ -304,5 +312,10 @@ export function useFaceLandmarker() {
     ignorarReflexo.current = ignorar
   }, [])
 
-  return { videoRef, status, erro, temRosto, problema, lerLeitura, definirIgnorarReflexo }
+  /** Faixas de distância do aparelho em uso (as leituras fora delas não valem). */
+  const definirAparelho = useCallback((faixas: FaixasAparelho) => {
+    aparelho.current = faixas
+  }, [])
+
+  return { videoRef, status, erro, temRosto, problema, lerLeitura, definirIgnorarReflexo, definirAparelho }
 }
