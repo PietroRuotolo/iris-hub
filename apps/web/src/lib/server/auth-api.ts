@@ -1,11 +1,7 @@
 import { NextResponse } from 'next/server'
+import { urlBackend } from './backend'
 
 export const COOKIE_SESSAO = 'iris_session'
-
-function urlGateway(caminho: string): URL {
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-  return new URL(caminho, base)
-}
 
 export async function chamarAuth(
   caminho: string,
@@ -20,7 +16,7 @@ export async function chamarAuth(
 
   let resposta: Response
   try {
-    resposta = await fetch(urlGateway(caminho), {
+    resposta = await fetch(urlBackend(caminho), {
       method: metodo,
       headers: {
         'x-api-key': apiKey,

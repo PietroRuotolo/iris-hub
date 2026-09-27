@@ -12,8 +12,9 @@ Para rodar, veja [como-rodar.md](como-rodar.md).
 ## Visão geral
 
 ```
-apps/web (Next.js) ──HTTP──▶ apps/api-gateway ──HTTP──▶ apps/user-service
-                                                 └────▶ apps/session-service ──▶ MongoDB
+apps/web (Next.js, /back) ──HTTP──▶ apps/api-gateway ──HTTP──▶ apps/user-service ──▶ MongoDB
+                                                 ├────▶ apps/session-service ──▶ MongoDB
+                                                 └────▶ apps/email-service ──HTTP──▶ Microsoft Graph
 ```
 
 | Parte | Responsabilidade | Porta |
@@ -22,6 +23,7 @@ apps/web (Next.js) ──HTTP──▶ apps/api-gateway ──HTTP──▶ apps
 | `apps/api-gateway` | Entrada única para o front-end: encaminha para os serviços, padroniza erros, CORS e (futuramente) autenticação. | 3001 |
 | `apps/user-service` | Contas e participantes (se houver login). | 3002 |
 | `apps/session-service` | Calibrações do rastreamento ocular. | 3003 |
+| `apps/email-service` | Envio de e-mails por templates reutilizáveis via Microsoft Graph. | 3004 |
 | `apps/analytics-worker` | Estrutura inicial para futuros cálculos assíncronos. Sem HTTP ou consumidores implementados. | — |
 | `packages/contracts` | Tipos e contratos compartilhados entre o front-end e os serviços. | — |
 | `packages/config` | Leitura e validação das variáveis de ambiente, com padrões para rodar local. | — |
@@ -40,6 +42,9 @@ Organizado por área:
 - `src/components/`: peças compartilhadas (menu lateral e casca das páginas).
 - `src/lib/mediapipe/`: integração com a webcam e o MediaPipe (só no navegador).
 - `src/lib/api/`: cliente do api-gateway. As telas só falam com a API por aqui.
+- `src/app/back/[...caminho]/`: repassa `/back/<rota>` para o gateway (`BACKEND_URL`), com o
+  `x-api-key` e o token da sessão adicionados no servidor. O navegador só usa o próprio domínio.
+- `src/lib/server/`: código que só roda no servidor Next (URL do backend, chamadas de autenticação).
 - `src/types/`: tipos do front-end que não estão em `@iris/contracts`.
 
 ## Serviços (NestJS 12)
