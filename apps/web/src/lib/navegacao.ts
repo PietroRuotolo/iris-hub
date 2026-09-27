@@ -1,4 +1,4 @@
-import { Eye, Home, ListChecks, type LucideIcon } from 'lucide-react'
+import { Eye, Home, ListChecks, Settings, type LucideIcon } from 'lucide-react'
 
 export type ItemMenu = { rota: string; label: string; Icone: LucideIcon }
 export type GrupoMenu = { titulo?: string; itens: ItemMenu[] }
@@ -19,9 +19,12 @@ export const GRUPOS_MENU: GrupoMenu[] = [
   },
 ]
 
-// Rotas de tela cheia, sem o menu: a calibração usa o viewport inteiro para os alvos, e o
-// resultado é aberto no celular pelo QR code.
-export const ROTAS_TELA_CHEIA = ['/calibracao', '/resultado']
+// Fica no rodapé do menu, acima do nome da pessoa.
+export const ITEM_CONFIGURACOES: ItemMenu = { rota: '/configuracoes', label: 'Configurações', Icone: Settings }
+
+// Rotas de tela cheia, sem o menu: a partida (calibração e fases) usa o viewport inteiro para os
+// alvos, e o resultado é aberto no celular pelo QR code.
+export const ROTAS_TELA_CHEIA = ['/partida', '/resultado']
 
 export function ehTelaCheia(caminho: string): boolean {
   return ROTAS_TELA_CHEIA.some((rota) => caminho === rota || caminho.startsWith(`${rota}/`))
