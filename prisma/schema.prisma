@@ -48,3 +48,87 @@ model Calibracao {
 
   @@map("calibracoes")
 }
+
+// ---------------------------------------------------------------------------------------------
+// Jogo de ritmo. Resumos pequenos (tela, calibração, cinco fases) ficam embutidos na sessão; as
+// tentativas por alvo crescem com o jogo e ficam numa coleção própria. Amostras contínuas do olhar
+// e vídeo da webcam não são guardadas.
+
+type TelaSessao {
+  larguraPx Int
+  alturaPx  Int
+  polegadas Float?
+  pxPorCm   Float?
+}
+
+type CalibracaoResumo {
+  pontos           Int
+  erroMedioPx      Float?
+  qualidade        Float?
+  coberturaValida  Float?
+  distanciaMediaCm Float?
+  oculos           Boolean?
+  fracaoReflexo    Float?
+  reflexoIgnorado  Boolean?
+}
+
+type FaseResumo {
+  fase                     Int
+  nome                     String
+  alvosApresentados        Int
+  acertos                  Int
+  semResposta              Int
+  rastreamentoInsuficiente Int
+  pontuacao                Float
+  coberturaRastreamento    Float?
+}
+
+/// Uma partida do jogo de ritmo (calibração + até cinco fases).
+model Sessao {
+  id              String            @id @default(auto()) @map("_id") @db.ObjectId
+  /// Id da conta (User.id); pseudônimo, sem dados pessoais na sessão.
+  participanteId  String?
+  iniciadaEm      DateTime          @default(now())
+  concluidaEm     DateTime?
+  /// EM_ANDAMENTO, CONCLUIDA ou CANCELADA
+  status          String
+  tela            TelaSessao
+  calibracao      CalibracaoResumo?
+  fases           FaseResumo[]
+  pontuacaoTotal  Float?
+  coberturaTotal  Float?
+  versaoPontuacao String
+
+  @@index([participanteId, iniciadaEm])
+  @@map("sessoes")
+}
+
+/// Um alvo apresentado numa fase, com o resultado medido pelo site e os pontos calculados aqui.
+model TentativaAlvo {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  sessaoId      String    @db.ObjectId
+  fase          Int
+  numeroAlvo    Int
+  /// Posição normalizada (0 a 1) na tela
+  alvoX         Float
+  alvoY         Float
+  raioPx        Float
+  janelaMs      Int
+  apresentadoEm DateTime
+  batidaEm      DateTime
+  respostaEm    DateTime?
+  /// ACERTO, SEM_RESPOSTA ou RASTREAMENTO_INSUFICIENTE
+  resultado     String
+  latenciaMs    Int?
+  erroTempoMs   Int?
+  erroEspacial  Float?
+  permanenciaMs Int?
+  cobertura     Float
+  /// Desvio médio do olhar em relação ao alvo na janela da batida (px; + = direita/baixo)
+  desvioXPx     Int?
+  desvioYPx     Int?
+  pontuacao     Float
+
+  @@index([sessaoId, fase])
+  @@map("tentativas_alvo")
+}

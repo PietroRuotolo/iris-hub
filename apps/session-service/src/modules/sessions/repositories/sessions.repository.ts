@@ -1,0 +1,49 @@
+import { Injectable } from '@nestjs/common'
+import type { Prisma, Sessao } from '@prisma/client'
+import { PrismaService } from '@iris/shared'
+import { ehObjectId } from '../../../core/utils/object-id.js'
+
+@Injectable()
+export class SessionsRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
+  criar(dados: Prisma.SessaoCreateInput): Promise<Sessao> {
+    return this.prisma.sessao.create({ data: dados })
+  }
+
+  /** null se o id não existir (ou nem for um ObjectId válido). */
+  async buscarPorId(id: string): Promise<Sessao | null> {
+    if (!ehObjectId(id)) return null
+    return this.prisma.sessao.findUnique({ where: { id } })
+  }
+
+  /**
+   * Grava uma fase numa transação: só atualiza se a sessão ainda estiver em andamento e sem essa
+   * fase (duas requisições iguais ao mesmo tempo não gravam a fase duas vezes). false se não gravou.
+   */
+  async registrarFase(
+    id: string,
+    fase: Prisma.FaseResumoCreateInput,
+    totais: { pontuacaoTotal: number | null; coberturaTotal: number | null },
+    tentativas: Prisma.TentativaAlvoCreateManyInput[],
+  ): Promise<boolean> {
+    return this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.sessao.updateMany({
+        where: { id, status: 'EM_ANDAMENTO', fases: { none: { fase: fase.fase } } },
+        data: { fases: { push: fase }, ...totais },
+      })
+      if (count === 0) return false
+      await tx.tentativaAlvo.createMany({ data: tentativas })
+      return true
+    })
+  }
+
+  /** Fecha a sessão só se ela ainda estiver em andamento. false se não fechou. */
+  async concluir(id: string, status: 'CONCLUIDA' | 'CANCELADA', concluidaEm: Date): Promise<boolean> {
+    const { count } = await this.prisma.sessao.updateMany({
+      where: { id, status: 'EM_ANDAMENTO' },
+      data: { status, concluidaEm },
+    })
+    return count > 0
+  }
+}
