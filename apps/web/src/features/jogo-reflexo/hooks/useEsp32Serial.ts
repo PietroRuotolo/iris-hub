@@ -1,101 +1,119 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { EventoEsp32 } from '../reflexo'
 
-// Declarações locais para a Web Serial API
+
+//nao foi testado, a minha soldagem saiuuu
+import { useCallback, useEffect, useRef, useState } from 'react'
+
 interface SerialPort {
   open(options: { baudRate: number }): Promise<void>
   close(): Promise<void>
   readable: ReadableStream<Uint8Array> | null
-  writable: WritableStream<Uint8Array> | null
 }
 
 interface NavigatorSerial {
-  serial: {
+  serial?: {
     requestPort(): Promise<SerialPort>
   }
+}
+
+export interface EventoEsp32 {
+  status: 'contagem' | 'esperando' | 'reagir' | 'queimou' | 'sucesso'
+  valor?: number | string
 }
 
 export function useEsp32Serial(onEvento: (evento: EventoEsp32) => void) {
   const [conectado, setConectado] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
-  const portRef = useRef<SerialPort | null>(null)
-  const readerRef = useRef<ReadableStreamDefaultReader<string> | null>(null)
+  const portaRef = useRef<SerialPort | null>(null)
 
-  const desconectar = useCallback(async () => {
-    try {
-      if (readerRef.current) {
-        await readerRef.current.cancel()
-        readerRef.current = null
-      }
-      if (portRef.current) {
-        await portRef.current.close()
-        portRef.current = null
-      }
-    } catch {
-      // Ignora falhas de limpeza durante a desconexão
-    } finally {
-      setConectado(false)
-    }
-  }, [])
+  const onEventoRef = useRef(onEvento)
+  useEffect(() => {
+    onEventoRef.current = onEvento
+  }, [onEvento])
 
   const conectar = useCallback(async () => {
     setErro(null)
 
-    if (!('serial' in navigator)) {
-      setErro('O seu navegador não suporta a Web Serial API (utilize Chrome ou Edge).')
+    const nav = navigator as unknown as NavigatorSerial
+    if (!nav.serial) {
+      setErro('Navegador sem suporte a Web Serial API. Use Chrome ou Edge.')
       return
     }
 
     try {
-      const serialNav = navigator as unknown as NavigatorSerial
-      const port = await serialNav.serial.requestPort()
+      console.log('%c[Serial] Solicitando porta USB...', 'color: #38bdf8; font-weight: bold;')
+      const port = await nav.serial.requestPort()
+      
+      console.log('%c[Serial] Abrindo porta a 115200 bps...', 'color: #38bdf8; font-weight: bold;')
       await port.open({ baudRate: 115200 })
-      portRef.current = port
+      
+      portaRef.current = port
       setConectado(true)
+      console.log('%c[Serial Conectado com Sucesso!]', 'color: #22c55e; font-weight: bold; font-size: 14px;')
 
-      const textDecoder = new TextDecoderStream()
-      // Conversão necessária para compatibilizar os tipos do stream da porta
-      const readableStream = port.readable as unknown as ReadableStream<BufferSource>
-      readableStream?.pipeTo(textDecoder.writable)
-      const reader = textDecoder.readable.getReader()
-      readerRef.current = reader
+      if (!port.readable) {
+        console.warn('[Serial] port.readable está nulo!')
+        return
+      }
 
+      const reader = port.readable.getReader()
+      const decoder = new TextDecoder()
       let buffer = ''
 
-      while (true) {
-        const { value, done } = await reader.read()
-        if (done) break
+      try {
+        while (true) {
+          const { value, done } = await reader.read()
+          if (done) {
+            console.log('[Serial] Leitura finalizada.')
+            break
+          }
+          if (value) {
+            const chunk = decoder.decode(value, { stream: true })
+            console.log('%c[Dado Bruto Chegando]:', 'color: #f59e0b;', chunk)
 
-        buffer += value
-        const linhas = buffer.split('\n')
-        buffer = linhas.pop() ?? ''
+            buffer += chunk
+            const linhas = buffer.split('\n')
+            buffer = linhas.pop() ?? ''
 
-        for (let linha of linhas) {
-          linha = linha.trim()
-          if (!linha) continue
+            for (const linha of linhas) {
+              const limpa = linha.trim()
+              if (!limpa) continue
 
-          try {
-            const evento: EventoEsp32 = JSON.parse(linha)
-            onEvento(evento)
-          } catch {
-            console.warn('[Serial] Fragmento parcial descartado:', linha)
+              try {
+                const evento: EventoEsp32 = JSON.parse(limpa)
+                console.log('%c[JSON Válido]:', 'color: #10b981; font-weight: bold;', evento)
+                onEventoRef.current(evento)
+              } catch {
+                console.log('[Texto recebido não-JSON]:', limpa)
+              }
+            }
           }
         }
+      } catch (readErr) {
+        console.error('[Serial Erro de Leitura]:', readErr)
+      } finally {
+        reader.releaseLock()
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Falha desconhecida'
-      setErro(`Erro ao ligar à porta série: ${msg}`)
-      await desconectar()
+      if (err instanceof DOMException && err.name === 'NotFoundError') {
+        console.log('[Serial] Seleção de porta cancelada.')
+        return
+      }
+      const msg = err instanceof Error ? err.message : 'Falha na conexão Serial'
+      console.error('[Serial Erro]:', msg)
+      setErro(msg)
+      setConectado(false)
     }
-  }, [onEvento, desconectar])
+  }, [])
 
-  useEffect(() => {
-    return () => {
-      desconectar()
+  const desconectar = useCallback(async () => {
+    if (portaRef.current) {
+      await portaRef.current.close()
+      portaRef.current = null
     }
-  }, [desconectar])
+    setConectado(false)
+  }, [])
 
-  return { conectado, conectar, desconectar, erro }
+  return { conectado, erro, conectar, desconectar }
 }
