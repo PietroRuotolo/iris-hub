@@ -1,4 +1,4 @@
-import { Eye, Zap, type LucideIcon, Palette} from 'lucide-react'
+import { Eye, Palette, Zap, type LucideIcon } from 'lucide-react'
 
 export type StatusJogo = 'disponivel' | 'desenvolvimento'
 
@@ -21,7 +21,7 @@ export interface Jogo {
   status: StatusJogo
   Icone: LucideIcon
   apresentacao: { aviso?: string; secoes: SecaoApresentacao[] }
-} 
+}
 
 export const JOGOS: Jogo[] = [
   {
@@ -74,21 +74,6 @@ export const JOGOS: Jogo[] = [
             'Conexão com internet (carrega o modelo do MediaPipe)',
           ],
         },
-        {
-          titulo: 'Fases',
-          ordenada: true,
-          itens: [
-            'Familiarização: alvos grandes, ritmo lento e sequência simples para aprender a jogar com o olhar.',
-            'Ritmo constante: alvos em batidas regulares e posições previsíveis.',
-            'Alternância: o olhar acompanha alvos que mudam de lado e de altura seguindo o ritmo.',
-            'Precisão e velocidade: alvos menores e intervalos mais curtos, aumentando a exigência aos poucos.',
-            'Desafio final: combina posições, ritmos e pausas das fases anteriores.',
-          ],
-        },
-        {
-          titulo: 'Demonstração',
-          midia: { src: null, pendente: 'Vídeo de demonstração em breve' },
-        },
       ],
     },
   },
@@ -102,36 +87,18 @@ export const JOGOS: Jogo[] = [
     Icone: Zap,
     apresentacao: {
       aviso:
-        'Roda direto no navegador. O objetivo é clicar na tela o mais rápido possível assim que a área mudar para verde.',
+        'Roda direto no navegador ou conectado ao ESP32. O objetivo é acionar o botão assim que a área mudar para verde.',
       secoes: [
         {
           titulo: 'O que é',
           texto:
-            'Teste psicomotor clássico de tempo de reação visual simples. O participante aguarda a alteração de cor da tela e deve clicar imediatamente após o sinal verde surgir, sem queimar a largada.',
+            'Teste psicomotor de tempo de reação visual simples com aferição em milissegundos.',
         },
         {
           titulo: 'Jogar',
           texto:
-            'A partida começa no modo de espera: aguarde o quadrado ficar verde e clique o mais rápido que conseguir. Clicar antes da hora registra falta (cedo demais).',
-          link: { href: '#', label: 'Começar partida' },
-        },
-        {
-          titulo: 'Como funciona',
-          ordenada: true,
-          itens: [
-            'Preparação: o sistema entra em espera por um tempo aleatório entre 2 e 5 segundos.',
-            'Estímulo: a tela fica verde e aparece a palavra "Clique!".',
-            'Acionamento: o tempo de reação até o clique é medido em milissegundos (ms).',
-            'Falta de largada: clicar antes da cor verde anula a tentativa com o aviso "Cedo demais".',
-          ],
-        },
-        {
-          titulo: 'Dados registrados',
-          itens: [
-            'Tempo de resposta em milissegundos (ms)',
-            'Tentativas antecipadas (queimas de largada)',
-            'Classificação do tempo de reação (Excelente, Bom, Regular ou Lento)',
-          ],
+            'Aguarde o sinal verde e acione imediatamente.',
+          link: { href: '/jogo-reflexo', label: 'Começar partida' },
         },
       ],
     },
@@ -146,44 +113,18 @@ export const JOGOS: Jogo[] = [
     Icone: Palette,
     apresentacao: {
       aviso:
-        'Conexão direta via Web Serial a 115200 bps. O jogo utiliza Web Audio API localmente e sincroniza as entradas dos 5 botões físicos do ESP32.',
+        'Conexão direta via Web Serial a 115200 bps. O jogo sincroniza áudio local e botões físicos do ESP32.',
       secoes: [
         {
           titulo: 'O que é',
           texto:
-            'Jogo clássico de memória estilo Genius com 5 cores e frequências sonoras distintas. O circuito sorteia sequências progressivas e valida as respostas do jogador em tempo real.',
+            'Jogo de memória estilo Genius com 5 cores e frequências sonoras distintas geradas pelo circuito.',
         },
         {
           titulo: 'Jogar',
           texto:
-            'Conecte o ESP32 via USB no navegador e clique em Iniciar Partida para receber as sequências no circuito.',
+            'Conecte o ESP32 via USB no navegador e clique em Iniciar Partida.',
           link: { href: '/jogo-cores', label: 'Jogar agora' },
-        },
-        {
-          titulo: 'Como funciona',
-          ordenada: true,
-          itens: [
-            'Conexão: selecione a porta serial do ESP32 no botão de conexão USB.',
-            'Estímulo: observe a ordem das luzes e os tons de áudio das 5 cores.',
-            'Reprodução: pressione os botões físicos na mesma ordem em que foram apresentados.',
-            'Progressão: cada rodada concluída adiciona uma nova cor à sequência até o primeiro erro.',
-          ],
-        },
-        {
-          titulo: 'Dados registrados',
-          itens: [
-            'Fase máxima atingida',
-            'Maior sequência de acertos (recorde)',
-            'Status de resposta em tempo real',
-          ],
-        },
-        {
-          titulo: 'Requisitos',
-          itens: [
-            'Navegador compatível com Web Serial (Chrome ou Edge)',
-            'Cabo USB conectado ao computador',
-            'ESP32 configurado com o firmware do Genius de 5 cores',
-          ],
         },
       ],
     },

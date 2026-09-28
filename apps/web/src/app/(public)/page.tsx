@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { ArrowRight, QrCode } from 'lucide-react'
 import CartaoJogo from '@/features/jogo-ritmo/components/CartaoJogo'
-import { JOGOS } from '@/features/jogo-ritmo/jogos'
+//mudei a rota para juntar os tres jogos
+import { JOGOS } from '@/lib/jogos'
 
 function BannerExperiencia() {
   return (
