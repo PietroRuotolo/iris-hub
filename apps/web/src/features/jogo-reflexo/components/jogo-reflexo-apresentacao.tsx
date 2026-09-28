@@ -1,111 +1,155 @@
 'use client'
 
-import { ArrowLeft, ArrowRight, Check, Info } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Gauge, Play, ShieldAlert, Cpu , Timer, Zap } from 'lucide-react'
 import { JOGO_REFLEXO, STATUS_JOGO } from '../reflexo.config'
 
+
 interface Props {
-  onComecar: () => void
-  onVoltar?: () => void
+    onComecar: () => void
+    onVoltar?: () => void
 }
 
 export default function ApresentacaoReflexo({ onComecar, onVoltar }: Props) {
-  const jogo = JOGO_REFLEXO
-  const statusInfo = STATUS_JOGO[jogo.status]
-  const Icone = jogo.Icone
+    const jogo = JOGO_REFLEXO
+    const statusInfo = STATUS_JOGO[jogo.status]
 
-  return (
-    <div className="flex w-full flex-col gap-6">
-      {/* Botão Voltar */}
-      <button
-        type="button"
-        onClick={onVoltar ?? (() => window.history.back())}
-        className="flex w-fit items-center gap-2 text-sm font-medium text-[var(--color-ink-soft,#64748b)] transition hover:text-[var(--color-navy,#0f172a)]"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Voltar ao menu
-      </button>
-
-      {/* Cartão Cabeçalho */}
-      <div className="rounded-2xl border border-[var(--color-border,#e2e8f0)] bg-white p-6 shadow-sm">
-        <div className="flex items-start justify-between">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-[var(--color-navy,#0f172a)]">
-            <Icone className="h-6 w-6" />
-          </div>
-          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusInfo.classes}`}>
-            {statusInfo.label}
-          </span>
-        </div>
-
-        <h1 className="mt-4 text-2xl font-bold tracking-tight text-[var(--color-navy,#0f172a)]">
-          {jogo.nome}
-        </h1>
-        <p className="text-sm font-medium text-[var(--color-ink-soft,#64748b)]">{jogo.tipo}</p>
-        <p className="mt-2 text-sm text-[var(--color-ink,#334155)]">{jogo.descricao}</p>
-      </div>
-
-      {/* Caixa de Aviso Verde */}
-      {jogo.apresentacao.aviso && (
-        <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-sm text-emerald-900">
-          <Info className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
-          <p className="leading-relaxed">{jogo.apresentacao.aviso}</p>
-        </div>
-      )}
-
-      {/* Seções de Texto (O que é, Jogar, Como Funciona) */}
-      {jogo.apresentacao.secoes.map((secao) => (
-        <div
-          key={secao.titulo}
-          className="rounded-2xl border border-[var(--color-border,#e2e8f0)] bg-white p-6 shadow-sm"
-        >
-          <h2 className="text-base font-bold text-[var(--color-navy,#0f172a)]">{secao.titulo}</h2>
-
-          {secao.texto && (
-            <p className="mt-2 text-sm leading-relaxed text-[var(--color-ink,#334155)]">
-              {secao.texto}
-            </p>
-          )}
-
-          {/* Listas Numeradas */}
-          {secao.itens && secao.ordenada && (
-            <ol className="mt-4 space-y-3 text-sm text-[var(--color-ink,#334155)]">
-              {secao.itens.map((item, index) => (
-                <li key={index} className="flex items-start gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-800">
-                    {index + 1}
-                  </span>
-                  <span className="leading-relaxed">{item}</span>
-                </li>
-              ))}
-            </ol>
-          )}
-
-          {/* Listas com Visto (✔) */}
-          {secao.itens && !secao.ordenada && (
-            <ul className="mt-3 space-y-2 text-sm text-[var(--color-ink,#334155)]">
-              {secao.itens.map((item, index) => (
-                <li key={index} className="flex items-center gap-2">
-                  <Check className="h-4 w-4 shrink-0 text-emerald-600" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {/* Botão Começar Partida */}
-          {secao.link && (
-            <div className="mt-6">
-              <button
+    return (
+        <div className="flex w-full flex-col gap-6">
+            {/* Botão Superior */}
+            <button
                 type="button"
-                onClick={onComecar}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--color-navy,#0f2a4a)] px-6 py-3.5 font-semibold text-white shadow-sm transition hover:bg-[var(--color-navy-dark,#0a1c31)] cursor-pointer"
-              >
-                {secao.link.label}
-                <ArrowRight className="h-4 w-4" />
-              </button>
+                onClick={onVoltar ?? (() => window.history.back())}
+                className="flex w-fit items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-slate-900 cursor-pointer"
+            >
+                <ArrowLeft className="h-4 w-4" />
+                Voltar ao menu
+            </button>
+
+            {/* Cartão de Destaque / Painel Hero */}
+            <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-br from-white via-slate-50/50 to-amber-50/30 p-8 shadow-sm">
+                <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                    <div className="max-w-xl space-y-3">
+                        <div className="flex items-center gap-3">
+                            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
+                                <Zap className="h-5 w-5 fill-amber-500/20" />
+                            </span>
+                            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusInfo.classes}`}>
+                                {statusInfo.label}
+                            </span>
+                        </div>
+
+                        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
+                            {jogo.nome}
+                        </h1>
+                        <p className="text-sm font-medium text-slate-500">{jogo.tipo}</p>
+                        <p className="text-sm leading-relaxed text-slate-600">
+                            {jogo.descricao}
+                        </p>
+                    </div>
+
+                    <div className="shrink-0">
+                        <button
+                            type="button"
+                            onClick={onComecar}
+                            className="flex w-full items-center justify-center gap-3 rounded-2xl bg-slate-900 px-8 py-4 text-sm font-bold text-white shadow-md transition hover:bg-slate-800 hover:shadow-lg cursor-pointer md:w-auto"
+                        >
+                            Começar Teste
+                            <ArrowRight className="h-4 w-4" />
+                        </button>
+                    </div>
+                </div>
             </div>
-          )}
+
+            {/* Guia Visual Rápido dos Estados */}
+            <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+                <h2 className="mb-4 text-xs font-bold tracking-wider text-slate-400 uppercase">
+                    Mecânica de Estímulo e Resposta
+                </h2>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div className="flex flex-col items-center justify-center rounded-2xl border border-rose-200 bg-rose-50/60 p-5 text-center">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-100 text-rose-700">
+                            <Timer className="h-4 w-4" />
+                        </div>
+                        <span className="mt-3 text-sm font-bold text-rose-950">1. Modo Espera</span>
+                        <p className="mt-1 text-xs text-rose-800/80">
+                            O ecrã permanece vermelho por um período aleatório (2 a 5s). Não clique ainda.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5 text-center">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                            <Play className="h-4 w-4 fill-emerald-600" />
+                        </div>
+                        <span className="mt-3 text-sm font-bold text-emerald-950">2. Disparo Verde</span>
+                        <p className="mt-1 text-xs text-emerald-800/80">
+                            Assim que mudar para verde, clique o mais depressa possível para travar o temporizador.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col items-center justify-center rounded-2xl border border-amber-200 bg-amber-50/60 p-5 text-center">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                            <ShieldAlert className="h-4 w-4" />
+                        </div>
+                        <span className="mt-3 text-sm font-bold text-amber-950">3. Falsa Partida</span>
+                        <p className="mt-1 text-xs text-amber-800/80">
+                            Clicar antes do sinal verde anula a medição da tentativa imediatamente.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Painel Analítico de Métricas */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="flex flex-col justify-between rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                            <Gauge className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-slate-900">Métricas Registadas</h3>
+                            <p className="text-xs text-slate-400">Avaliação do tempo de resposta</p>
+                        </div>
+                    </div>
+                    <ul className="mt-4 space-y-2 text-xs text-slate-600">
+                        <li className="flex items-center gap-2">
+                            <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                            Tempo de reação simples aferido em milissegundos (ms)
+                        </li>
+                        <li className="flex items-center gap-2">
+                            <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                            Registo de antecipações (queima de largada)
+                        </li>
+                        <li className="flex items-center gap-2">
+                            <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                            Classificação por escala psicomotora
+                        </li>
+                    </ul>
+                </div>
+
+                <div className="flex flex-col justify-between rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                            <Cpu className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-slate-900">Hardware e Acionamento</h3>
+                            <p className="text-xs text-slate-400">Instruções para o botão físico no ESP32</p>
+                        </div>
+                    </div>
+                    <ul className="mt-4 space-y-2 text-xs text-slate-600">
+                        <li className="flex items-center gap-2">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                            Mantenha o dedo posicionado sobre o botão físico na caixa do circuito
+                        </li>
+                        <li className="flex items-center gap-2">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                            Aguarde o sinal verde na tela e pressione o botão
+                        </li>
+                        
+                    </ul>
+                </div>
+            </div>
         </div>
-      ))}
-    </div>
-  )
+    )
 }

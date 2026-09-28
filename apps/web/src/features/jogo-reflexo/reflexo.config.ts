@@ -37,7 +37,7 @@ export const STATUS_JOGO: Record<StatusJogo, { label: string; classes: string }>
 export const JOGO_REFLEXO: Jogo = {
   id: 'jogo-reflexo',
   rota: '/jogo-reflexo',
-  nome: 'Jogo de reflexo',
+  nome: 'Jogo do reflexo',
   tipo: 'Aplicação web (teste de reação)',
   descricao: 'Avaliação de tempo de reação motora simples a estímulos visuais na tela.',
   status: 'disponivel',
