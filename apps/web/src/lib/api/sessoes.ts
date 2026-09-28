@@ -1,3 +1,5 @@
+
+
 // Sessões do jogo pela API. O navegador só fala com /back (mesmo domínio do site); o servidor Next
 // repassa ao gateway com a API_KEY e o login, e o gateway identifica a pessoa.
 
