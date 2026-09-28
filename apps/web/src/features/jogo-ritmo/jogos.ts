@@ -1,4 +1,4 @@
-import { Eye, Zap, type LucideIcon } from 'lucide-react'
+import { Eye, Zap, type LucideIcon, Palette} from 'lucide-react'
 
 export type StatusJogo = 'disponivel' | 'desenvolvimento'
 
@@ -131,6 +131,58 @@ export const JOGOS: Jogo[] = [
             'Tempo de resposta em milissegundos (ms)',
             'Tentativas antecipadas (queimas de largada)',
             'Classificação do tempo de reação (Excelente, Bom, Regular ou Lento)',
+          ],
+        },
+      ],
+    },
+  },
+  {
+    id: 'jogo-cores',
+    rota: '/jogo-cores',
+    nome: 'Jogo das cores',
+    tipo: 'Hardware ESP32 (Genius)',
+    descricao: 'Jogo de memória sequencial com estímulos visuais e sonoros de 5 cores via porta serial.',
+    status: 'disponivel',
+    Icone: Palette,
+    apresentacao: {
+      aviso:
+        'Conexão direta via Web Serial a 115200 bps. O jogo utiliza Web Audio API localmente e sincroniza as entradas dos 5 botões físicos do ESP32.',
+      secoes: [
+        {
+          titulo: 'O que é',
+          texto:
+            'Jogo clássico de memória estilo Genius com 5 cores e frequências sonoras distintas. O circuito sorteia sequências progressivas e valida as respostas do jogador em tempo real.',
+        },
+        {
+          titulo: 'Jogar',
+          texto:
+            'Conecte o ESP32 via USB no navegador e clique em Iniciar Partida para receber as sequências no circuito.',
+          link: { href: '/jogo-cores', label: 'Jogar agora' },
+        },
+        {
+          titulo: 'Como funciona',
+          ordenada: true,
+          itens: [
+            'Conexão: selecione a porta serial do ESP32 no botão de conexão USB.',
+            'Estímulo: observe a ordem das luzes e os tons de áudio das 5 cores.',
+            'Reprodução: pressione os botões físicos na mesma ordem em que foram apresentados.',
+            'Progressão: cada rodada concluída adiciona uma nova cor à sequência até o primeiro erro.',
+          ],
+        },
+        {
+          titulo: 'Dados registrados',
+          itens: [
+            'Fase máxima atingida',
+            'Maior sequência de acertos (recorde)',
+            'Status de resposta em tempo real',
+          ],
+        },
+        {
+          titulo: 'Requisitos',
+          itens: [
+            'Navegador compatível com Web Serial (Chrome ou Edge)',
+            'Cabo USB conectado ao computador',
+            'ESP32 configurado com o firmware do Genius de 5 cores',
           ],
         },
       ],
