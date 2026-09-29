@@ -1,5 +1,5 @@
 import { AlertTriangle } from 'lucide-react'
-import type { NivelLeitura, Resumo, SecaoResumo } from '../resumo-exemplo'
+import type { NivelLeitura, Resumo, SecaoResumo } from '../resumo'
 
 const NIVEIS: Record<NivelLeitura, string> = {
   adequado: 'bg-[var(--color-good-bg)] text-[var(--color-good)]',

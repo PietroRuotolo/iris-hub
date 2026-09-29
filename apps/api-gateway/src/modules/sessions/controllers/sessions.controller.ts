@@ -23,6 +23,11 @@ export class SessionsController {
     return repassar(await this.sessoes.iniciar(comParticipante(corpo, participanteId)), res)
   }
 
+  @Get()
+  async listar(@Headers('authorization') authorization: string | undefined, @Res({ passthrough: true }) res: Response) {
+    return repassar(await this.sessoes.listar(await this.participante(authorization)), res)
+  }
+
   @Get(':id')
   async obter(@Headers('authorization') authorization: string | undefined, @Param('id') id: string, @Res({ passthrough: true }) res: Response) {
     return repassar(await this.sessoes.obter(id, await this.participante(authorization)), res)

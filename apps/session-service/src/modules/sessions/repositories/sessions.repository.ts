@@ -17,6 +17,15 @@ export class SessionsRepository {
     return this.prisma.sessao.findUnique({ where: { id } })
   }
 
+  /** Sessões da pessoa, da mais recente para a mais antiga (índice participanteId + iniciadaEm). */
+  listarPorParticipante(participanteId: string | null, limite: number): Promise<Sessao[]> {
+    return this.prisma.sessao.findMany({
+      where: { participanteId },
+      orderBy: { iniciadaEm: 'desc' },
+      take: limite,
+    })
+  }
+
   /**
    * Grava uma fase numa transação: só atualiza se a sessão ainda estiver em andamento e sem essa
    * fase (duas requisições iguais ao mesmo tempo não gravam a fase duas vezes). false se não gravou.
