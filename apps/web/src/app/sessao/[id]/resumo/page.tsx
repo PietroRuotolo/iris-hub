@@ -2,11 +2,13 @@ import Link from 'next/link'
 import { ArrowLeft, QrCode, RotateCcw } from 'lucide-react'
 import BotaoAcao from '@/components/BotaoAcao'
 import ResumoSalvo from '@/features/resultados/components/ResumoSalvo'
+import { jogoDaUrl } from '@/features/resultados/historico'
 
-// Resumo de uma sessão salva: os números vêm do banco, pelo id da URL. O QR code ao lado ainda é
-// um espaço reservado.
-export default async function PaginaResumoSessao({ params }: PageProps<'/sessao/[id]/resumo'>) {
+// Resumo de uma sessão salva: os números vêm do banco, pelo id da URL e pelo jogo (`?jogo=reflexo`,
+// `?jogo=cores`; sem parâmetro é o jogo de ritmo). O QR code ao lado ainda é um espaço reservado.
+export default async function PaginaResumoSessao({ params, searchParams }: PageProps<'/sessao/[id]/resumo'>) {
   const { id } = await params
+  const jogo = jogoDaUrl((await searchParams).jogo)
 
   return (
     <>
@@ -15,7 +17,7 @@ export default async function PaginaResumoSessao({ params }: PageProps<'/sessao/
       </Link>
 
       <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
-        <ResumoSalvo id={id} />
+        <ResumoSalvo id={id} jogo={jogo} />
 
         <aside className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-sm">
           <h2 className="font-display text-lg font-semibold text-[var(--color-navy)]">Levar o resumo no celular</h2>

@@ -1,7 +1,8 @@
 // Monta o resumo mostrado nas telas a partir de uma sessão salva no banco.
 // Função pura (sem React, sem fetch): o formato de exibição fica testado à parte das telas.
 
-import type { SessaoJogo } from '@iris/contracts'
+import { resumirCores, resumirReflexo, type SessaoCores, type SessaoJogo, type SessaoReflexo } from '@iris/contracts'
+import { classificarTempo } from '../jogo-reflexo/reflexo'
 
 export type NivelLeitura = 'adequado' | 'atencao' | 'reduzido' | 'sem-dados'
 
@@ -20,10 +21,21 @@ export interface Resumo {
 }
 
 export const NOME_JOGO_RITMO = 'Jogo de ritmo por rastreamento ocular'
+export const NOME_JOGO_REFLEXO = 'Jogo do reflexo'
+export const NOME_JOGO_CORES = 'Jogo das cores'
 
 // Faixas da leitura, sobre a pontuação geral (0 a 100). ATENÇÃO: são ilustrativas, para a
 // apresentação acadêmica — não têm validade clínica.
 export const FAIXAS_LEITURA = { adequado: 70, atencao: 40 }
+
+// Faixa da leitura do jogo das cores, sobre a maior sequência repetida sem erro. ATENÇÃO: ilustrativa,
+// como as demais — sem validade clínica.
+export const FAIXAS_CORES = { adequado: 6, atencao: 4 }
+
+/** Reflexo: a partir de quantas largadas queimadas (em fração das rodadas) vale um aviso. */
+export const FRACAO_QUEIMADAS_AVISO = 1 / 3
+/** Reflexo: com menos reações válidas que isso, a média pouco representa a pessoa. */
+export const MIN_REACOES_CONFIAVEIS = 3
 
 /** Rastreamento abaixo disso vira observação: os números da partida ficam menos confiáveis. */
 export const COBERTURA_MINIMA = 0.7
@@ -129,4 +141,104 @@ export function resumoDaSessao(sessao: SessaoJogo): Resumo {
     data: formatarData(sessao.concluidaEm ?? sessao.iniciadaEm),
     secoes: [secaoDaSessao(sessao)],
   }
+}
+
+const NIVEL_DA_FAIXA = { excelente: 'adequado', bom: 'adequado', regular: 'atencao', lento: 'reduzido' } as const
+
+/** Uma seção com os números de uma sessão do jogo de reflexo. */
+export function secaoDoReflexo(sessao: SessaoReflexo): SecaoResumo {
+  const { validas, queimadas, tempoMedioMs, melhorTempoMs } = resumirReflexo(sessao.tentativas)
+  const total = sessao.tentativas.length
+
+  const observacoes: string[] = []
+  if (sessao.status === 'CANCELADA') observacoes.push('Sessão interrompida: só as rodadas jogadas entram nos números.')
+  if (total > 0 && queimadas / total >= FRACAO_QUEIMADAS_AVISO) {
+    observacoes.push('Muitas largadas queimadas: a pessoa apertou antes do sinal em boa parte das rodadas.')
+  }
+  if (validas > 0 && validas < MIN_REACOES_CONFIAVEIS) {
+    observacoes.push('Poucas reações válidas: a média representa pouco. Vale jogar mais rodadas.')
+  }
+
+  const linhas: [rotulo: string, valor: string | null][] = [
+    ['Rodadas jogadas', String(total)],
+    ['Reações válidas', String(validas)],
+    ['Largadas queimadas', String(queimadas)],
+    ['Tempo de reação médio', tempoMedioMs === null ? null : `${Math.round(tempoMedioMs)} ms`],
+    ['Melhor tempo', melhorTempoMs === null ? null : `${melhorTempoMs} ms`],
+  ]
+
+  const leitura =
+    tempoMedioMs === null
+      ? {
+          nivel: 'sem-dados' as const,
+          titulo: 'Sem dados suficientes',
+          texto: 'Nenhuma reação válida foi registrada, então não há tempo de reação para resumir.',
+          observacoes,
+        }
+      : {
+          nivel: NIVEL_DA_FAIXA[classificarTempo(tempoMedioMs)] as NivelLeitura,
+          titulo: TITULO_DA_FAIXA[classificarTempo(tempoMedioMs)],
+          texto: 'O tempo de reação é medido do sinal até o aperto do botão. Mostra o desempenho nesta sessão, não é um diagnóstico.',
+          observacoes,
+        }
+
+  return {
+    jogo: 'jogo-reflexo',
+    nomeJogo: NOME_JOGO_REFLEXO,
+    valoresDeReferencia: false,
+    linhas: linhas.filter((linha): linha is [string, string] => linha[1] !== null),
+    leitura,
+  }
+}
+
+const TITULO_DA_FAIXA = {
+  excelente: 'Reflexo excelente',
+  bom: 'Reflexo bom',
+  regular: 'Reflexo regular',
+  lento: 'Reflexo lento',
+} as const
+
+/** Uma seção com os números de uma sessão do jogo das cores. */
+export function secaoDoCores(sessao: SessaoCores): SecaoResumo {
+  const { rodadasJogadas, acertos, maiorSequencia, tempoRespostaMedioMs } = resumirCores(sessao.rodadas)
+
+  const observacoes: string[] = []
+  if (sessao.status === 'CANCELADA') observacoes.push('Partida interrompida antes do fim: só as rodadas jogadas entram nos números.')
+
+  const linhas: [rotulo: string, valor: string | null][] = [
+    ['Maior sequência repetida', rodadasJogadas === 0 ? null : String(maiorSequencia)],
+    ['Rodadas jogadas', String(rodadasJogadas)],
+    ['Rodadas acertadas', String(acertos)],
+    ['Pontuação final', sessao.pontuacaoFinal === null ? null : String(Math.round(sessao.pontuacaoFinal))],
+    ['Tempo de resposta médio', tempoRespostaMedioMs === null ? null : `${Math.round(tempoRespostaMedioMs)} ms`],
+  ]
+
+  let leitura: SecaoResumo['leitura']
+  if (rodadasJogadas === 0) {
+    leitura = { nivel: 'sem-dados', titulo: 'Sem dados suficientes', texto: 'Nenhuma rodada foi jogada nesta partida.', observacoes }
+  } else if (maiorSequencia >= FAIXAS_CORES.adequado) {
+    leitura = { nivel: 'adequado', titulo: 'Memória de sequência adequada', texto: 'A pessoa repetiu sequências longas sem errar.', observacoes }
+  } else if (maiorSequencia >= FAIXAS_CORES.atencao) {
+    leitura = { nivel: 'atencao', titulo: 'Atenção recomendada', texto: 'A pessoa repetiu sequências de tamanho médio. Vale jogar de novo e acompanhar a evolução.', observacoes }
+  } else {
+    leitura = { nivel: 'reduzido', titulo: 'Memória de sequência reduzida', texto: 'O erro veio logo nas primeiras rodadas, com sequências curtas.', observacoes }
+  }
+
+  return {
+    jogo: 'jogo-cores',
+    nomeJogo: NOME_JOGO_CORES,
+    valoresDeReferencia: false,
+    linhas: linhas.filter((linha): linha is [string, string] => linha[1] !== null),
+    leitura,
+  }
+}
+
+/** Resumo completo de uma sessão de reflexo salva, pronto para <ResumoSessao>. */
+export function resumoDoReflexo(sessao: SessaoReflexo): Resumo {
+  return { data: formatarData(sessao.concluidaEm ?? sessao.iniciadaEm), secoes: [secaoDoReflexo(sessao)] }
+}
+
+/** Resumo completo de uma sessão de cores salva, pronto para <ResumoSessao>. */
+export function resumoDoCores(sessao: SessaoCores): Resumo {
+  return { data: formatarData(sessao.concluidaEm ?? sessao.iniciadaEm), secoes: [secaoDoCores(sessao)] }
 }

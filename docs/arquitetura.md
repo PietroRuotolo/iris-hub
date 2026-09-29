@@ -5,7 +5,7 @@ Monorepo com o front-end do jogo, os serviços de back-end e pacotes compartilha
 `nest-cli.json` e um `vitest.config.ts`. Os pacotes de `packages/` são importados por alias
 (`@iris/config`, `@iris/contracts`, `@iris/logger`, `@iris/shared`).
 
-**Estado atual:** a partida grava a sessão no MongoDB enquanto é jogada, e as telas de Sessões e de resumo leem essas sessões de volta. A coleção `sessions` é de sessões de login, separada das sessões de jogo (`sessoes`).
+**Estado atual:** os três jogos (ritmo, reflexo e cores) gravam suas partidas no MongoDB, e as telas de Sessões e de resumo leem tudo de volta, juntando os jogos numa lista só. A coleção `sessions` é de sessões de login, separada das sessões de jogo.
 
 Para rodar, veja [como-rodar.md](como-rodar.md).
 
@@ -79,6 +79,33 @@ descobre a pessoa pelo token e preenche o `participanteId`):
 Banco: `sessoes` guarda a sessão com a tela, a calibração e o resumo das fases embutidos;
 `tentativas_alvo` guarda um documento por alvo. Amostras contínuas do olhar e vídeo não são salvos.
 
+#### Reflexo e cores
+
+Os outros dois jogos usam o **mesmo banco**, cada um com a sua coleção (`sessoes_reflexo` e
+`sessoes_cores`), e têm o mesmo formato de rotas: `POST /sessions/<jogo>` (inicia), `GET /sessions/<jogo>`
+(histórico, 20 por padrão e 100 no máximo), `GET /sessions/<jogo>/:id` e `POST /sessions/<jogo>/:id/finish`,
+com `<jogo>` = `reflexo` ou `cores`. Também exigem login, e uma sessão de outra pessoa responde como
+inexistente (404). As rotas `sessions/reflexo` e `sessions/cores` **precisam vir antes** de `sessions` nos
+módulos (session-service e gateway), senão `GET /sessions/reflexo` cai em `GET /sessions/:id`.
+
+- **Reflexo** (`SessaoReflexo`): as tentativas ficam embutidas na sessão (rodada, espera, tempo de reação,
+  se queimou a largada e como acionou). O serviço recalcula média e melhor tempo com `resumirReflexo`
+  (`packages/contracts`); o site não envia essas métricas. O `tempoEsperaMs` é uma **estimativa do
+  navegador** (do evento `esperando` até `reagir`), já que quem sorteia a espera é o ESP32.
+- **Cores** (`SessaoCores`): as rodadas ficam embutidas (tamanho da sequência, se acertou, tempo de
+  resposta). O serviço recalcula a maior sequência e o tempo médio com `resumirCores`; a pontuação final é a
+  que o ESP32 informou, e o serviço só a guarda. Os números das rodadas precisam vir em ordem (1, 2, 3...).
+- **Quando grava:** o site só cria a sessão quando a partida termina (game over no cores; "Encerrar e
+  salvar" no reflexo, que não tem fim natural) e a encerra em seguida, com nova tentativa automática se o
+  backend estiver fora do ar. Assim uma queda de conexão no meio do jogo não deixa sessões
+  `EM_ANDAMENTO` sem dono no banco. Se só o encerramento falhar de vez, "Tentar salvar de novo" reaproveita
+  a sessão já criada. No cores, reiniciar no meio de uma partida com rodadas jogadas grava a parcial como
+  `CANCELADA`.
+- **Leitura no site:** `/sessoes` lista os três jogos juntos (um que falhe ao carregar não esconde os
+  outros) e `/sessao/[id]/resumo?jogo=reflexo|cores` abre o resumo (sem parâmetro, é o jogo de ritmo). A
+  lógica que monta o histórico e os resumos está em `apps/web/src/features/resultados/` (`historico.ts` e
+  `resumo.ts`), separada das telas e com testes.
+
 ## Rodar localmente
 
 Passo a passo completo em [como-rodar.md](como-rodar.md). Resumo:
@@ -92,7 +119,11 @@ npm run dev:all          # site em http://localhost:3000, API em http://localhos
 ## Próximos passos
 
 1. Testar a partida com pessoas de verdade e ajustar tamanhos, ritmos e a janela de acerto.
-2. Gerar o QR code e o PDF do resumo (a tela `/resultado`, aberta no celular, ainda usa um resumo de
-   exemplo: é a última parte que não lê do banco).
+2. Gerar o QR code e o PDF do resumo, juntando os jogos da pessoa (a tela `/resultado`, aberta no
+   celular, ainda usa um resumo de exemplo: é a última parte que não lê do banco). Falta decidir quais
+   sessões entram no PDF (por exemplo, a última concluída de cada jogo) e como o celular, que não tem o
+   login do computador, acessa o resultado (link com token aleatório guardado no banco, ou dados no link).
+3. Testar o hardware: o firmware do reflexo ainda não foi validado com o ESP32 de verdade, então os eventos
+   que o site espera (`esperando`, `reagir`, `sucesso`, `queimou`) precisam ser conferidos na prática.
 
 Decisões registradas em [`docs/decisoes/`](decisoes/).
