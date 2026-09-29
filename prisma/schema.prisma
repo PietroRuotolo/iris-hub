@@ -136,3 +136,29 @@ model TentativaAlvo {
   @@index([sessaoId, fase])
   @@map("tentativas_alvo")
 }
+
+// ---------------------------------------------------------------------------------------------
+// Jogo de reflexo (avaliação psicomotora de tempo de reação).
+// As tentativas são guardadas diretamente embutidas na sessão, sem coleções extras.
+
+type TentativaReflexo {
+  rodada        Int
+  tempoEsperaMs Int
+  tempoReacaoMs Int?
+  queimou       Boolean
+  acionamento   String   // "MOUSE_CLICK", "SPACE_KEY" ou "ESP32_BUTTON"
+}
+
+model SessaoReflexo {
+  id             String             @id @default(auto()) @map("_id") @db.ObjectId
+  participanteId String?
+  iniciadaEm     DateTime           @default(now())
+  concluidaEm    DateTime?
+  status         String             // EM_ANDAMENTO, CONCLUIDA ou CANCELADA
+  tempoMedioMs   Float?
+  melhorTempoMs  Int?
+  tentativas     TentativaReflexo[]
+
+  @@index([participanteId, iniciadaEm])
+  @@map("sessoes_reflexo")
+}

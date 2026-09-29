@@ -46,4 +46,41 @@ export class SessionsRepository {
     })
     return count > 0
   }
+
+  // --- JOGO DE REFLEXO ---
+
+  /** Cria uma nova sessão para o teste de reflexo */
+  criarSessaoReflexo(dados: Prisma.SessaoReflexoCreateInput) {
+    return this.prisma.sessaoReflexo.create({ data: dados })
+  }
+
+  /** Procura uma sessão de reflexo pelo ID */
+  async buscarSessaoReflexoPorId(id: string) {
+    if (!ehObjectId(id)) return null
+    return this.prisma.sessaoReflexo.findUnique({ where: { id } })
+  }
+
+  /** Conclui a sessão de reflexo com os tempos e tentativas */
+  async concluirSessaoReflexo(
+    id: string,
+    dados: {
+      status: 'CONCLUIDA' | 'CANCELADA'
+      concluidaEm: Date
+      tempoMedioMs?: number | null
+      melhorTempoMs?: number | null
+      tentativas: Prisma.TentativaReflexoCreateInput[]
+    },
+  ): Promise<boolean> {
+    const { count } = await this.prisma.sessaoReflexo.updateMany({
+      where: { id, status: 'EM_ANDAMENTO' },
+      data: {
+        status: dados.status,
+        concluidaEm: dados.concluidaEm,
+        tempoMedioMs: dados.tempoMedioMs,
+        melhorTempoMs: dados.melhorTempoMs,
+        tentativas: { set: dados.tentativas },
+      },
+    })
+    return count > 0
+  }
 }
