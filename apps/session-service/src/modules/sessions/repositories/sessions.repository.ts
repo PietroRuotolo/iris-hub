@@ -69,6 +69,15 @@ export class SessionsRepository {
     return this.prisma.sessaoReflexo.findUnique({ where: { id } })
   }
 
+  /** Sessões de reflexo da pessoa, da mais recente para a mais antiga (índice participanteId + iniciadaEm). */
+  listarSessoesReflexoPorParticipante(participanteId: string | null, limite: number) {
+    return this.prisma.sessaoReflexo.findMany({
+      where: { participanteId },
+      orderBy: { iniciadaEm: 'desc' },
+      take: limite,
+    })
+  }
+
   /** Conclui a sessão de reflexo com os tempos e tentativas */
   async concluirSessaoReflexo(
     id: string,

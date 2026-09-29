@@ -5,11 +5,8 @@ import { ConflitoException, NaoEncontradoException } from '@iris/shared'
 import type { CreateSessionRequestDto } from '../dtos/request/create-session.request.dto.js'
 import type { FinishSessionRequestDto } from '../dtos/request/finish-session.request.dto.js'
 import type { RegisterPhaseRequestDto } from '../dtos/request/register-phase.request.dto.js'
+import { normalizarLimite } from '../../../core/utils/limite.js'
 import { SessionsRepository } from '../repositories/sessions.repository.js'
-
-/** Quantas sessões a listagem devolve por padrão e no máximo (a tela mostra o histórico recente). */
-const LIMITE_PADRAO = 20
-const LIMITE_MAXIMO = 100
 
 @Injectable()
 export class SessionsService {
@@ -44,9 +41,8 @@ export class SessionsService {
   }
 
   /** As sessões da pessoa, da mais recente para a mais antiga. */
-  listar(participanteId: string | null, limite = LIMITE_PADRAO): Promise<Sessao[]> {
-    const quantas = Math.min(Math.max(Math.trunc(limite) || LIMITE_PADRAO, 1), LIMITE_MAXIMO)
-    return this.repositorio.listarPorParticipante(participanteId ?? null, quantas)
+  listar(participanteId: string | null, limite?: number): Promise<Sessao[]> {
+    return this.repositorio.listarPorParticipante(participanteId ?? null, normalizarLimite(limite))
   }
 
   /** A sessão, se for dessa pessoa. De outra pessoa responde igual a inexistente (404). */

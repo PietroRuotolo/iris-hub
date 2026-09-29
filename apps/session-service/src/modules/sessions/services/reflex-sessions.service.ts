@@ -1,86 +1,71 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
+import { Injectable } from '@nestjs/common'
+import type { SessaoReflexo } from '@prisma/client'
+import { resumirReflexo } from '@iris/contracts'
+import { ConflitoException, DadosInvalidosException, NaoEncontradoException } from '@iris/shared'
+import type { CreateReflexSessionRequestDto } from '../dtos/request/create-reflex-session.request.dto.js'
+import type { FinishReflexSessionRequestDto, TentativaReflexoDto } from '../dtos/request/finish-reflex-session.request.dto.js'
+import { normalizarLimite } from '../../../core/utils/limite.js'
 import { SessionsRepository } from '../repositories/sessions.repository.js'
-import { CreateReflexSessionRequestDto } from '../dtos/request/create-reflex-session.request.dto.js'
-import { FinishReflexSessionRequestDto } from '../dtos/request/finish-reflex-session.request.dto.js'
-import { ReflexSessionResponseDto } from '../dtos/response/reflex-session.response.dto.js'
+
+/** O que cada campo da tentativa precisa respeitar além do formato (o DTO cuida do formato). */
+function problemasDaTentativa(t: TentativaReflexoDto, indice: number): string[] {
+  const problemas: string[] = []
+  const temReacao = typeof t.tempoReacaoMs === 'number'
+  if (t.queimou && temReacao) problemas.push(`tentativas.${indice}.tempoReacaoMs: quem queimou a largada não tem tempo de reação`)
+  if (!t.queimou && !temReacao) problemas.push(`tentativas.${indice}.tempoReacaoMs: obrigatório quando não queimou a largada`)
+  return problemas
+}
 
 @Injectable()
 export class ReflexSessionsService {
-  constructor(private readonly sessionsRepository: SessionsRepository) {}
+  constructor(private readonly repositorio: SessionsRepository) {}
 
-  async iniciar(dto: CreateReflexSessionRequestDto): Promise<ReflexSessionResponseDto> {
-    const sessao = await this.sessionsRepository.criarSessaoReflexo({
-      participanteId: dto.participanteId,
-      status: 'EM_ANDAMENTO',
-    })
-
-    return this.mapearParaResponse(sessao)
+  iniciar(dados: CreateReflexSessionRequestDto): Promise<SessaoReflexo> {
+    return this.repositorio.criarSessaoReflexo({ participanteId: dados.participanteId ?? null, status: 'EM_ANDAMENTO' })
   }
 
-  async obterPorId(id: string): Promise<ReflexSessionResponseDto> {
-    const sessao = await this.sessionsRepository.buscarSessaoReflexoPorId(id)
-    if (!sessao) {
-      throw new NotFoundException(`Sessão de reflexo com id '${id}' não encontrada.`)
-    }
-    return this.mapearParaResponse(sessao)
+  /** As sessões de reflexo da pessoa, da mais recente para a mais antiga. */
+  listar(participanteId: string | null, limite?: number): Promise<SessaoReflexo[]> {
+    return this.repositorio.listarSessoesReflexoPorParticipante(participanteId ?? null, normalizarLimite(limite))
   }
 
-  async concluir(id: string, dto: FinishReflexSessionRequestDto): Promise<ReflexSessionResponseDto> {
-    const sessao = await this.sessionsRepository.buscarSessaoReflexoPorId(id)
-    if (!sessao) {
-      throw new NotFoundException(`Sessão de reflexo com id '${id}' não encontrada.`)
+  /** A sessão, se for dessa pessoa. De outra pessoa responde igual a inexistente (404). */
+  async obter(id: string, participanteId?: string | null): Promise<SessaoReflexo> {
+    const sessao = await this.repositorio.buscarSessaoReflexoPorId(id)
+    if (!sessao || sessao.participanteId !== (participanteId ?? null)) {
+      throw new NaoEncontradoException('Sessão de reflexo', id)
     }
+    return sessao
+  }
 
-    if (sessao.status !== 'EM_ANDAMENTO') {
-      throw new BadRequestException('A sessão já se encontra finalizada.')
+  /** Recalcula média e melhor tempo a partir das tentativas (não confia nos números do site) e grava. */
+  async concluir(id: string, dados: FinishReflexSessionRequestDto, agora = new Date()): Promise<SessaoReflexo> {
+    const sessao = await this.obter(id, dados.participanteId)
+    if (sessao.status !== 'EM_ANDAMENTO') throw new ConflitoException('A sessão já foi encerrada')
+
+    const problemas = dados.tentativas.flatMap(problemasDaTentativa)
+    if (dados.status === 'CONCLUIDA' && dados.tentativas.length === 0) {
+      problemas.push('tentativas: uma sessão concluída precisa de ao menos uma tentativa')
     }
+    if (problemas.length > 0) throw new DadosInvalidosException(problemas)
 
-    // Filtra apenas as tentativas válidas para o cálculo de métricas
-    const tentativasValidas = dto.tentativas.filter(
-      (t) => !t.queimou && typeof t.tempoReacaoMs === 'number',
-    )
+    const tentativas = dados.tentativas.map((t) => ({
+      rodada: t.rodada,
+      tempoEsperaMs: t.tempoEsperaMs,
+      tempoReacaoMs: t.queimou ? null : (t.tempoReacaoMs ?? null),
+      queimou: t.queimou,
+      acionamento: t.acionamento,
+    }))
+    const { tempoMedioMs, melhorTempoMs } = resumirReflexo(tentativas)
 
-    let tempoMedioMs: number | null = null
-    let melhorTempoMs: number | null = null
-
-    if (tentativasValidas.length > 0) {
-      const tempos = tentativasValidas.map((t) => t.tempoReacaoMs!)
-      melhorTempoMs = Math.min(...tempos)
-      const soma = tempos.reduce((acc, val) => acc + val, 0)
-      tempoMedioMs = Math.round((soma / tempos.length) * 100) / 100
-    }
-
-    const atualizada = await this.sessionsRepository.concluirSessaoReflexo(id, {
-      status: dto.status,
-      concluidaEm: new Date(),
+    const gravou = await this.repositorio.concluirSessaoReflexo(id, {
+      status: dados.status,
+      concluidaEm: agora,
       tempoMedioMs,
       melhorTempoMs,
-      tentativas: dto.tentativas.map((t) => ({
-        rodada: t.rodada,
-        tempoEsperaMs: t.tempoEsperaMs,
-        tempoReacaoMs: t.tempoReacaoMs ?? null,
-        queimou: t.queimou,
-        acionamento: t.acionamento,
-      })),
+      tentativas,
     })
-
-    if (!atualizada) {
-      throw new BadRequestException('Não foi possível concluir a sessão de reflexo.')
-    }
-
-    return this.obterPorId(id)
-  }
-
-  private mapearParaResponse(sessao: any): ReflexSessionResponseDto {
-    return {
-      id: sessao.id,
-      participanteId: sessao.participanteId ?? null,
-      iniciadaEm: sessao.iniciadaEm,
-      concluidaEm: sessao.concluidaEm ?? null,
-      status: sessao.status,
-      tempoMedioMs: sessao.tempoMedioMs ?? null,
-      melhorTempoMs: sessao.melhorTempoMs ?? null,
-      tentativas: sessao.tentativas ?? [],
-    }
+    if (!gravou) throw new ConflitoException('A sessão já foi encerrada')
+    return this.obter(id, dados.participanteId)
   }
 }
