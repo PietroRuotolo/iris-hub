@@ -1,20 +1,7 @@
-// Resumo de exemplo para as telas enquanto não há dados reais: é o que a experiência mostra sem
-// nenhuma sessão carregada (valores de referência do jogo de ritmo).
+// Resumo de exemplo, para as telas que ainda não leem uma sessão do banco (hoje só /resultado,
+// aberta pelo QR code). Uma sessão salva de verdade vira resumo em `resumo.ts`.
 
-export type NivelLeitura = 'adequado' | 'atencao' | 'reduzido' | 'sem-dados'
-
-export interface SecaoResumo {
-  jogo: string
-  nomeJogo: string
-  valoresDeReferencia: boolean
-  linhas: [rotulo: string, valor: string][]
-  leitura: { nivel: NivelLeitura; titulo: string; texto: string; observacoes: string[] }
-}
-
-export interface Resumo {
-  data: string
-  secoes: SecaoResumo[]
-}
+import type { Resumo } from './resumo'
 
 export const RESUMO_EXEMPLO: Resumo = {
   data: '26 de setembro de 2026 às 14:30',

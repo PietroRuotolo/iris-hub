@@ -5,7 +5,7 @@ Monorepo com o front-end do jogo, os serviços de back-end e pacotes compartilha
 `nest-cli.json` e um `vitest.config.ts`. Os pacotes de `packages/` são importados por alias
 (`@iris/config`, `@iris/contracts`, `@iris/logger`, `@iris/shared`).
 
-**Estado atual:** o site tem o layout das telas, sem funcionalidades; o session-service grava calibrações no MongoDB. Sessões de jogo e seus endpoints foram removidos; a coleção `sessions` representa sessões de usuário.
+**Estado atual:** a partida grava a sessão no MongoDB enquanto é jogada, e as telas de Sessões e de resumo leem essas sessões de volta. A coleção `sessions` é de sessões de login, separada das sessões de jogo (`sessoes`).
 
 Para rodar, veja [como-rodar.md](como-rodar.md).
 
@@ -36,7 +36,8 @@ apps/web (Next.js, /back) ──HTTP──▶ apps/api-gateway ──HTTP──�
 Organizado por área:
 
 - `src/app/`: rotas. `(public)/` (início), `jogo/` (apresentação), `partida/` (calibração e fases,
-  tela cheia, sem menu), `configuracoes/` (tamanho da tela) e `sessao/[id]/resumo/`.
+  tela cheia, sem menu), `configuracoes/` (tamanho da tela), `sessoes/` (histórico de partidas da
+  pessoa) e `sessao/[id]/resumo/` (uma sessão salva).
 - `src/features/<área>/`: componentes e lógica de cada área. Lógica pura fica separada dos
   componentes, com testes (vitest):
   - `rastreamento-ocular`: features do olhar (landmarks → íris) e mapeamento olhar → tela.
@@ -72,6 +73,7 @@ descobre a pessoa pelo token e preenche o `participanteId`):
 | `POST /sessions` | Começa a partida, com a tela e o resumo da calibração |
 | `POST /sessions/:id/phases` | Grava uma fase: recalcula os pontos de cada tentativa e o resumo da fase |
 | `POST /sessions/:id/finish` | Encerra como `CONCLUIDA` ou `CANCELADA` |
+| `GET /sessions` | Histórico da pessoa, da sessão mais recente para a mais antiga (20 por padrão, 100 no máximo) |
 | `GET /sessions/:id` | A sessão, só para a própria pessoa |
 
 Banco: `sessoes` guarda a sessão com a tela, a calibração e o resumo das fases embutidos;
@@ -90,7 +92,7 @@ npm run dev:all          # site em http://localhost:3000, API em http://localhos
 ## Próximos passos
 
 1. Testar a partida com pessoas de verdade e ajustar tamanhos, ritmos e a janela de acerto.
-2. Ligar Sessões e o resumo da sessão (`sessao/[id]/resumo`) às sessões salvas.
-3. Login e user-service, se o projeto precisar.
+2. Gerar o QR code e o PDF do resumo (a tela `/resultado`, aberta no celular, ainda usa um resumo de
+   exemplo: é a última parte que não lê do banco).
 
 Decisões registradas em [`docs/decisoes/`](decisoes/).

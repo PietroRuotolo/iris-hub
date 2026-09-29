@@ -1,12 +1,13 @@
 import Link from 'next/link'
 import { ArrowLeft, QrCode, RotateCcw } from 'lucide-react'
 import BotaoAcao from '@/components/BotaoAcao'
-import ResumoSessao from '@/features/resultados/components/ResumoSessao'
-import { RESUMO_EXEMPLO } from '@/features/resultados/resumo-exemplo'
+import ResumoSalvo from '@/features/resultados/components/ResumoSalvo'
 
-// Resumo da sessão. Só o layout: resumo de exemplo (o id da URL ainda não é usado) e um espaço
-// reservado no lugar do QR code.
-export default function PaginaResumoSessao() {
+// Resumo de uma sessão salva: os números vêm do banco, pelo id da URL. O QR code ao lado ainda é
+// um espaço reservado.
+export default async function PaginaResumoSessao({ params }: PageProps<'/sessao/[id]/resumo'>) {
+  const { id } = await params
+
   return (
     <>
       <Link href="/sessoes" className="inline-flex items-center gap-1 text-sm font-medium text-[var(--color-navy)]">
@@ -14,7 +15,7 @@ export default function PaginaResumoSessao() {
       </Link>
 
       <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
-        <ResumoSessao resumo={RESUMO_EXEMPLO} />
+        <ResumoSalvo id={id} />
 
         <aside className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-sm">
           <h2 className="font-display text-lg font-semibold text-[var(--color-navy)]">Levar o resumo no celular</h2>
