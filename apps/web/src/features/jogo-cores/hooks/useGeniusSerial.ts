@@ -6,8 +6,8 @@ import type { EventoGenius } from '../cores.config'
 interface SerialPort {
   open(options: { baudRate: number }): Promise<void>
   close(): Promise<void>
-  readable: ReadableStream<any> | null
-  writable: WritableStream<any> | null
+  readable: ReadableStream<Uint8Array> | null
+  writable: WritableStream<Uint8Array> | null
 }
 
 interface NavigatorSerial {
@@ -20,7 +20,7 @@ export function useGeniusSerial(onEvento: (evento: EventoGenius) => void) {
   const [conectado, setConectado] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const portaRef = useRef<SerialPort | null>(null)
-  const writerRef = useRef<WritableStreamDefaultWriter<any> | null>(null)
+  const writerRef = useRef<WritableStreamDefaultWriter<Uint8Array> | null>(null)
 
   const onEventoRef = useRef(onEvento)
   useEffect(() => {
@@ -45,7 +45,7 @@ export function useGeniusSerial(onEvento: (evento: EventoGenius) => void) {
       setConectado(true)
 
       const textDecoder = new TextDecoderStream()
-      port.readable?.pipeTo(textDecoder.writable as any).catch(() => {})
+      port.readable?.pipeTo(textDecoder.writable as WritableStream<Uint8Array>).catch(() => {})
 
       const reader = textDecoder.readable.getReader()
       let buffer = ''

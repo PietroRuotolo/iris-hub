@@ -1,7 +1,11 @@
 'use client'
 
-import { useCallback, useState } from 'react'
-import { ArrowLeft, CheckCircle2, Cpu, RotateCcw, Usb, Zap } from 'lucide-react'
+import { useCallback, useRef, useState } from 'react'
+import { ArrowLeft, Cpu, Usb } from 'lucide-react'
+import PainelSalvamento, { type EstadoGravacao } from '@/components/PainelSalvamento'
+import { ErroAoEncerrar } from '@/lib/api/http'
+import { registrarSessaoReflexo } from '@/lib/api/reflexo'
+import { COLETA_REFLEXO_VAZIA, aplicarEventoReflexo, type ColetaReflexo } from '../coletor'
 import { useEsp32Serial, type EventoEsp32 } from '../hooks/useEsp32Serial'
 
 //vou mudar o layout ainda, ta muito feio, ta assim para ser testado
@@ -14,8 +18,16 @@ export default function TelaReflexo({ onVoltar }: Props) {
   const [valorDisplay, setValorDisplay] = useState<string | number>('Aguardando conexão')
   const [tempoMs, setTempoMs] = useState<number | null>(null)
   const [tentativas, setTentativas] = useState<number[]>([])
+  // O que vai para o banco (inclui as largadas queimadas, que a lista de tempos abaixo não mostra).
+  const coleta = useRef<ColetaReflexo>(COLETA_REFLEXO_VAZIA)
+  const [totalColetado, setTotalColetado] = useState(0)
+  const [gravacao, setGravacao] = useState<EstadoGravacao>({ tipo: 'ocioso' })
+  // Se criou a sessão mas falhou ao encerrar, a nova tentativa reaproveita a mesma (sem criar outra).
+  const sessaoPendente = useRef<string | null>(null)
 
   const lidarComEventoSerial = useCallback((evento: EventoEsp32) => {
+    coleta.current = aplicarEventoReflexo(coleta.current, evento, performance.now())
+    setTotalColetado(coleta.current.tentativas.length)
     setStatus(evento.status)
 
     if (evento.status === 'contagem') {
@@ -38,6 +50,25 @@ export default function TelaReflexo({ onVoltar }: Props) {
   }, [])
 
   const { conectado, erro, conectar } = useEsp32Serial(lidarComEventoSerial)
+
+  async function salvarSessao() {
+    const enviadas = coleta.current.tentativas
+    if (enviadas.length === 0) return
+    setGravacao({ tipo: 'salvando' })
+    try {
+      const { sessao } = await registrarSessaoReflexo('CONCLUIDA', enviadas, sessaoPendente.current)
+      sessaoPendente.current = null
+      // Nova sessão: começa do zero, para a próxima partida não repetir estas rodadas.
+      coleta.current = COLETA_REFLEXO_VAZIA
+      setTotalColetado(0)
+      setTentativas([])
+      setTempoMs(null)
+      setGravacao({ tipo: 'salvo', id: sessao.id })
+    } catch (erro) {
+      if (erro instanceof ErroAoEncerrar) sessaoPendente.current = erro.idSessao
+      setGravacao({ tipo: 'erro', mensagem: erro instanceof Error ? erro.message : String(erro) })
+    }
+  }
 
   const media =
     tentativas.length > 0
@@ -187,6 +218,14 @@ export default function TelaReflexo({ onVoltar }: Props) {
           </div>
         </div>
       )}
+
+      <PainelSalvamento
+        estado={gravacao}
+        jogo="reflexo"
+        rotuloSalvar="Encerrar e salvar sessão"
+        podeSalvar={totalColetado > 0}
+        aoSalvar={salvarSessao}
+      />
 
       {tentativas.length > 0 && (
         <div className="rounded-2xl border border-[var(--color-border,#e2e8f0)] bg-white p-6 shadow-sm">

@@ -1,9 +1,22 @@
 'use client'
 
 import { useCallback, useRef, useState } from 'react'
-import { ArrowLeft, Cpu, Play, RefreshCw, Trophy, Usb, Volume2 } from 'lucide-react'
+import { ArrowLeft, Cpu, Play, Trophy, Usb, Volume2 } from 'lucide-react'
+import type { RodadaCores } from '@iris/contracts'
+import PainelSalvamento, { type EstadoGravacao } from '@/components/PainelSalvamento'
+import { ErroAoEncerrar } from '@/lib/api/http'
+import { registrarSessaoCores } from '@/lib/api/cores'
+import { COLETA_CORES_VAZIA, aplicarEventoCores, temRodadas, type ColetaCores } from '../coletor'
 import { CORES_GENIUS, type EventoGenius } from '../cores.config'
 import { useGeniusSerial } from '../hooks/useGeniusSerial'
+
+/** Uma partida esperando para ser gravada. `idSessao` existe se a sessão foi criada e só faltou encerrar. */
+interface Gravacao {
+  status: 'CONCLUIDA' | 'CANCELADA'
+  rodadas: RodadaCores[]
+  pontuacao: number | null
+  idSessao: string | null
+}
 
 interface Props {
   onVoltar?: () => void
@@ -18,10 +31,28 @@ export default function TelaJogoCores({ onVoltar }: Props) {
 
   const audioCtxRef = useRef<AudioContext | null>(null)
 
+  // O que vai para o banco: as rodadas de cada partida, montadas a partir dos eventos do ESP32.
+  const coleta = useRef<ColetaCores>(COLETA_CORES_VAZIA)
+  const [gravacao, setGravacao] = useState<EstadoGravacao>({ tipo: 'ocioso' })
+  const pendente = useRef<Gravacao | null>(null)
+
+  const gravar = useCallback(async (dados: Gravacao) => {
+    setGravacao({ tipo: 'salvando' })
+    try {
+      const { sessao } = await registrarSessaoCores(dados.status, dados.rodadas, dados.pontuacao, dados.idSessao)
+      pendente.current = null
+      setGravacao({ tipo: 'salvo', id: sessao.id })
+    } catch (erro) {
+      // Guarda o que faltou para "Tentar salvar de novo", sem criar outra sessão se esta já existe.
+      pendente.current = { ...dados, idSessao: erro instanceof ErroAoEncerrar ? erro.idSessao : dados.idSessao }
+      setGravacao({ tipo: 'erro', mensagem: erro instanceof Error ? erro.message : String(erro) })
+    }
+  }, [])
+
   const tocarTom = useCallback((frequencia: number, duracaoMs = 300) => {
     try {
       if (!audioCtxRef.current) {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
         audioCtxRef.current = new AudioCtx()
       }
       const ctx = audioCtxRef.current
@@ -60,6 +91,13 @@ export default function TelaJogoCores({ onVoltar }: Props) {
 
   const processarEvento = useCallback(
     (evento: EventoGenius) => {
+      const jaTerminara = coleta.current.terminou
+      coleta.current = aplicarEventoCores(coleta.current, evento, performance.now())
+      // O jogo acaba no primeiro erro: é aí que a partida é gravada (uma vez só, mesmo que o evento se repita).
+      if (evento.evento === 'game_over' && !jaTerminara && temRodadas(coleta.current)) {
+        void gravar({ status: 'CONCLUIDA', rodadas: coleta.current.rodadas, pontuacao: coleta.current.pontuacao, idSessao: null })
+      }
+
       switch (evento.evento) {
         case 'pronto_para_iniciar':
           setStatusTexto("ESP32 pronto! Clique em 'Iniciar Partida'.")
@@ -104,12 +142,17 @@ export default function TelaJogoCores({ onVoltar }: Props) {
           break
       }
     },
-    [acenderCor, recorde, tocarTom]
+    [acenderCor, gravar, recorde, tocarTom]
   )
 
   const { conectado, erro, conectar, enviarComando } = useGeniusSerial(processarEvento)
 
   const handleIniciarJogo = () => {
+    // Reiniciar no meio de uma partida com rodadas jogadas: grava o que já foi medido como interrompida.
+    if (temRodadas(coleta.current) && !coleta.current.terminou) {
+      void gravar({ status: 'CANCELADA', rodadas: coleta.current.rodadas, pontuacao: coleta.current.pontuacao, idSessao: null })
+    }
+    coleta.current = COLETA_CORES_VAZIA
     enviarComando('START')
     setStatusTexto('A iniciar nova sequência...')
   }
@@ -216,6 +259,12 @@ export default function TelaJogoCores({ onVoltar }: Props) {
             })}
           </div>
         </div>
+
+        <PainelSalvamento
+          estado={gravacao}
+          jogo="cores"
+          aoSalvar={() => pendente.current && void gravar(pendente.current)}
+        />
 
         {/* Métricas e Placar */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
