@@ -162,3 +162,32 @@ model SessaoReflexo {
   @@index([participanteId, iniciadaEm])
   @@map("sessoes_reflexo")
 }
+
+// ---------------------------------------------------------------------------------------------
+// Jogo das cores (Genius com ESP32). Uma partida guarda as rodadas embutidas: são poucas (a
+// sequência cresce a cada acerto e o jogo acaba no primeiro erro), então não precisam de coleção
+// própria. A pontuação final vem do ESP32; maior sequência e tempo médio o serviço recalcula.
+
+type RodadaCores {
+  rodada           Int
+  tamanhoSequencia Int
+  acertou          Boolean
+  tempoRespostaMs  Int?
+}
+
+model SessaoCores {
+  id                   String        @id @default(auto()) @map("_id") @db.ObjectId
+  /// Id da conta (User.id); pseudônimo, sem dados pessoais na sessão.
+  participanteId       String?
+  iniciadaEm           DateTime      @default(now())
+  concluidaEm          DateTime?
+  /// EM_ANDAMENTO, CONCLUIDA ou CANCELADA
+  status               String
+  pontuacaoFinal       Float?
+  maiorSequencia       Int?
+  tempoRespostaMedioMs Float?
+  rodadas              RodadaCores[]
+
+  @@index([participanteId, iniciadaEm])
+  @@map("sessoes_cores")
+}

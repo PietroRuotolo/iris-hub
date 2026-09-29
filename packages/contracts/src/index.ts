@@ -20,3 +20,5 @@ export interface Calibracao {
 }
 
 export * from './sessoes.js'
+export * from './reflexo.js'
+export * from './cores.js'
