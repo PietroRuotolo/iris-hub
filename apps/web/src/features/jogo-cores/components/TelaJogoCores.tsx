@@ -1,9 +1,11 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Cpu, Play, Trophy, Usb, Volume2 } from 'lucide-react'
 import type { RodadaCores } from '@iris/contracts'
 import PainelSalvamento, { type EstadoGravacao } from '@/components/PainelSalvamento'
+import PainelSimulacao from '@/components/PainelSimulacao'
+import { roteiroCores, simulacaoLigada, tocarRoteiro } from '@/lib/serial/simulador'
 import { ErroAoEncerrar } from '@/lib/api/http'
 import { registrarSessaoCores } from '@/lib/api/cores'
 import { COLETA_CORES_VAZIA, aplicarEventoCores, temRodadas, type ColetaCores } from '../coletor'
@@ -129,7 +131,7 @@ export default function TelaJogoCores({ onVoltar }: Props) {
 
         case 'acertou_rodada':
           setEstadoJogo('acerto')
-          setStatusTexto('Sequência correta! Avançando de fase...')
+          setStatusTexto('Sequência correta! Próxima rodada...')
           if (evento.pontuacao && evento.pontuacao > recorde) {
             setRecorde(evento.pontuacao)
           }
@@ -145,7 +147,13 @@ export default function TelaJogoCores({ onVoltar }: Props) {
     [acenderCor, gravar, recorde, tocarTom]
   )
 
-  const { conectado, erro, conectar, enviarComando } = useGeniusSerial(processarEvento)
+  const { conectado: conectadoSerial, erro, conectar, enviarComando } = useGeniusSerial(processarEvento)
+
+  // Modo simulação (?simular, só em desenvolvimento): uma partida com 2 a 7 acertos, sem o ESP32.
+  const [simular] = useState(simulacaoLigada)
+  const conectado = conectadoSerial || simular
+  const cancelarSimulacao = useRef<() => void>(() => {})
+  useEffect(() => () => cancelarSimulacao.current(), [])
 
   const handleIniciarJogo = () => {
     // Reiniciar no meio de uma partida com rodadas jogadas: grava o que já foi medido como interrompida.
@@ -153,8 +161,13 @@ export default function TelaJogoCores({ onVoltar }: Props) {
       void gravar({ status: 'CANCELADA', rodadas: coleta.current.rodadas, pontuacao: coleta.current.pontuacao, idSessao: null })
     }
     coleta.current = COLETA_CORES_VAZIA
+    setStatusTexto('Iniciando nova sequência...')
+    if (simular) {
+      cancelarSimulacao.current()
+      cancelarSimulacao.current = tocarRoteiro(roteiroCores(2 + Math.floor(Math.random() * 6)), processarEvento)
+      return
+    }
     enviarComando('START')
-    setStatusTexto('A iniciar nova sequência...')
   }
 
   return (
@@ -213,7 +226,7 @@ export default function TelaJogoCores({ onVoltar }: Props) {
                 className="flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 cursor-pointer"
               >
                 <Usb className="h-4 w-4" />
-                Ligar à Porta USB
+                Conectar pela USB
               </button>
             ) : (
               <button
@@ -227,6 +240,10 @@ export default function TelaJogoCores({ onVoltar }: Props) {
             )}
           </div>
         </div>
+
+        {simular && (
+          <PainelSimulacao acoes={[{ rotulo: 'Simular partida inteira', aoClicar: handleIniciarJogo }]} />
+        )}
 
         {erro && (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-800">

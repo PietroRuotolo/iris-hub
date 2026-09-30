@@ -1,14 +1,15 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Cpu, Usb } from 'lucide-react'
 import PainelSalvamento, { type EstadoGravacao } from '@/components/PainelSalvamento'
+import PainelSimulacao from '@/components/PainelSimulacao'
+import { roteiroReflexo, simulacaoLigada, tocarRoteiro } from '@/lib/serial/simulador'
 import { ErroAoEncerrar } from '@/lib/api/http'
 import { registrarSessaoReflexo } from '@/lib/api/reflexo'
 import { COLETA_REFLEXO_VAZIA, aplicarEventoReflexo, type ColetaReflexo } from '../coletor'
 import { useEsp32Serial, type EventoEsp32 } from '../hooks/useEsp32Serial'
 
-//vou mudar o layout ainda, ta muito feio, ta assim para ser testado
 interface Props {
   onVoltar?: () => void
 }
@@ -49,7 +50,17 @@ export default function TelaReflexo({ onVoltar }: Props) {
     }
   }, [])
 
-  const { conectado, erro, conectar } = useEsp32Serial(lidarComEventoSerial)
+  const { conectado: conectadoSerial, erro, conectar } = useEsp32Serial(lidarComEventoSerial)
+
+  // Modo simulação (?simular, só em desenvolvimento): os eventos vêm do simulador, não da porta serial.
+  const [simular] = useState(simulacaoLigada)
+  const conectado = conectadoSerial || simular
+  const cancelarSimulacao = useRef<() => void>(() => {})
+  useEffect(() => () => cancelarSimulacao.current(), [])
+  const simularRodada = (queimar: boolean) => {
+    cancelarSimulacao.current()
+    cancelarSimulacao.current = tocarRoteiro(roteiroReflexo(queimar), lidarComEventoSerial)
+  }
 
   async function salvarSessao() {
     const enviadas = coleta.current.tentativas
@@ -126,11 +137,20 @@ export default function TelaReflexo({ onVoltar }: Props) {
               className="flex items-center gap-2 rounded-xl bg-[var(--color-navy,#0f2a4a)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--color-navy-dark,#0a1c31)] cursor-pointer"
             >
               <Usb className="h-4 w-4" />
-              Ligar à Porta USB
+              Conectar pela USB
             </button>
           )}
         </div>
       </div>
+
+      {simular && (
+        <PainelSimulacao
+          acoes={[
+            { rotulo: 'Simular rodada', aoClicar: () => simularRodada(false) },
+            { rotulo: 'Simular largada queimada', aoClicar: () => simularRodada(true) },
+          ]}
+        />
+      )}
 
       {erro && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-800">
@@ -220,7 +240,7 @@ export default function TelaReflexo({ onVoltar }: Props) {
       )}
 
       <PainelSalvamento
-        estado={gravacao}
+        estado={gravacao} 
         jogo="reflexo"
         rotuloSalvar="Encerrar e salvar sessão"
         podeSalvar={totalColetado > 0}
