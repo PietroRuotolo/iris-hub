@@ -6,7 +6,7 @@ export type EstadoSalvamento = { tipo: 'salvando' } | { tipo: 'salvo' } | { tipo
 
 const pct = (v: number | null) => (v === null ? '—' : `${Math.round(v * 100)}%`)
 
-function Salvamento({ estado }: { estado: EstadoSalvamento }) {
+function Salvamento({ estado, sessaoId }: { estado: EstadoSalvamento; sessaoId: string | null }) {
   if (estado.tipo === 'salvando') {
     return (
       <p className="flex items-center gap-2 text-sm text-[var(--color-ink-soft)]">
@@ -16,9 +16,19 @@ function Salvamento({ estado }: { estado: EstadoSalvamento }) {
   }
   if (estado.tipo === 'salvo') {
     return (
-      <p className="flex items-center gap-2 text-sm text-[var(--color-good)]">
-        <CheckCircle2 size={16} /> Resultados salvos na sua conta.
-      </p>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <p className="flex items-center gap-2 text-sm text-[var(--color-good)]">
+          <CheckCircle2 size={16} /> Resultados salvos na sua conta.
+        </p>
+        {sessaoId && (
+          <Link
+            href={`/sessao/${encodeURIComponent(sessaoId)}/resumo`}
+            className="text-sm font-medium text-[var(--color-navy)] underline"
+          >
+            Ver o resumo salvo
+          </Link>
+        )}
+      </div>
     )
   }
   return (
@@ -34,12 +44,14 @@ export default function TelaResultadoJogo({
   calibracao,
   concluida,
   salvamento,
+  sessaoId,
   aoJogarDeNovo,
 }: {
   fases: FaseResumo[]
   calibracao: CalibracaoSessao | null
   concluida: boolean
   salvamento: EstadoSalvamento
+  sessaoId: string | null
   aoJogarDeNovo: () => void
 }) {
   const { pontuacaoTotal, coberturaTotal } = resumirSessao(fases)
@@ -112,7 +124,7 @@ export default function TelaResultadoJogo({
         </dl>
 
         <div className="mt-4">
-          <Salvamento estado={salvamento} />
+          <Salvamento estado={salvamento} sessaoId={sessaoId} />
         </div>
       </div>
 

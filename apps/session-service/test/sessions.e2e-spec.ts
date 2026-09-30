@@ -90,6 +90,22 @@ describe('sessões do jogo (e2e)', () => {
     await http.post(`/sessions/${id}/phases`).send({ participanteId: 'usuario-1', fase: 3, tentativas: [tentativa(1)] }).expect(409)
   })
 
+  it('lista as sessões da pessoa, da mais recente para a mais antiga', async () => {
+    const http = request(app.getHttpServer())
+    const participanteId = 'usuario-lista'
+    const primeira = await http.post('/sessions').send({ ...inicio, participanteId }).expect(201)
+    const segunda = await http.post('/sessions').send({ ...inicio, participanteId }).expect(201)
+    await http.post(`/sessions/${segunda.body.id}/finish`).send({ participanteId, status: 'CONCLUIDA' }).expect(200)
+
+    const { body } = await http.get('/sessions').query({ participanteId }).expect(200)
+    expect(body.map((s: { id: string }) => s.id)).toEqual([segunda.body.id, primeira.body.id])
+    expect(body[0]).toMatchObject({ status: 'CONCLUIDA', participanteId, versaoPontuacao: 'v1' })
+
+    // as sessões de outra pessoa não aparecem
+    const outra = await http.get('/sessions').query({ participanteId: 'ninguem' }).expect(200)
+    expect(outra.body).toEqual([])
+  })
+
   it('não mostra a sessão de outra pessoa e rejeita pontos enviados pelo site', async () => {
     const http = request(app.getHttpServer())
     const { body } = await http.post('/sessions').send(inicio).expect(201)

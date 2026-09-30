@@ -136,3 +136,78 @@ model TentativaAlvo {
   @@index([sessaoId, fase])
   @@map("tentativas_alvo")
 }
+
+// ---------------------------------------------------------------------------------------------
+// Jogo de reflexo (avaliação psicomotora de tempo de reação).
+// As tentativas são guardadas diretamente embutidas na sessão, sem coleções extras.
+
+type TentativaReflexo {
+  rodada        Int
+  tempoEsperaMs Int
+  tempoReacaoMs Int?
+  queimou       Boolean
+  acionamento   String   // "MOUSE_CLICK", "SPACE_KEY" ou "ESP32_BUTTON"
+}
+
+model SessaoReflexo {
+  id             String             @id @default(auto()) @map("_id") @db.ObjectId
+  participanteId String?
+  iniciadaEm     DateTime           @default(now())
+  concluidaEm    DateTime?
+  status         String             // EM_ANDAMENTO, CONCLUIDA ou CANCELADA
+  tempoMedioMs   Float?
+  melhorTempoMs  Int?
+  tentativas     TentativaReflexo[]
+
+  @@index([participanteId, iniciadaEm])
+  @@map("sessoes_reflexo")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Jogo das cores (Genius com ESP32). Uma partida guarda as rodadas embutidas: são poucas (a
+// sequência cresce a cada acerto e o jogo acaba no primeiro erro), então não precisam de coleção
+// própria. A pontuação final vem do ESP32; maior sequência e tempo médio o serviço recalcula.
+
+type RodadaCores {
+  rodada           Int
+  tamanhoSequencia Int
+  acertou          Boolean
+  tempoRespostaMs  Int?
+}
+
+model SessaoCores {
+  id                   String        @id @default(auto()) @map("_id") @db.ObjectId
+  /// Id da conta (User.id); pseudônimo, sem dados pessoais na sessão.
+  participanteId       String?
+  iniciadaEm           DateTime      @default(now())
+  concluidaEm          DateTime?
+  /// EM_ANDAMENTO, CONCLUIDA ou CANCELADA
+  status               String
+  pontuacaoFinal       Float?
+  maiorSequencia       Int?
+  tempoRespostaMedioMs Float?
+  rodadas              RodadaCores[]
+
+  @@index([participanteId, iniciadaEm])
+  @@map("sessoes_cores")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Resumo compartilhado: o link do QR code (aberto no celular, sem login) com a última partida
+// encerrada de cada jogo. Guarda só o hash do token; as sessões ficam fixadas pelos ids.
+
+model ResumoCompartilhado {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  tokenHash       String   @unique
+  participanteId  String
+  /// Primeiro nome, para o cabeçalho do resumo no celular.
+  nome            String?
+  sessaoRitmoId   String?  @db.ObjectId
+  sessaoReflexoId String?  @db.ObjectId
+  sessaoCoresId   String?  @db.ObjectId
+  criadoEm        DateTime @default(now())
+  expiraEm        DateTime
+
+  @@index([participanteId, criadoEm])
+  @@map("resumos_compartilhados")
+}

@@ -49,6 +49,8 @@ interface FimPartida {
   calibracao: CalibracaoSessao | null
   concluida: boolean
   salvamento: Promise<void>
+  /** Id da sessão gravada, para abrir o resumo salvo. null se nem chegou a começar no backend. */
+  sessaoId: string | null
 }
 
 function assinarResize(aoMudar: () => void) {
@@ -91,6 +93,7 @@ export default function PartidaJogo() {
         calibracao={fim.calibracao}
         concluida={fim.concluida}
         salvamento={salvamento}
+        sessaoId={fim.sessaoId}
         aoJogarDeNovo={() => {
           rodadaAtual.current++
           setFim(null)
@@ -268,7 +271,7 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
     const salvamento = fila.current.then(() => {
       if (erroSalvar.current) throw new Error(erroSalvar.current)
     })
-    aoConcluir({ fases, calibracao: calibracaoSessao, concluida, salvamento })
+    aoConcluir({ fases, calibracao: calibracaoSessao, concluida, salvamento, sessaoId: sessaoId.current })
   }
 
   function aoTerminarFase(tentativas: TentativaEnviada[], modeloCorrigido: MapeamentoOlhar) {

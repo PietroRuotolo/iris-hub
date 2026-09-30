@@ -25,6 +25,8 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     '/back/**': ARQUIVOS_BACKEND,
     '/api/auth/**': ARQUIVOS_BACKEND,
+    // A página do QR code busca o resumo no servidor, direto no backend.
+    '/resultado': ARQUIVOS_BACKEND,
   },
 }
 

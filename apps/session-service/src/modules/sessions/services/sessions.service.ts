@@ -5,6 +5,7 @@ import { ConflitoException, NaoEncontradoException } from '@iris/shared'
 import type { CreateSessionRequestDto } from '../dtos/request/create-session.request.dto.js'
 import type { FinishSessionRequestDto } from '../dtos/request/finish-session.request.dto.js'
 import type { RegisterPhaseRequestDto } from '../dtos/request/register-phase.request.dto.js'
+import { normalizarLimite } from '../../../core/utils/limite.js'
 import { SessionsRepository } from '../repositories/sessions.repository.js'
 
 @Injectable()
@@ -37,6 +38,11 @@ export class SessionsService {
       fases: [],
       versaoPontuacao: VERSAO_PONTUACAO,
     })
+  }
+
+  /** As sessões da pessoa, da mais recente para a mais antiga. */
+  listar(participanteId: string | null, limite?: number): Promise<Sessao[]> {
+    return this.repositorio.listarPorParticipante(participanteId ?? null, normalizarLimite(limite))
   }
 
   /** A sessão, se for dessa pessoa. De outra pessoa responde igual a inexistente (404). */

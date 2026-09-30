@@ -1,58 +1,184 @@
-import Link from 'next/link'
-import { Clock, Download, FileText, Upload } from 'lucide-react'
-import { JOGOS } from '@/features/jogo-ritmo/jogos'
+'use client'
 
-// Só o layout: ainda não carrega arquivos nem guarda sessões (mostra o estado sem sessões).
+import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
+import { AlertTriangle, ChevronRight, Home, LoaderCircle } from 'lucide-react'
+import type { StatusSessao } from '@iris/contracts'
+import {
+  NOME_DO_JOGO,
+  caminhoDoResumo,
+  itemDoCores,
+  itemDoReflexo,
+  itemDoRitmo,
+  ordenarHistorico,
+  type ItemHistorico,
+  type JogoHistorico,
+} from '@/features/resultados/historico'
+import CompartilharResumo from '@/features/resultados/components/CompartilharResumo'
+import { formatarData } from '@/features/resultados/resumo'
+import { jogoPorChave } from '@/lib/jogos'
+import { listarSessoesCores } from '@/lib/api/cores'
+import { listarSessoesReflexo } from '@/lib/api/reflexo'
+import { listarSessoes } from '@/lib/api/sessoes'
+
+const STATUS: Record<StatusSessao, { label: string; classes: string }> = {
+  EM_ANDAMENTO: { label: 'Em andamento', classes: 'bg-[var(--color-bg)] text-[var(--color-ink-soft)]' },
+  CONCLUIDA: { label: 'Concluída', classes: 'bg-[var(--color-good-bg)] text-[var(--color-good)]' },
+  CANCELADA: { label: 'Interrompida', classes: 'bg-[var(--color-warn-bg)] text-[var(--color-warn)]' },
+}
+
+type Estado =
+  | { tipo: 'carregando' }
+  | { tipo: 'erro'; mensagem: string }
+  // `falhas`: jogos cuja lista não carregou (os outros aparecem normalmente).
+  | { tipo: 'pronto'; itens: ItemHistorico[]; falhas: JogoHistorico[] }
+
+/** Busca os três jogos ao mesmo tempo. Um que falhe não esconde os demais. */
+async function carregarHistorico(): Promise<Estado> {
+  const jogos: JogoHistorico[] = ['ritmo', 'reflexo', 'cores']
+  const resultados = await Promise.allSettled([
+    listarSessoes().then((l) => l.map(itemDoRitmo)),
+    listarSessoesReflexo().then((l) => l.map(itemDoReflexo)),
+    listarSessoesCores().then((l) => l.map(itemDoCores)),
+  ])
+
+  if (resultados.every((r) => r.status === 'rejected')) {
+    const motivo = resultados[0].status === 'rejected' ? resultados[0].reason : null
+    return { tipo: 'erro', mensagem: motivo instanceof Error ? motivo.message : 'erro desconhecido' }
+  }
+  const itens = resultados.flatMap((r) => (r.status === 'fulfilled' ? r.value : []))
+  const falhas = jogos.filter((_, i) => resultados[i].status === 'rejected')
+  return { tipo: 'pronto', itens: ordenarHistorico(itens), falhas }
+}
+
+function ItemSessao({ item }: { item: ItemHistorico }) {
+  const status = STATUS[item.status]
+  const { Icone } = jogoPorChave(item.jogo)
+  return (
+    <li>
+      <Link
+        href={caminhoDoResumo(item)}
+        className="flex items-center gap-3 rounded-2xl bg-[var(--color-surface)] p-4 shadow-sm outline-none transition hover:brightness-[0.99] focus-visible:ring-2 focus-visible:ring-[var(--color-navy)]"
+      >
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-bg)]">
+          <Icone size={18} className="text-[var(--color-navy)]" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-display font-semibold text-[var(--color-navy)]">
+            {NOME_DO_JOGO[item.jogo]}
+            <span className="font-normal text-[var(--color-ink-soft)]"> · {formatarData(item.data)}</span>
+          </p>
+          <p className="text-sm text-[var(--color-ink-soft)]">{item.resumo}</p>
+        </div>
+        <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${status.classes}`}>{status.label}</span>
+        <ChevronRight size={18} className="shrink-0 text-[var(--color-ink-soft)]" />
+      </Link>
+    </li>
+  )
+}
+
+// Histórico de partidas da pessoa logada, dos três jogos, lido do banco (cada partida é salva ao ser jogada).
 export default function Sessoes() {
+  const [estado, setEstado] = useState<Estado>({ tipo: 'carregando' })
+
+  const carregar = useCallback(() => {
+    carregarHistorico().then(setEstado)
+  }, [])
+
+  useEffect(() => {
+    let ativo = true
+    carregarHistorico().then((novo) => ativo && setEstado(novo))
+    return () => {
+      ativo = false
+    }
+  }, [])
+
   return (
     <>
       <h1 className="font-display text-2xl font-semibold text-[var(--color-navy)]">Sessões</h1>
       <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
-        A pessoa passa por cada jogo da experiência; carregue aqui o arquivo JSON que cada um exporta ao final. Quando
-        todos estiverem carregados, gere o resumo combinando os resultados.
+        Cada partida dos jogos é salva na sua conta ao ser jogada. Abra uma sessão para ver o resumo dela.
       </p>
 
-      <ul className="mt-4 space-y-2">
-        {JOGOS.map((jogo) => (
-          <li key={jogo.id} className="flex items-center gap-3 rounded-2xl bg-[var(--color-surface)] p-4 shadow-sm">
-            <Clock size={18} className="shrink-0 text-[var(--color-warn)]" />
-            <span className="text-sm text-[var(--color-ink)]">{jogo.nome} — aguardando sessão</span>
-          </li>
-        ))}
-      </ul>
-
-      <div className="mt-4 rounded-2xl bg-[var(--color-surface)] p-5 shadow-sm">
-        <button
-          type="button"
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--color-navy)] px-4 py-4 text-base font-semibold text-[var(--color-surface)] outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--color-navy)] focus-visible:ring-offset-2 active:scale-[0.99]"
+      {estado.tipo === 'carregando' && (
+        <p
+          className="mt-4 flex items-center gap-2 rounded-2xl bg-[var(--color-surface)] p-5 text-sm text-[var(--color-ink-soft)] shadow-sm"
+          role="status"
         >
-          <Upload size={20} /> Carregar sessão (JSON)
-        </button>
-        <a
-          href="/sessao-exemplo.json"
-          download
-          className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-[var(--color-navy)]"
-        >
-          <Download size={16} /> Baixar arquivo de exemplo
-        </a>
-      </div>
+          <LoaderCircle size={16} className="animate-spin" /> Carregando suas sessões…
+        </p>
+      )}
 
-      <h2 className="mt-6 font-display text-lg font-semibold text-[var(--color-navy)]">Sessões carregadas (0)</h2>
-      <p className="mt-3 rounded-2xl bg-[var(--color-surface)] p-5 text-sm text-[var(--color-ink-soft)] shadow-sm">
-        Nenhuma sessão ainda.
-      </p>
+      {estado.tipo === 'erro' && (
+        <div className="mt-4 flex items-start gap-3 rounded-2xl bg-[var(--color-warn-bg)] p-5 shadow-sm" role="alert">
+          <AlertTriangle size={18} className="mt-0.5 shrink-0 text-[var(--color-warn)]" />
+          <div>
+            <p className="text-sm text-[var(--color-ink)]">Não foi possível carregar suas sessões: {estado.mensagem}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setEstado({ tipo: 'carregando' })
+                carregar()
+              }}
+              className="mt-2 cursor-pointer text-sm font-medium text-[var(--color-navy)] underline"
+            >
+              Tentar de novo
+            </button>
+          </div>
+        </div>
+      )}
 
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-        <Link
-          href="/sessao/exemplo/resumo"
-          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--color-good)] px-4 py-3 text-sm font-semibold text-[var(--color-surface)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-navy)]"
-        >
-          <FileText size={18} /> Gerar resumo
-        </Link>
-      </div>
-      <p className="mt-2 text-xs text-[var(--color-ink-soft)]">
-        Sem sessões carregadas, o resumo sai com valores de referência para todos os jogos.
-      </p>
+      {estado.tipo === 'pronto' && (
+        <>
+          {estado.falhas.length > 0 && (
+            <div className="mt-4 flex items-start gap-3 rounded-2xl bg-[var(--color-warn-bg)] p-4" role="alert">
+              <AlertTriangle size={18} className="mt-0.5 shrink-0 text-[var(--color-warn)]" />
+              <p className="text-sm text-[var(--color-ink)]">
+                Não foi possível carregar as sessões de: {estado.falhas.map((j) => NOME_DO_JOGO[j]).join(', ')}. As demais
+                aparecem abaixo.{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEstado({ tipo: 'carregando' })
+                    carregar()
+                  }}
+                  className="cursor-pointer font-medium text-[var(--color-navy)] underline"
+                >
+                  Tentar de novo
+                </button>
+              </p>
+            </div>
+          )}
+
+          <div className="mt-6 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <section>
+              <h2 className="font-display text-lg font-semibold text-[var(--color-navy)]">
+                Partidas salvas ({estado.itens.length})
+              </h2>
+              {estado.itens.length === 0 ? (
+                <div className="mt-3 rounded-2xl bg-[var(--color-surface)] p-5 shadow-sm">
+                  <p className="text-sm text-[var(--color-ink-soft)]">
+                    Nenhuma partida ainda. Os resultados aparecem aqui assim que você jogar.
+                  </p>
+                  <Link
+                    href="/"
+                    className="mt-3 inline-flex items-center gap-2 rounded-xl bg-[var(--color-navy)] px-4 py-3 text-sm font-semibold text-[var(--color-surface)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-navy)] focus-visible:ring-offset-2"
+                  >
+                    <Home size={18} /> Escolher um jogo
+                  </Link>
+                </div>
+              ) : (
+                <ul className="mt-3 space-y-3">
+                  {estado.itens.map((item) => (
+                    <ItemSessao key={`${item.jogo}-${item.id}`} item={item} />
+                  ))}
+                </ul>
+              )}
+            </section>
+            {estado.itens.length > 0 && <CompartilharResumo />}
+          </div>
+        </>
+      )}
     </>
   )
 }
