@@ -13,5 +13,6 @@ import { ParticipanteService } from './participante.service.js'
   imports: [AuthModule],
   controllers: [ReflexoSessionsController, CoresSessionsController, SessionsController],
   providers: [SessionsClient, JogosSessionsClient, ParticipanteService],
+  exports: [ParticipanteService],
 })
 export class SessionsModule {}

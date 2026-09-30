@@ -191,3 +191,23 @@ model SessaoCores {
   @@index([participanteId, iniciadaEm])
   @@map("sessoes_cores")
 }
+
+// ---------------------------------------------------------------------------------------------
+// Resumo compartilhado: o link do QR code (aberto no celular, sem login) com a última partida
+// encerrada de cada jogo. Guarda só o hash do token; as sessões ficam fixadas pelos ids.
+
+model ResumoCompartilhado {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  tokenHash       String   @unique
+  participanteId  String
+  /// Primeiro nome, para o cabeçalho do resumo no celular.
+  nome            String?
+  sessaoRitmoId   String?  @db.ObjectId
+  sessaoReflexoId String?  @db.ObjectId
+  sessaoCoresId   String?  @db.ObjectId
+  criadoEm        DateTime @default(now())
+  expiraEm        DateTime
+
+  @@index([participanteId, criadoEm])
+  @@map("resumos_compartilhados")
+}
