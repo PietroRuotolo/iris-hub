@@ -20,7 +20,7 @@ const nextConfig: NextConfig = {
   typescript: { tsconfigPath: '../../tsconfig.json' },
   // Em desenvolvimento, o Next bloqueia scripts pedidos de outro domínio; libera o túnel do ngrok
   // (testar no celular pela rede). Não vale para produção.
-  allowedDevOrigins: ['*.ngrok-free.app', '*.ngrok-free.dev', '*.ngrok.app', '*.ngrok.io'],
+   allowedDevOrigins: ['*.ngrok-free.app', '*.ngrok-free.dev', '*.ngrok.app', '*.ngrok.io', '192.168.*.*', '10.*.*.*', '172.*.*.*', '*.trycloudflare.com'],
   outputFileTracingRoot: raizRepositorio,
   outputFileTracingIncludes: {
     '/back/**': ARQUIVOS_BACKEND,

@@ -23,6 +23,27 @@ export default function CompartilharResumo() {
   // Só roda no navegador (fica atrás do login), então window existe.
   const [base, setBase] = useState(() => (typeof window === 'undefined' ? '' : window.location.origin))
   const [estado, setEstado] = useState<Estado>({ tipo: 'ocioso' })
+  const [redeDetectada, setRedeDetectada] = useState(false)
+
+  // Aberto em localhost (desenvolvimento), o link não abriria no celular: usa o endereço do computador
+  // na rede local, que o servidor informa (/api/rede, só em desenvolvimento).
+  useEffect(() => {
+    if (!['localhost', '127.0.0.1'].includes(window.location.hostname)) return
+    let ativo = true
+    fetch('/api/rede', { cache: 'no-store' })
+      .then((r) => (r.ok ? (r.json() as Promise<{ enderecos?: string[] }>) : null))
+      .then((dados) => {
+        const endereco = dados?.enderecos?.[0]
+        if (ativo && endereco) {
+          setBase(endereco)
+          setRedeDetectada(true)
+        }
+      })
+      .catch(() => undefined)
+    return () => {
+      ativo = false
+    }
+  }, [])
 
   const link = estado.tipo === 'pronto' ? linkDoResumo(base, estado.token) : null
 
@@ -106,8 +127,9 @@ export default function CompartilharResumo() {
         className="mt-1 w-full rounded-xl bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-ink)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-navy)]"
       />
       <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
-        Na Vercel, deixe como está. Rodando local, troque pelo IP do computador na rede (ex.: http://192.168.0.10:3000),
-        senão o celular não abre o link.
+        {redeDetectada
+          ? 'Endereço deste computador na rede local. O celular precisa estar no mesmo Wi-Fi.'
+          : 'Na Vercel, deixe como está. Rodando local, use o IP do computador na rede (ex.: http://192.168.0.10:3000).'}
       </p>
 
       <p className="mt-5 text-sm text-[var(--color-ink-soft)]">
