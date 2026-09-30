@@ -5,12 +5,8 @@ import {
   ArrowRight,
   BrainCircuit,
   Cpu,
-  Gauge,
   Music2,
   Palette,
-  Sparkles,
-  Usb,
-  Volume2,
 } from 'lucide-react'
 import { CORES_GENIUS } from '../cores.config'
 

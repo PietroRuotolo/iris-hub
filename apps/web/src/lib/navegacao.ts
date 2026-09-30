@@ -29,6 +29,13 @@ export const ITEM_CONFIGURACOES: ItemMenu = { rota: '/configuracoes', label: 'Co
 // alvos, a introdução é uma história em tela cheia, e o resultado é aberto no celular pelo QR code.
 export const ROTAS_TELA_CHEIA = ['/partida', '/introducao', '/resultado']
 
+// Rotas abertas sem login: o resultado é aberto no celular pelo QR code, e o token do link é a chave.
+export const ROTAS_PUBLICAS = ['/resultado']
+
+export function ehRotaPublica(caminho: string): boolean {
+  return ROTAS_PUBLICAS.some((rota) => caminho === rota || caminho.startsWith(`${rota}/`))
+}
+
 export function ehTelaCheia(caminho: string): boolean {
   return ROTAS_TELA_CHEIA.some((rota) => caminho === rota || caminho.startsWith(`${rota}/`))
 }

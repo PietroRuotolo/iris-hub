@@ -14,7 +14,7 @@ function BannerExperiencia() {
       </div>
       <div className="flex-1">
         <h2 className="font-display text-lg font-semibold text-[var(--color-navy)]">Experiência de demonstração</h2>
-        <p className="text-sm text-[var(--color-ink-soft)]">Nenhuma sessão carregada · gere o resumo com QR code</p>
+        <p className="text-sm text-[var(--color-ink-soft)]">Suas partidas dos 3 jogos · gere o resumo com QR code</p>
       </div>
       <ArrowRight size={18} className="text-[var(--color-navy)] transition-transform group-hover:translate-x-1" />
     </Link>

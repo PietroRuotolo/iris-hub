@@ -1,7 +1,14 @@
 // Monta o resumo mostrado nas telas a partir de uma sessão salva no banco.
 // Função pura (sem React, sem fetch): o formato de exibição fica testado à parte das telas.
 
-import { resumirCores, resumirReflexo, type SessaoCores, type SessaoJogo, type SessaoReflexo } from '@iris/contracts'
+import {
+  resumirCores,
+  resumirReflexo,
+  type ResumoCompartilhado,
+  type SessaoCores,
+  type SessaoJogo,
+  type SessaoReflexo,
+} from '@iris/contracts'
 import { classificarTempo } from '../jogo-reflexo/reflexo'
 
 export type NivelLeitura = 'adequado' | 'atencao' | 'reduzido' | 'sem-dados'
@@ -17,6 +24,8 @@ export interface SecaoResumo {
 
 export interface Resumo {
   data: string
+  /** Quem jogou (primeiro nome). Sem nome, o cabeçalho diz só "Resultado da experiência". */
+  participante?: string | null
   secoes: SecaoResumo[]
 }
 
@@ -241,4 +250,33 @@ export function resumoDoReflexo(sessao: SessaoReflexo): Resumo {
 /** Resumo completo de uma sessão de cores salva, pronto para <ResumoSessao>. */
 export function resumoDoCores(sessao: SessaoCores): Resumo {
   return { data: formatarData(sessao.concluidaEm ?? sessao.iniciadaEm), secoes: [secaoDoCores(sessao)] }
+}
+
+/** Seção de um jogo que a pessoa não jogou (ou não encerrou) antes de gerar o resumo. */
+export function secaoNaoJogada(jogo: string, nomeJogo: string): SecaoResumo {
+  return {
+    jogo,
+    nomeJogo,
+    valoresDeReferencia: false,
+    linhas: [],
+    leitura: {
+      nivel: 'sem-dados',
+      titulo: 'Não jogado',
+      texto: 'Nenhuma partida encerrada deste jogo quando o resumo foi gerado.',
+      observacoes: [],
+    },
+  }
+}
+
+/** O resumo aberto pelo QR code: uma seção por jogo, na ordem do menu, com a partida fixada no link. */
+export function resumoCompartilhado(dados: ResumoCompartilhado): Resumo {
+  return {
+    data: formatarData(dados.criadoEm),
+    participante: dados.nome,
+    secoes: [
+      dados.ritmo ? secaoDaSessao(dados.ritmo) : secaoNaoJogada('jogo-ritmo', NOME_JOGO_RITMO),
+      dados.reflexo ? secaoDoReflexo(dados.reflexo) : secaoNaoJogada('jogo-reflexo', NOME_JOGO_REFLEXO),
+      dados.cores ? secaoDoCores(dados.cores) : secaoNaoJogada('jogo-cores', NOME_JOGO_CORES),
+    ],
+  }
 }

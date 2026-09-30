@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, ChevronRight, Eye, LoaderCircle } from 'lucide-react'
+import { AlertTriangle, ChevronRight, Home, LoaderCircle } from 'lucide-react'
 import type { StatusSessao } from '@iris/contracts'
 import {
   NOME_DO_JOGO,
@@ -14,7 +14,9 @@ import {
   type ItemHistorico,
   type JogoHistorico,
 } from '@/features/resultados/historico'
+import CompartilharResumo from '@/features/resultados/components/CompartilharResumo'
 import { formatarData } from '@/features/resultados/resumo'
+import { jogoPorChave } from '@/lib/jogos'
 import { listarSessoesCores } from '@/lib/api/cores'
 import { listarSessoesReflexo } from '@/lib/api/reflexo'
 import { listarSessoes } from '@/lib/api/sessoes'
@@ -51,6 +53,7 @@ async function carregarHistorico(): Promise<Estado> {
 
 function ItemSessao({ item }: { item: ItemHistorico }) {
   const status = STATUS[item.status]
+  const { Icone } = jogoPorChave(item.jogo)
   return (
     <li>
       <Link
@@ -58,7 +61,7 @@ function ItemSessao({ item }: { item: ItemHistorico }) {
         className="flex items-center gap-3 rounded-2xl bg-[var(--color-surface)] p-4 shadow-sm outline-none transition hover:brightness-[0.99] focus-visible:ring-2 focus-visible:ring-[var(--color-navy)]"
       >
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-bg)]">
-          <Eye size={18} className="text-[var(--color-navy)]" />
+          <Icone size={18} className="text-[var(--color-navy)]" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-display font-semibold text-[var(--color-navy)]">
@@ -98,7 +101,10 @@ export default function Sessoes() {
       </p>
 
       {estado.tipo === 'carregando' && (
-        <p className="mt-4 flex items-center gap-2 rounded-2xl bg-[var(--color-surface)] p-5 text-sm text-[var(--color-ink-soft)] shadow-sm" role="status">
+        <p
+          className="mt-4 flex items-center gap-2 rounded-2xl bg-[var(--color-surface)] p-5 text-sm text-[var(--color-ink-soft)] shadow-sm"
+          role="status"
+        >
           <LoaderCircle size={16} className="animate-spin" /> Carregando suas sessões…
         </p>
       )}
@@ -144,28 +150,33 @@ export default function Sessoes() {
             </div>
           )}
 
-          <h2 className="mt-6 font-display text-lg font-semibold text-[var(--color-navy)]">
-            Partidas salvas ({estado.itens.length})
-          </h2>
-          {estado.itens.length === 0 ? (
-            <div className="mt-3 rounded-2xl bg-[var(--color-surface)] p-5 shadow-sm">
-              <p className="text-sm text-[var(--color-ink-soft)]">
-                Nenhuma partida ainda. Os resultados aparecem aqui assim que você jogar.
-              </p>
-              <Link
-                href="/jogo"
-                className="mt-3 inline-flex items-center gap-2 rounded-xl bg-[var(--color-navy)] px-4 py-3 text-sm font-semibold text-[var(--color-surface)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-navy)] focus-visible:ring-offset-2"
-              >
-                <Eye size={18} /> Ir para o jogo de ritmo
-              </Link>
-            </div>
-          ) : (
-            <ul className="mt-3 space-y-3">
-              {estado.itens.map((item) => (
-                <ItemSessao key={`${item.jogo}-${item.id}`} item={item} />
-              ))}
-            </ul>
-          )}
+          <div className="mt-6 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <section>
+              <h2 className="font-display text-lg font-semibold text-[var(--color-navy)]">
+                Partidas salvas ({estado.itens.length})
+              </h2>
+              {estado.itens.length === 0 ? (
+                <div className="mt-3 rounded-2xl bg-[var(--color-surface)] p-5 shadow-sm">
+                  <p className="text-sm text-[var(--color-ink-soft)]">
+                    Nenhuma partida ainda. Os resultados aparecem aqui assim que você jogar.
+                  </p>
+                  <Link
+                    href="/"
+                    className="mt-3 inline-flex items-center gap-2 rounded-xl bg-[var(--color-navy)] px-4 py-3 text-sm font-semibold text-[var(--color-surface)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-navy)] focus-visible:ring-offset-2"
+                  >
+                    <Home size={18} /> Escolher um jogo
+                  </Link>
+                </div>
+              ) : (
+                <ul className="mt-3 space-y-3">
+                  {estado.itens.map((item) => (
+                    <ItemSessao key={`${item.jogo}-${item.id}`} item={item} />
+                  ))}
+                </ul>
+              )}
+            </section>
+            {estado.itens.length > 0 && <CompartilharResumo />}
+          </div>
         </>
       )}
     </>
