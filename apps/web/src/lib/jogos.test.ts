@@ -1,4 +1,4 @@
-import { JOGOS, STATUS_JOGO, type Jogo } from './jogos'
+import { JOGOS, STATUS_JOGO, jogoPorChave, type Jogo } from './jogos'
 import { describe, expect, it } from 'vitest'
 
 describe('Catálogo de Jogos (lib/jogos)', () => {
@@ -45,5 +45,19 @@ describe('Catálogo de Jogos (lib/jogos)', () => {
     const rotas = JOGOS.map((jogo) => jogo.rota)
     const rotasUnicas = new Set(rotas)
     expect(rotas.length).toBe(rotasUnicas.size)
+  })
+
+  it('cada chave de sessão aponta para um jogo só', () => {
+    const chaves = JOGOS.map((jogo) => jogo.chave)
+    expect(new Set(chaves).size).toBe(chaves.length)
+    expect(jogoPorChave('reflexo').id).toBe('jogo-reflexo')
+    expect(jogoPorChave('cores').id).toBe('jogo-cores')
+    expect(jogoPorChave('ritmo').id).toBe('jogo-ritmo')
+  })
+
+  it('nenhum link de apresentação fica sem destino', () => {
+    JOGOS.flatMap((jogo) => jogo.apresentacao.secoes).forEach((secao) => {
+      if (secao.link) expect(secao.link.href.startsWith('/')).toBe(true)
+    })
   })
 })

@@ -1,7 +1,7 @@
 'use client'
 
 import { ArrowLeft, ArrowRight, Gauge, Play, ShieldAlert, Cpu , Timer, Zap } from 'lucide-react'
-import { JOGO_REFLEXO, STATUS_JOGO } from '../reflexo.config'
+import { STATUS_JOGO, jogoPorChave } from '@/lib/jogos'
 
 
 interface Props {
@@ -10,7 +10,7 @@ interface Props {
 }
 
 export default function ApresentacaoReflexo({ onComecar, onVoltar }: Props) {
-    const jogo = JOGO_REFLEXO
+    const jogo = jogoPorChave('reflexo')
     const statusInfo = STATUS_JOGO[jogo.status]
 
     return (
