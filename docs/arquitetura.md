@@ -106,6 +106,32 @@ módulos (session-service e gateway), senão `GET /sessions/reflexo` cai em `GET
   lógica que monta o histórico e os resumos está em `apps/web/src/features/resultados/` (`historico.ts` e
   `resumo.ts`), separada das telas e com testes.
 
+### Resumo compartilhado (QR code)
+
+`session-service` (`modules/resumos`), pelo gateway em `/resumos`:
+
+| Rota | O que faz |
+|---|---|
+| `POST /resumos` | Com login. Fixa a última partida encerrada de cada jogo da pessoa (a última `CONCLUIDA`; sem ela, a última interrompida com dados) e devolve um token. 409 se ela ainda não jogou nada. |
+| `GET /resumos/:token` | Sem login (só a `x-api-key`, que o servidor do site põe). Devolve as sessões fixadas, o primeiro nome e a validade. 404 se o token for inválido ou estiver vencido. |
+
+Banco: `resumos_compartilhados` guarda o **hash** do token (nunca o token), o `participanteId`, o
+primeiro nome, os ids das três sessões escolhidas e `expiraEm` (7 dias). O que a pessoa jogar depois
+não muda um resumo já entregue.
+
+No site: **Gerar QR code** (em Sessões e no resumo de uma sessão) cria o link
+`/resultado?t=<token>`. A página `/resultado` é a única rota pública (`ROTAS_PUBLICAS` em
+`lib/navegacao.ts` e em `proxy.ts`): busca o resumo **no servidor** (`lib/server/resumos.ts`) e monta
+as três seções com `resumoCompartilhado` (`features/resultados/resumo.ts`). **Baixar PDF** abre a
+impressão do navegador (Salvar como PDF); os botões somem na impressão. **Próxima pessoa** sai da
+conta (dois toques para confirmar).
+
+### Modo simulação do ESP32
+
+Em desenvolvimento, `/jogo-reflexo?simular` e `/jogo-cores?simular` mostram botões que geram os
+mesmos eventos do firmware (`lib/serial/simulador.ts`, testado contra os coletores). As partidas vão
+para o banco de verdade, pelo mesmo caminho do hardware. Não existe no build de produção.
+
 ## Rodar localmente
 
 Passo a passo completo em [como-rodar.md](como-rodar.md). Resumo:
@@ -119,10 +145,7 @@ npm run dev:all          # site em http://localhost:3000, API em http://localhos
 ## Próximos passos
 
 1. Testar a partida com pessoas de verdade e ajustar tamanhos, ritmos e a janela de acerto.
-2. Gerar o QR code e o PDF do resumo, juntando os jogos da pessoa (a tela `/resultado`, aberta no
-   celular, ainda usa um resumo de exemplo: é a última parte que não lê do banco). Falta decidir quais
-   sessões entram no PDF (por exemplo, a última concluída de cada jogo) e como o celular, que não tem o
-   login do computador, acessa o resultado (link com token aleatório guardado no banco, ou dados no link).
+2. PDF gerado no servidor (hoje é a impressão do navegador), se o formato precisar ser fixo.
 3. Testar o hardware: o firmware do reflexo ainda não foi validado com o ESP32 de verdade, então os eventos
    que o site espera (`esperando`, `reagir`, `sucesso`, `queimou`) precisam ser conferidos na prática.
 
