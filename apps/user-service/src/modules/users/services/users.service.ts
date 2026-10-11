@@ -9,8 +9,8 @@ import { mascararEmail, regexBuscaPorNome } from './busca.js'
 
 const LIMITE_BUSCA_PADRAO = 10
 
-function jogador(u: Pick<User, 'id' | 'nome' | 'email' | 'historiaVistaEm'>): JogadorResponse {
-  return { id: u.id, nome: u.nome, emailMascarado: mascararEmail(u.email), historiaVista: u.historiaVistaEm !== null }
+function jogador(u: Pick<User, 'id' | 'nome' | 'email'>): JogadorResponse {
+  return { id: u.id, nome: u.nome, emailMascarado: mascararEmail(u.email) }
 }
 
 /** Contas de jogadores. Não há login: quem joga é escolhido no site, na hora de jogar. */
@@ -39,12 +39,5 @@ export class UsersService {
     const usuario = await this.repositorio.buscarPorId(id)
     if (!usuario) throw new NaoEncontradoException('Jogador', id)
     return jogador(usuario)
-  }
-
-  /** Marca que a pessoa terminou a história de introdução (só a primeira vez muda algo). */
-  async marcarHistoriaVista(id: string, agora = new Date()): Promise<JogadorResponse> {
-    const atual = await this.obter(id)
-    if (atual.historiaVista) return atual
-    return jogador(await this.repositorio.marcarHistoriaVista(id, agora))
   }
 }

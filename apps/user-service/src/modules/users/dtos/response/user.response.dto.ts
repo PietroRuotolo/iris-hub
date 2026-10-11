@@ -4,7 +4,6 @@ export interface JogadorResponse {
   nome: string
   /** E-mail com o meio escondido ("a***@gmail.com"), só para diferenciar homônimos. */
   emailMascarado: string
-  historiaVista: boolean
 }
 
 /** Resposta da criação: quem acabou de se cadastrar vê os próprios dados. */

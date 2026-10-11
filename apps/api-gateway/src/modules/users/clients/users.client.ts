@@ -24,8 +24,4 @@ export class UsersClient {
   obter(id: string) {
     return encaminhar(this.servico, 'GET', `/users/${encodeURIComponent(id)}`)
   }
-
-  marcarHistoriaVista(id: string) {
-    return encaminhar(this.servico, 'POST', `/users/${encodeURIComponent(id)}/intro-seen`)
-  }
 }

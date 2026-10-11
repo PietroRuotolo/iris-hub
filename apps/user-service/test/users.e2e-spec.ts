@@ -36,7 +36,6 @@ describe('contas dos jogadores (e2e)', () => {
       email: 'joao.pedro@exemplo.com',
       telefone: '11987654321',
       emailMascarado: 'j***@exemplo.com',
-      historiaVista: false,
     })
   })
 
@@ -63,12 +62,10 @@ describe('contas dos jogadores (e2e)', () => {
     await http.get('/users').query({ busca: 'j' }).expect(400) // pelo menos 2 letras
   })
 
-  it('obtém um jogador e marca a história vista; id inexistente dá 404', async () => {
+  it('obtém um jogador; id inexistente dá 404', async () => {
     const http = request(app.getHttpServer())
     const [{ id }] = (await http.get('/users').query({ busca: 'joão' })).body
-    expect((await http.get(`/users/${id}`).expect(200)).body).toMatchObject({ id, nome: 'João Pedro', historiaVista: false })
-    expect((await http.post(`/users/${id}/intro-seen`).expect(200)).body.historiaVista).toBe(true)
+    expect((await http.get(`/users/${id}`).expect(200)).body).toEqual({ id, nome: 'João Pedro', emailMascarado: 'j***@exemplo.com' })
     await http.get('/users/nao-existe').expect(404)
-    await http.post('/users/nao-existe/intro-seen').expect(404)
   })
 })

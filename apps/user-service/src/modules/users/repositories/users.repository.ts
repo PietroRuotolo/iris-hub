@@ -7,7 +7,6 @@ interface UserCru {
   _id: string
   nome: string
   email: string
-  historiaVistaEm?: { $date: string } | null
 }
 
 @Injectable()
@@ -23,20 +22,11 @@ export class UsersRepository {
   }
 
   /** Pelo nome, com uma expressão regular já pronta (sem diferenciar maiúsculas e acentos). */
-  async buscarPorNome(regex: string, limite: number): Promise<Pick<User, 'id' | 'nome' | 'email' | 'historiaVistaEm'>[]> {
+  async buscarPorNome(regex: string, limite: number): Promise<Pick<User, 'id' | 'nome' | 'email'>[]> {
     const crus = (await this.prisma.user.findRaw({
       filter: { nome: { $regex: regex, $options: 'i' } },
-      options: { projection: { nome: 1, email: 1, historiaVistaEm: 1 }, sort: { nome: 1 }, limit: limite },
+      options: { projection: { nome: 1, email: 1 }, sort: { nome: 1 }, limit: limite },
     })) as unknown as UserCru[]
-    return crus.map((u) => ({
-      id: u._id,
-      nome: u.nome,
-      email: u.email,
-      historiaVistaEm: u.historiaVistaEm ? new Date(u.historiaVistaEm.$date) : null,
-    }))
-  }
-
-  marcarHistoriaVista(id: string, quando: Date): Promise<User> {
-    return this.prisma.user.update({ where: { id }, data: { historiaVistaEm: quando } })
+    return crus.map((u) => ({ id: u._id, nome: u.nome, email: u.email }))
   }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common'
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common'
 import { CreateUserRequestDto } from '../dtos/request/create-user.request.dto.js'
 import { SearchUsersRequestDto } from '../dtos/request/search-users.request.dto.js'
 import { UsersService } from '../services/users.service.js'
@@ -22,11 +22,5 @@ export class UsersController {
   @Get(':id')
   obter(@Param('id') id: string) {
     return this.usuarios.obter(id)
-  }
-
-  @Post(':id/intro-seen')
-  @HttpCode(HttpStatus.OK)
-  marcarHistoriaVista(@Param('id') id: string) {
-    return this.usuarios.marcarHistoriaVista(id)
   }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query, Res } from '@nestjs/common'
+import { Body, Controller, Get, Param, Post, Query, Res } from '@nestjs/common'
 import type { Response } from 'express'
 import { repassar } from '../../../core/utils/encaminhar.js'
 import { UsersClient } from '../clients/users.client.js'
@@ -22,11 +22,5 @@ export class UsersController {
   @Get(':id')
   async obter(@Param('id') id: string, @Res({ passthrough: true }) res: Response) {
     return repassar(await this.usuarios.obter(id), res)
-  }
-
-  @Post(':id/intro-seen')
-  @HttpCode(HttpStatus.OK)
-  async marcarHistoriaVista(@Param('id') id: string, @Res({ passthrough: true }) res: Response) {
-    return repassar(await this.usuarios.marcarHistoriaVista(id), res)
   }
 }
