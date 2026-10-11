@@ -1,4 +1,4 @@
-import { STATUS_JOGO, type StatusJogo } from '../jogos'
+import { STATUS_JOGO, type StatusJogo } from '@/lib/jogos'
 
 // Selo com o status do jogo (ex.: "Em desenvolvimento").
 export default function SeloStatus({ status }: { status: StatusJogo }) {

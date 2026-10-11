@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ehTelaCheia, ITEM_CONFIGURACOES, itemAtivo } from './navegacao'
+import { ehRotaPublica, ehTelaCheia, ITEM_CONFIGURACOES, itemAtivo } from './navegacao'
 
 describe('ehTelaCheia', () => {
   it('reconhece as rotas sem menu e suas subrotas', () => {
@@ -33,5 +33,14 @@ describe('itemAtivo', () => {
     expect(itemAtivo(ITEM_CONFIGURACOES.rota, '/configuracoes')).toBe(true)
     expect(itemAtivo(ITEM_CONFIGURACOES.rota, '/')).toBe(false)
     expect(ehTelaCheia('/configuracoes')).toBe(false)
+  })
+})
+
+describe('ehRotaPublica', () => {
+  it('só o resultado do QR code abre sem login', () => {
+    expect(ehRotaPublica('/resultado')).toBe(true)
+    expect(ehRotaPublica('/')).toBe(false)
+    expect(ehRotaPublica('/sessoes')).toBe(false)
+    expect(ehRotaPublica('/resultados')).toBe(false)
   })
 })

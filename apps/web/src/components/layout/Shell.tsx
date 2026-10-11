@@ -7,12 +7,15 @@ import Image from 'next/image'
 import AuthGate, { useAuth } from '@/components/auth/AuthGate'
 import Historia from '@/features/historia/components/Historia'
 import Sidebar from './Sidebar'
-import { ehTelaCheia } from '@/lib/navegacao'
+import { ehRotaPublica, ehTelaCheia } from '@/lib/navegacao'
 
 // Casca das páginas: menu lateral e área de conteúdo; calibração e resultado usam tela cheia.
 export default function Shell({ children }: { children: React.ReactNode }) {
   const caminho = usePathname()
   const [menuAberto, setMenuAberto] = useState(false)
+
+  // O resultado aberto pelo QR code (no celular, sem login) não passa pelo login nem pela introdução.
+  if (ehRotaPublica(caminho)) return <>{children}</>
 
   return (
     <AuthGate>

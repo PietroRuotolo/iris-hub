@@ -1,5 +1,5 @@
 import { AlertTriangle } from 'lucide-react'
-import type { NivelLeitura, Resumo, SecaoResumo } from '../resumo-exemplo'
+import type { NivelLeitura, Resumo, SecaoResumo } from '../resumo'
 
 const NIVEIS: Record<NivelLeitura, string> = {
   adequado: 'bg-[var(--color-good-bg)] text-[var(--color-good)]',
@@ -49,13 +49,15 @@ function SecaoJogo({ nomeJogo, valoresDeReferencia, linhas, leitura }: SecaoResu
   )
 }
 
-// Resumo SIMULADO da sessão: uma seção por jogo, cada uma com os números e uma interpretação ilustrativa.
+// Resumo da experiência: uma seção por jogo, cada uma com os números e uma interpretação ilustrativa.
 export default function ResumoSessao({ resumo }: { resumo: Resumo }) {
   return (
-    <article className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-sm">
-      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">Resumo simulado</p>
-      <h2 className="mt-1 font-display text-xl font-semibold text-[var(--color-navy)]">Resultado da experiência</h2>
-      <p className="mt-1 text-sm text-[var(--color-ink-soft)]">Paciente: demonstração · {resumo.data}</p>
+    <article className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-sm print:shadow-none">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">iris hub · resumo</p>
+      <h2 className="mt-1 font-display text-xl font-semibold text-[var(--color-navy)]">
+        {resumo.participante ? `Resultado de ${resumo.participante}` : 'Resultado da experiência'}
+      </h2>
+      <p className="mt-1 text-sm text-[var(--color-ink-soft)]">{resumo.data}</p>
 
       <div className="mt-4 flex items-start gap-3 rounded-xl bg-[var(--color-warn-bg)] p-4">
         <AlertTriangle size={18} className="mt-0.5 shrink-0 text-[var(--color-warn)]" />

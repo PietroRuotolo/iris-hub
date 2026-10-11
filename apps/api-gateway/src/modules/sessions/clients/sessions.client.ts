@@ -19,6 +19,11 @@ export class SessionsClient {
     return encaminhar(this.servico, 'POST', '/sessions', corpo)
   }
 
+  listar(participanteId: string) {
+    const query = new URLSearchParams({ participanteId })
+    return encaminhar(this.servico, 'GET', `/sessions?${query}`)
+  }
+
   obter(id: string, participanteId: string) {
     const query = new URLSearchParams({ participanteId })
     return encaminhar(this.servico, 'GET', `/sessions/${encodeURIComponent(id)}?${query}`)

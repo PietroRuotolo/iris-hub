@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { ArrowLeft, ArrowRight, Check, Clock, Info, Play } from 'lucide-react'
-import type { Jogo, SecaoApresentacao } from '../jogos'
+import type { Jogo, SecaoApresentacao } from '@/lib/jogos'
 import SeloStatus from './SeloStatus'
 
 function Pendente({ texto }: { texto: string }) {

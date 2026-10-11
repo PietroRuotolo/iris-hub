@@ -15,6 +15,16 @@ export class SessionsController {
     return SessionResponseDto.de(await this.sessoes.iniciar(dados))
   }
 
+  /** Histórico da pessoa, da sessão mais recente para a mais antiga. */
+  @Get()
+  async listar(
+    @Query('participanteId') participanteId?: string,
+    @Query('limite') limite?: string,
+  ): Promise<SessionResponseDto[]> {
+    const sessoes = await this.sessoes.listar(participanteId ?? null, limite === undefined ? undefined : Number(limite))
+    return sessoes.map((sessao) => SessionResponseDto.de(sessao))
+  }
+
   @Get(':id')
   async obter(@Param('id') id: string, @Query('participanteId') participanteId?: string): Promise<SessionResponseDto> {
     return SessionResponseDto.de(await this.sessoes.obter(id, participanteId))

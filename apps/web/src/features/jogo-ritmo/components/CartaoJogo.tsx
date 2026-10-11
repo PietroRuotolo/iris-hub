@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
-import type { Jogo } from '../jogos'
+import type { Jogo } from '@/lib/jogos'
 import SeloStatus from './SeloStatus'
 
 // Card do jogo na página inicial; leva à apresentação do jogo.
