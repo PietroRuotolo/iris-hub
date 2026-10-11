@@ -14,11 +14,14 @@ import {
   type ItemHistorico,
   type JogoHistorico,
 } from '@/features/resultados/historico'
+import ComJogador from '@/features/jogadores/components/ComJogador'
+import { urlComJogador } from '@/features/jogadores/url'
 import CompartilharResumo from '@/features/resultados/components/CompartilharResumo'
 import { formatarData } from '@/features/resultados/resumo'
 import { jogoPorChave } from '@/lib/jogos'
 import { listarSessoesCores } from '@/lib/api/cores'
 import { listarSessoesReflexo } from '@/lib/api/reflexo'
+import type { Jogador } from '@/lib/api/usuarios'
 import { listarSessoes } from '@/lib/api/sessoes'
 
 const STATUS: Record<StatusSessao, { label: string; classes: string }> = {
@@ -51,13 +54,13 @@ async function carregarHistorico(): Promise<Estado> {
   return { tipo: 'pronto', itens: ordenarHistorico(itens), falhas }
 }
 
-function ItemSessao({ item }: { item: ItemHistorico }) {
+function ItemSessao({ item, jogadorId }: { item: ItemHistorico; jogadorId: string }) {
   const status = STATUS[item.status]
   const { Icone } = jogoPorChave(item.jogo)
   return (
     <li>
       <Link
-        href={caminhoDoResumo(item)}
+        href={urlComJogador(caminhoDoResumo(item), jogadorId)}
         className="flex items-center gap-3 rounded-2xl bg-[var(--color-surface)] p-4 shadow-sm outline-none transition hover:brightness-[0.99] focus-visible:ring-2 focus-visible:ring-[var(--color-navy)]"
       >
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-bg)]">
@@ -77,8 +80,21 @@ function ItemSessao({ item }: { item: ItemHistorico }) {
   )
 }
 
-// Histórico de partidas da pessoa logada, dos três jogos, lido do banco (cada partida é salva ao ser jogada).
+// Histórico de partidas de um jogador (escolhido na página), dos três jogos, lido do banco (cada
+// partida é salva ao ser jogada).
 export default function Sessoes() {
+  return (
+    <>
+      <h1 className="font-display text-2xl font-semibold text-[var(--color-navy)]">Sessões</h1>
+      <p className="mt-1 mb-4 text-sm text-[var(--color-ink-soft)]">
+        Cada partida dos jogos é salva na conta do jogador. Abra uma sessão para ver o resumo dela.
+      </p>
+      <ComJogador titulo="De quem são as partidas?">{(jogador) => <HistoricoDoJogador jogador={jogador} />}</ComJogador>
+    </>
+  )
+}
+
+function HistoricoDoJogador({ jogador }: { jogador: Jogador }) {
   const [estado, setEstado] = useState<Estado>({ tipo: 'carregando' })
 
   const carregar = useCallback(() => {
@@ -95,17 +111,13 @@ export default function Sessoes() {
 
   return (
     <>
-      <h1 className="font-display text-2xl font-semibold text-[var(--color-navy)]">Sessões</h1>
-      <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
-        Cada partida dos jogos é salva na sua conta ao ser jogada. Abra uma sessão para ver o resumo dela.
-      </p>
 
       {estado.tipo === 'carregando' && (
         <p
           className="mt-4 flex items-center gap-2 rounded-2xl bg-[var(--color-surface)] p-5 text-sm text-[var(--color-ink-soft)] shadow-sm"
           role="status"
         >
-          <LoaderCircle size={16} className="animate-spin" /> Carregando suas sessões…
+          <LoaderCircle size={16} className="animate-spin" /> Carregando as sessões…
         </p>
       )}
 
@@ -113,7 +125,7 @@ export default function Sessoes() {
         <div className="mt-4 flex items-start gap-3 rounded-2xl bg-[var(--color-warn-bg)] p-5 shadow-sm" role="alert">
           <AlertTriangle size={18} className="mt-0.5 shrink-0 text-[var(--color-warn)]" />
           <div>
-            <p className="text-sm text-[var(--color-ink)]">Não foi possível carregar suas sessões: {estado.mensagem}</p>
+            <p className="text-sm text-[var(--color-ink)]">Não foi possível carregar as sessões: {estado.mensagem}</p>
             <button
               type="button"
               onClick={() => {
@@ -158,7 +170,7 @@ export default function Sessoes() {
               {estado.itens.length === 0 ? (
                 <div className="mt-3 rounded-2xl bg-[var(--color-surface)] p-5 shadow-sm">
                   <p className="text-sm text-[var(--color-ink-soft)]">
-                    Nenhuma partida ainda. Os resultados aparecem aqui assim que você jogar.
+                    Nenhuma partida de {jogador.nome} ainda. Os resultados aparecem aqui assim que a pessoa jogar.
                   </p>
                   <Link
                     href="/"
@@ -170,7 +182,7 @@ export default function Sessoes() {
               ) : (
                 <ul className="mt-3 space-y-3">
                   {estado.itens.map((item) => (
-                    <ItemSessao key={`${item.jogo}-${item.id}`} item={item} />
+                    <ItemSessao key={`${item.jogo}-${item.id}`} item={item} jogadorId={jogador.id} />
                   ))}
                 </ul>
               )}

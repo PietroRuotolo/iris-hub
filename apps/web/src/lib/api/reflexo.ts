@@ -25,7 +25,7 @@ export async function registrarSessaoReflexo(
   }
 }
 
-/** Histórico da pessoa logada, da sessão mais recente para a mais antiga. */
+/** Histórico do jogador da página, da sessão mais recente para a mais antiga. */
 export function listarSessoesReflexo(): Promise<SessaoReflexo[]> {
   return buscar('/sessions/reflexo')
 }

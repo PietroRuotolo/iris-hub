@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { AlertTriangle, ExternalLink, LoaderCircle, QrCode, RotateCcw } from 'lucide-react'
 import QRCode from 'qrcode'
 import BotaoAcao from '@/components/BotaoAcao'
-import { useAuth } from '@/components/auth/AuthGate'
+import { useRouter } from 'next/navigation'
 import { gerarResumoCompartilhado, linkDoResumo } from '@/lib/api/resumos'
 
 type Estado =
@@ -14,13 +14,13 @@ type Estado =
   | { tipo: 'erro'; mensagem: string }
 
 /**
- * Gera o QR code do resumo da pessoa logada (a última partida encerrada de cada jogo, guardada no
- * banco) e encerra a vez dela ("Próxima pessoa" sai da conta e libera o computador).
+ * Gera o QR code do resumo do jogador da página (a última partida encerrada de cada jogo, guardada no
+ * banco) e encerra a vez dele ("Próxima pessoa" volta ao início, para o próximo escolher quem joga).
  */
 export default function CompartilharResumo() {
-  const { sair } = useAuth()
+  const router = useRouter()
   // O endereço que o celular alcança: por padrão, o do próprio site (troque pelo IP da rede local em dev).
-  // Só roda no navegador (fica atrás do login), então window existe.
+  // Só roda no navegador (fica dentro da escolha do jogador, que é do navegador), então window existe.
   const [base, setBase] = useState(() => (typeof window === 'undefined' ? '' : window.location.origin))
   const [estado, setEstado] = useState<Estado>({ tipo: 'ocioso' })
 
@@ -111,10 +111,10 @@ export default function CompartilharResumo() {
       </p>
 
       <p className="mt-5 text-sm text-[var(--color-ink-soft)]">
-        Confirme que a pessoa baixou o PDF no celular antes de liberar a tela. &quot;Próxima pessoa&quot; sai desta conta; o
+        Confirme que a pessoa baixou o PDF no celular antes de liberar a tela. &quot;Próxima pessoa&quot; volta ao início; o
         link do resumo continua valendo por 7 dias.
       </p>
-      <BotaoAcao rotulo="Próxima pessoa" Icone={RotateCcw} aoConfirmar={() => void sair()} className="mt-3 w-full" />
+      <BotaoAcao rotulo="Próxima pessoa" Icone={RotateCcw} aoConfirmar={() => router.push('/')} className="mt-3 w-full" />
     </aside>
   )
 }

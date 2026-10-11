@@ -21,7 +21,10 @@ export interface SecaoApresentacao {
 export interface Jogo {
   id: string
   chave: ChaveJogo
+  /** Apresentação do jogo (menu lateral). */
   rota: string
+  /** Onde a partida começa, com o jogador escolhido (?jogador=). */
+  rotaJogar: string
   nome: string
   tipo: string
   descricao: string
@@ -35,6 +38,7 @@ export const JOGOS: Jogo[] = [
     id: 'jogo-ritmo',
     chave: 'ritmo',
     rota: '/jogo',
+    rotaJogar: '/partida',
     nome: 'Jogo de ritmo',
     tipo: 'Aplicação web (webcam)',
     descricao: 'Jogo de ritmo controlado pelo olhar, que gera dados de acompanhamento para triagem neurológica.',
@@ -104,6 +108,7 @@ export const JOGOS: Jogo[] = [
     id: 'jogo-reflexo',
     chave: 'reflexo',
     rota: '/jogo-reflexo',
+    rotaJogar: '/jogo-reflexo',
     nome: 'Jogo do reflexo',
     tipo: 'Hardware ESP32 (teste de reação)',
     descricao: 'Avaliação do tempo de reação motora simples a um estímulo visual, com o botão físico do ESP32.',
@@ -156,6 +161,7 @@ export const JOGOS: Jogo[] = [
     id: 'jogo-cores',
     chave: 'cores',
     rota: '/jogo-cores',
+    rotaJogar: '/jogo-cores',
     nome: 'Jogo das cores',
     tipo: 'Hardware ESP32 (Genius)',
     descricao: 'Jogo de memória sequencial com estímulos visuais e sonoros de 5 cores, jogado nos botões do ESP32.',

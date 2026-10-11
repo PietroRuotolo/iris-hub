@@ -4,48 +4,33 @@ import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Menu } from 'lucide-react'
 import Image from 'next/image'
-import AuthGate, { useAuth } from '@/components/auth/AuthGate'
-import Historia from '@/features/historia/components/Historia'
 import Sidebar from './Sidebar'
-import { ehRotaPublica, ehTelaCheia } from '@/lib/navegacao'
+import { ehTelaCheia } from '@/lib/navegacao'
 
-// Casca das páginas: menu lateral e área de conteúdo; calibração e resultado usam tela cheia.
+// Casca das páginas: menu lateral e área de conteúdo; calibração, introdução e resultado usam tela
+// cheia. Não há login: as telas que dependem de uma pessoa pedem o jogador (ComJogador).
 export default function Shell({ children }: { children: React.ReactNode }) {
   const caminho = usePathname()
   const [menuAberto, setMenuAberto] = useState(false)
 
-  // O resultado aberto pelo QR code (no celular, sem login) não passa pelo login nem pela introdução.
-  if (ehRotaPublica(caminho)) return <>{children}</>
+  if (ehTelaCheia(caminho)) return <>{children}</>
 
   return (
-    <AuthGate>
-      <PrimeiroAcesso>
-        {ehTelaCheia(caminho) ? children : (
-          <div className="min-h-screen">
-            <Sidebar aberta={menuAberto} aoFechar={() => setMenuAberto(false)} />
-            <div className="lg:pl-72">
-              <header className="sticky top-0 z-30 flex items-center gap-3 bg-[var(--color-bg)] px-4 py-4 lg:hidden">
-                <button
-                  onClick={() => setMenuAberto(true)}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-surface)] shadow-sm"
-                  aria-label="Abrir menu"
-                >
-                  <Menu size={20} className="text-[var(--color-navy)]" />
-                </button>
-                <Image src="/logo/iris-hubs-logo-azul-sem-fundo.svg" alt="Iris Hubs" width={100} height={29} />
-              </header>
-              <main className="mx-auto w-full max-w-md px-4 pb-10 pt-2 lg:max-w-4xl lg:px-8 lg:pt-10">{children}</main>
-            </div>
-          </div>
-        )}
-      </PrimeiroAcesso>
-    </AuthGate>
+    <div className="min-h-screen">
+      <Sidebar aberta={menuAberto} aoFechar={() => setMenuAberto(false)} />
+      <div className="lg:pl-72">
+        <header className="sticky top-0 z-30 flex items-center gap-3 bg-[var(--color-bg)] px-4 py-4 lg:hidden">
+          <button
+            onClick={() => setMenuAberto(true)}
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-surface)] shadow-sm"
+            aria-label="Abrir menu"
+          >
+            <Menu size={20} className="text-[var(--color-navy)]" />
+          </button>
+          <Image src="/logo/iris-hubs-logo-azul-sem-fundo.svg" alt="Iris Hubs" width={100} height={29} />
+        </header>
+        <main className="mx-auto w-full max-w-md px-4 pb-10 pt-2 lg:max-w-4xl lg:px-8 lg:pt-10">{children}</main>
+      </div>
+    </div>
   )
-}
-
-/** No primeiro acesso, a história de introdução aparece antes de tudo e não pode ser pulada. */
-function PrimeiroAcesso({ children }: { children: React.ReactNode }) {
-  const { usuario, marcarHistoriaVista } = useAuth()
-  if (!usuario.historiaVista) return <Historia modo="obrigatoria" aoTerminar={marcarHistoriaVista} />
-  return <>{children}</>
 }

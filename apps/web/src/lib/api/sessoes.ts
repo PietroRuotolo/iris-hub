@@ -1,5 +1,5 @@
 // Sessões do jogo pela API. O navegador só fala com /back (mesmo domínio do site); o servidor Next
-// repassa ao gateway com a API_KEY e o login, e o gateway identifica a pessoa.
+// repassa ao gateway com a API_KEY e o jogador escolhido, que o gateway confere.
 
 import type { CalibracaoSessao, SessaoJogo, TelaSessao, TentativaAlvo } from '@iris/contracts'
 import { buscar, postar } from './http'
@@ -19,12 +19,12 @@ export function encerrarSessao(id: string, status: 'CONCLUIDA' | 'CANCELADA'): P
   return postar(`/sessions/${encodeURIComponent(id)}/finish`, { status })
 }
 
-/** Histórico da pessoa logada, da sessão mais recente para a mais antiga. */
+/** Histórico do jogador da página, da sessão mais recente para a mais antiga. */
 export function listarSessoes(): Promise<SessaoJogo[]> {
   return buscar('/sessions')
 }
 
-/** Uma sessão salva. Erro se não for da pessoa logada (o backend responde como inexistente). */
+/** Uma sessão salva. Erro se não for do jogador da página (o backend responde como inexistente). */
 export function obterSessao(id: string): Promise<SessaoJogo> {
   return buscar(`/sessions/${encodeURIComponent(id)}`)
 }

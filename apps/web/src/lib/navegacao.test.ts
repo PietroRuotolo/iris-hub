@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ehRotaPublica, ehTelaCheia, ITEM_CONFIGURACOES, itemAtivo } from './navegacao'
+import { GRUPOS_MENU, ehTelaCheia, ITEM_CONFIGURACOES, itemAtivo } from './navegacao'
 
 describe('ehTelaCheia', () => {
   it('reconhece as rotas sem menu e suas subrotas', () => {
@@ -36,11 +36,10 @@ describe('itemAtivo', () => {
   })
 })
 
-describe('ehRotaPublica', () => {
-  it('só o resultado do QR code abre sem login', () => {
-    expect(ehRotaPublica('/resultado')).toBe(true)
-    expect(ehRotaPublica('/')).toBe(false)
-    expect(ehRotaPublica('/sessoes')).toBe(false)
-    expect(ehRotaPublica('/resultados')).toBe(false)
+describe('menu', () => {
+  it('tem o cadastro de jogadores e não tem mais login', () => {
+    const rotas = GRUPOS_MENU.flatMap((g) => g.itens.map((i) => i.rota))
+    expect(rotas).toContain('/cadastro')
+    expect(rotas).not.toContain('/login')
   })
 })

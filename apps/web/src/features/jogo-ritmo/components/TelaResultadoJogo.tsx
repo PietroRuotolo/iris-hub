@@ -18,7 +18,7 @@ function Salvamento({ estado, sessaoId }: { estado: EstadoSalvamento; sessaoId: 
     return (
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <p className="flex items-center gap-2 text-sm text-[var(--color-good)]">
-          <CheckCircle2 size={16} /> Resultados salvos na sua conta.
+          <CheckCircle2 size={16} /> Resultados salvos na conta do jogador.
         </p>
         {sessaoId && (
           <Link

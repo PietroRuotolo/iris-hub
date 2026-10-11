@@ -3,7 +3,7 @@
 import type { ResumoCriado } from '@iris/contracts'
 import { postar } from './http'
 
-/** Cria o link do resumo da pessoa logada, com a última partida encerrada de cada jogo. */
+/** Cria o link do resumo do jogador da página, com a última partida encerrada de cada jogo. */
 export function gerarResumoCompartilhado(): Promise<ResumoCriado> {
   return postar('/resumos', {})
 }

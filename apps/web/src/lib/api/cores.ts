@@ -27,7 +27,7 @@ export async function registrarSessaoCores(
   }
 }
 
-/** Histórico da pessoa logada, da sessão mais recente para a mais antiga. */
+/** Histórico do jogador da página, da sessão mais recente para a mais antiga. */
 export function listarSessoesCores(): Promise<SessaoCores[]> {
   return buscar('/sessions/cores')
 }
