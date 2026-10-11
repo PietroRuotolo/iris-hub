@@ -78,21 +78,21 @@ de novo).
 
 O `email-service` envia templates HTML reutilizáveis pelo Microsoft Graph. Configure no `.env` a `MICROSOFT_SEND_MAIL_URL` (endereço do POST de envio do Graph) e a `EMAIL_API_KEY` (o access token do Graph, sem escrever `Bearer `, com a permissão delegada `Mail.Send`). O envio é o mesmo POST do Graph: `Authorization: Bearer <EMAIL_API_KEY>`. Como access tokens expiram, atualize a `EMAIL_API_KEY` quando o token vencer. Entre o gateway e o `email-service`, a proteção `x-api-key` usa a mesma `API_KEY` do gateway.
 
-O gateway expõe `POST /emails/send`, autenticado com a `API_KEY`. Na chamada interna do gateway ao `email-service`, ele envia `x-api-key` com a mesma `API_KEY`. Quando um usuário novo conclui o cadastro pelo `/auth/register`, o gateway dispara esse template para o e-mail cadastrado; falha de envio é registrada sem desfazer o cadastro. O corpo manual é JSON `{ "para": "pessoa@exemplo.com", "template": "welcome" }`; esse template envia a imagem HTML configurada no próprio template. Os templates ficam em `apps/email-service/src/modules/emails/templates/` e reutilizam componentes de `components/`.
+O gateway expõe `POST /emails/send`, autenticado com a `API_KEY`. Na chamada interna do gateway ao `email-service`, ele envia `x-api-key` com a mesma `API_KEY`. O cadastro de jogadores **não** manda e-mail de boas-vindas (o template continua disponível para uso futuro). O corpo manual é JSON `{ "para": "pessoa@exemplo.com", "template": "welcome" }`; esse template envia a imagem HTML configurada no próprio template. Os templates ficam em `apps/email-service/src/modules/emails/templates/` e reutilizam componentes de `components/`.
 
 ## Rota `/back` (backend pelo site)
 
 O navegador não chama o gateway pela porta 3001. Ele chama `/back/<rota>` no próprio site
 (`http://localhost:3000/back/...` local, `https://<site>.vercel.app/back/...` em produção), e o Next
-repassa para o gateway em `BACKEND_URL`, adicionando no servidor o `x-api-key` e o token da sessão
-(do cookie). Assim não há porta nem CORS no front-end, e a `API_KEY` nunca chega ao navegador.
+repassa para o gateway em `BACKEND_URL`, adicionando no servidor o `x-api-key` (o jogador escolhido
+na página segue no cabeçalho `x-jogador-id`). Assim não há porta nem CORS no front-end, e a `API_KEY`
+nunca chega ao navegador.
 
 ```bash
 curl localhost:3000/back/health
 # {"status":"ok","servico":"api-gateway"}
 ```
 
-As rotas de login ficam em `/api/auth/*` (elas guardam o token em cookie); `/back/auth/*` responde 404.
 
 **Deploy (Vercel, site e backend no mesmo projeto):** a Vercel não mantém servidores ligados, então
 o `npm run build:vercel` empacota o gateway e os serviços (user, session, email) em
@@ -113,28 +113,43 @@ conferindo se as funções levam o backend e o motor do Prisma para a Vercel; se
 com a explicação. Para testar o modo embutido localmente: `npm run build:vercel` e depois
 `BACKEND_EMBUTIDO=1 npm run start:web`.
 
-## Autenticação
+## Jogadores (sem login)
 
-Ao abrir o hub, a pessoa informa o e-mail. Se já estiver cadastrado, o serviço cria uma sessão; caso contrário, o modal pede o nome e cria usuário e sessão. A sessão dura 30 dias, fica em cookie `HttpOnly` e pode ser encerrada pelo menu lateral.
+Não há login. O site é aberto, e quem joga é escolhido na hora:
 
-O `user-service` precisa de `MONGO_URI`; o gateway continua exigindo o `x-api-key` já configurado. Em produção (Vercel), o backend vai embutido no site (veja o deploy na seção da rota `/back`). A `API_KEY` fica no servidor e nunca deve usar o prefixo `NEXT_PUBLIC_`.
+1. **Criar conta** (`/cadastro`, também no menu): nome, e-mail e telefone com DDD, todos obrigatórios.
+   O e-mail não pode repetir; o telefone é guardado só com os números. Não há e-mail de boas-vindas.
+2. **Quem vai jogar?** Ao clicar no card de um jogo (ou abrir um jogo, Sessões ou um resumo sem
+   jogador), aparece a busca por nome: os resultados só aparecem a partir de 2 letras (a lista de
+   contas não fica à mostra) e não diferenciam acentos ("joao" acha "João"), com o e-mail mascarado.
+3. O jogador escolhido vai na URL (`?jogador=<id>`) e em toda chamada à API (cabeçalho
+   `x-jogador-id`). O gateway confere no user-service que a conta existe: sem jogador responde 400,
+   conta inexistente 404. A faixa "Jogador: … · Trocar" mostra quem está jogando.
 
-Este fluxo identifica a conta apenas pelo e-mail digitado; ele não confirma que a pessoa controla aquela caixa de e-mail.
+Contas no user-service: `POST /users` (só criação), `GET /users?busca=` (pelo menos 2 letras),
+`GET /users/:id` e `POST /users/:id/intro-seen`. O `user-service` precisa de `MONGO_URI`; o gateway
+exige o `x-api-key`. A `API_KEY` fica no servidor e nunca deve usar o prefixo `NEXT_PUBLIC_`.
+
+**Migração:** o modelo `User` ganhou `telefone` (opcional no banco, porque as contas antigas não têm;
+o cadastro exige) e um índice por `nome`; as sessões de login (`sessions`) saíram do schema. Depois
+de atualizar, rode `npm run migration:run` (o `prisma db push`) contra o banco. A coleção antiga
+`sessions` fica no Atlas sem uso e pode ser apagada.
 
 ## Introdução (história)
 
-No primeiro acesso de cada conta, antes de qualquer tela, aparece a história de introdução: 7 telas
-de 10 s com as imagens de `apps/web/public/history/` e o texto animado por cima. Ela não pode ser
-pulada; ao terminar, a conta registra `historiaVistaEm` (user-service, `POST /auth/me/intro-seen`) e
-ela não aparece de novo. Pelo menu **Introdução** (`/introducao`) a mesma história pode ser vista a
+Antes da primeira partida de cada jogador, aparece a história de introdução: 7 telas de 10 s com as
+imagens de `apps/web/public/history/` e o texto animado por cima. Ela não pode ser pulada; ao
+terminar, a conta registra `historiaVistaEm` (user-service, `POST /users/:id/intro-seen`) e ela não
+aparece de novo para essa pessoa. Pelo menu **Introdução** (`/introducao`) a mesma história pode ser vista a
 qualquer momento, com **Voltar**, **Pular** e **Sair** (também pelas setas e `Esc`). Textos e ordem
 das telas: `apps/web/src/features/historia/slides.ts`.
 
 ## Jogar
 
-1. Entre no site (login pelo e-mail) e, se quiser, escolha o tamanho da tela em **Configurações**
-   (padrão: computador, 24"). O tamanho dos alvos segue essa escolha.
-2. Vá em **Jogo de ritmo → Começar partida** (`/partida`). O navegador pede a câmera.
+1. Se quiser, escolha o tamanho da tela em **Configurações** (o aparelho é detectado sozinho). O
+   tamanho dos alvos segue essa escolha.
+2. No início, clique no card **Jogo de ritmo** e escolha (ou crie) o jogador; a partida abre em
+   `/partida?jogador=…`. O navegador pede a câmera.
 3. **Posicione-se:** um checklist ao vivo confere distância (40 a 75 cm, estimada pelo tamanho da
    íris), rosto centralizado, cabeça reta (em graus), luz e reflexo nos olhos (óculos), com os dois
    olhos ampliados na tela. Com tudo verde por 1,5 s, a calibração começa sozinha: 9 pontos. Depois de
