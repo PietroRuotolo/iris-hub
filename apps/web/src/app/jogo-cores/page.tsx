@@ -5,10 +5,10 @@ import JogoCoresApresentacao from '@/features/jogo-cores/components/jogo-cores-a
 import TelaJogoCores from '@/features/jogo-cores/components/TelaJogoCores'
 import ComJogador from '@/features/jogadores/components/ComJogador'
 
-// A partida é de um jogador escolhido (?jogador=); na 1ª vez dele, a introdução vem antes.
+// A partida é de um jogador escolhido (?jogador=).
 export default function JogoCoresPage() {
   return (
-    <ComJogador exigirHistoria>
+    <ComJogador>
       <JogoCores />
     </ComJogador>
   )

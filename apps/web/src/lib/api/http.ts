@@ -14,19 +14,6 @@ export class ErroApi extends Error {
   }
 }
 
-/**
- * A sessão foi criada, mas encerrá-la falhou de vez. Guarda o id para a tela tentar só o que faltou
- * (encerrar), em vez de criar outra sessão e deixar esta sem dono no banco.
- */
-export class ErroAoEncerrar extends Error {
-  constructor(
-    mensagem: string,
-    readonly idSessao: string,
-  ) {
-    super(mensagem)
-  }
-}
-
 /** Cabeçalho com o jogador da página (o mesmo nome que o gateway lê). */
 export const HEADER_JOGADOR = 'x-jogador-id'
 

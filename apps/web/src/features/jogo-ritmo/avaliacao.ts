@@ -2,8 +2,11 @@
 // da batida e ficar nele por pelo menos a permanência mínima. Sem olhar suficiente durante o alvo,
 // a tentativa é "rastreamento insuficiente" (não conta como erro). Lógica pura, testável.
 
-import type { ResultadoTentativa } from '@iris/contracts'
+import type { ResultadoTentativa, TentativaAlvo } from '@iris/contracts'
 import type { Ponto } from '@/features/rastreamento-ocular/features'
+
+/** Um alvo como a partida mediu (sem a fase e os pontos, que o resumo da fase calcula). */
+export type TentativaMedida = Omit<TentativaAlvo, 'fase' | 'pontuacao'>
 
 /** Uma leitura do olhar na tela (px), ou null sem rosto/piscada. t em ms (performance.now). */
 export interface AmostraOlhar {

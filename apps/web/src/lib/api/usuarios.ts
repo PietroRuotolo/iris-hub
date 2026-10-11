@@ -8,7 +8,6 @@ export interface Jogador {
   nome: string
   /** E-mail com o meio escondido, só para diferenciar pessoas com o mesmo nome. */
   emailMascarado: string
-  historiaVista: boolean
 }
 
 export interface JogadorCriado extends Jogador {
@@ -27,8 +26,4 @@ export function buscarJogadores(busca: string): Promise<Jogador[]> {
 
 export function obterJogador(id: string): Promise<Jogador> {
   return buscar(`/users/${encodeURIComponent(id)}`)
-}
-
-export function marcarHistoriaVista(id: string): Promise<Jogador> {
-  return postar(`/users/${encodeURIComponent(id)}/intro-seen`, {})
 }

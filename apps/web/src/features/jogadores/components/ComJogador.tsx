@@ -3,9 +3,8 @@
 import { Suspense, useEffect, useState, type ReactNode } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { AlertTriangle, LoaderCircle, Repeat2, UserRound } from 'lucide-react'
-import Historia from '@/features/historia/components/Historia'
 import { ErroApi, definirJogadorDaApi } from '@/lib/api/http'
-import { marcarHistoriaVista, obterJogador, type Jogador } from '@/lib/api/usuarios'
+import { obterJogador, type Jogador } from '@/lib/api/usuarios'
 import { PARAMETRO_JOGADOR, urlComJogador, urlSemJogador } from '../url'
 import SeletorJogador from './SeletorJogador'
 
@@ -14,8 +13,6 @@ type Resultado = { id: string } & ({ tipo: 'ok'; jogador: Jogador } | { tipo: 'n
 interface Props {
   /** Título da escolha ("Quem vai jogar?", "De quem são as partidas?"). */
   titulo?: string
-  /** A história de introdução é obrigatória antes da 1ª partida de cada pessoa. */
-  exigirHistoria?: boolean
   /** Página de tela cheia (sem menu): centraliza a escolha e não mostra a faixa do jogador. */
   telaCheia?: boolean
   children: ReactNode | ((jogador: Jogador) => ReactNode)
@@ -34,14 +31,13 @@ export default function ComJogador(props: Props) {
   )
 }
 
-function ComJogadorDaUrl({ titulo, exigirHistoria = false, telaCheia = false, children }: Props) {
+function ComJogadorDaUrl({ titulo, telaCheia = false, children }: Props) {
   const router = useRouter()
   const caminho = usePathname()
   const params = useSearchParams()
   const id = params.get(PARAMETRO_JOGADOR)
   const urlAtual = params.size ? `${caminho}?${params}` : caminho
   const [resultado, setResultado] = useState<Resultado | null>(null)
-  const [historiaFeita, setHistoriaFeita] = useState<string | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -106,18 +102,6 @@ function ComJogadorDaUrl({ titulo, exigirHistoria = false, telaCheia = false, ch
   }
 
   const { jogador } = atual
-  if (exigirHistoria && !jogador.historiaVista && historiaFeita !== jogador.id) {
-    return (
-      <Historia
-        modo="obrigatoria"
-        aoTerminar={() => {
-          setHistoriaFeita(jogador.id)
-          void marcarHistoriaVista(jogador.id).catch(() => undefined)
-        }}
-      />
-    )
-  }
-
   const conteudo = typeof children === 'function' ? children(jogador) : children
   if (telaCheia) return conteudo
 

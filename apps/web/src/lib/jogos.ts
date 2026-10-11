@@ -5,7 +5,7 @@ import { Eye, Palette, Zap, type LucideIcon } from 'lucide-react'
 
 export type StatusJogo = 'disponivel' | 'desenvolvimento'
 
-/** Como cada jogo é identificado nas sessões salvas (e no `?jogo=` da página de resumo). */
+/** Identificador curto de cada jogo. */
 export type ChaveJogo = 'ritmo' | 'reflexo' | 'cores'
 
 export interface SecaoApresentacao {
@@ -125,7 +125,7 @@ export const JOGOS: Jogo[] = [
         },
         {
           titulo: 'Jogar',
-          texto: 'Conecte o ESP32 pela USB, aguarde o sinal verde e aperte o botão. Ao terminar, clique em "Encerrar e salvar sessão".',
+          texto: 'Conecte o ESP32 pela USB, aguarde o sinal verde e aperte o botão. Para recomeçar a contagem, clique em "Zerar tentativas".',
           link: { href: '/jogo-reflexo', label: 'Começar partida' },
         },
         {
@@ -178,7 +178,7 @@ export const JOGOS: Jogo[] = [
         },
         {
           titulo: 'Jogar',
-          texto: 'Conecte o ESP32 pela USB e clique em "Iniciar partida". A partida é salva sozinha quando termina.',
+          texto: 'Conecte o ESP32 pela USB e clique em "Iniciar partida".',
           link: { href: '/jogo-cores', label: 'Jogar agora' },
         },
         {
@@ -208,7 +208,7 @@ export const JOGOS: Jogo[] = [
   },
 ]
 
-/** O jogo pela chave das sessões salvas. */
+/** O jogo pela chave. */
 export function jogoPorChave(chave: ChaveJogo): Jogo {
   const jogo = JOGOS.find((j) => j.chave === chave)
   if (!jogo) throw new Error(`Jogo desconhecido: ${chave}`)

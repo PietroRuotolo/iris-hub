@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { AlertTriangle, ArrowLeft, LoaderCircle, RotateCcw } from 'lucide-react'
-import { resumirFase, type CalibracaoSessao, type FaseResumo, type TelaSessao } from '@iris/contracts'
+import { resumirFase, type CalibracaoSessao, type FaseResumo } from '@iris/contracts'
 import {
   MAX_RODADAS_CONFERENCIA,
   ajustarCalibracao,
@@ -31,12 +31,12 @@ import { useConfigTela } from '@/features/configuracoes/useConfigTela'
 import type { MapeamentoOlhar } from '@/features/rastreamento-ocular/mapeamento'
 import { poseDeReferencia, type Pose } from '@/features/rastreamento-ocular/pose'
 import { MENSAGEM_PROBLEMA, type Problema } from '@/features/rastreamento-ocular/qualidade'
-import { encerrarSessao, iniciarSessao, registrarFase, type TentativaEnviada } from '@/lib/api/sessoes'
 import { useFaceLandmarker } from '@/lib/mediapipe/useFaceLandmarker'
+import type { TentativaMedida } from '../avaliacao'
 import { FASES, type AlvoPlanejado } from '../fases'
 import ModalFase from './ModalFase'
 import TelaFase from './TelaFase'
-import TelaResultadoJogo, { type EstadoSalvamento } from './TelaResultadoJogo'
+import TelaResultadoJogo from './TelaResultadoJogo'
 
 const PONTO_CENTRO: PontoTela[] = [{ x: 0.5, y: 0.5 }]
 /** Escala usada se a tela não tiver tamanho configurado (equivale a um monitor de 24"). */
@@ -48,9 +48,6 @@ interface FimPartida {
   fases: FaseResumo[]
   calibracao: CalibracaoSessao | null
   concluida: boolean
-  salvamento: Promise<void>
-  /** Id da sessão gravada, para abrir o resumo salvo. null se nem chegou a começar no backend. */
-  sessaoId: string | null
 }
 
 function assinarResize(aoMudar: () => void) {
@@ -71,20 +68,6 @@ function useViewport() {
 export default function PartidaJogo() {
   const [rodada, setRodada] = useState(0)
   const [fim, setFim] = useState<FimPartida | null>(null)
-  const [salvamento, setSalvamento] = useState<EstadoSalvamento>({ tipo: 'salvando' })
-  const rodadaAtual = useRef(0)
-
-  const aoConcluir = useCallback((dados: FimPartida) => {
-    const minhaRodada = rodadaAtual.current
-    setFim(dados)
-    setSalvamento({ tipo: 'salvando' })
-    dados.salvamento.then(
-      () => minhaRodada === rodadaAtual.current && setSalvamento({ tipo: 'salvo' }),
-      (e: unknown) =>
-        minhaRodada === rodadaAtual.current &&
-        setSalvamento({ tipo: 'erro', mensagem: e instanceof Error ? e.message : String(e) }),
-    )
-  }, [])
 
   if (fim) {
     return (
@@ -92,17 +75,14 @@ export default function PartidaJogo() {
         fases={fim.fases}
         calibracao={fim.calibracao}
         concluida={fim.concluida}
-        salvamento={salvamento}
-        sessaoId={fim.sessaoId}
         aoJogarDeNovo={() => {
-          rodadaAtual.current++
           setFim(null)
           setRodada((r) => r + 1)
         }}
       />
     )
   }
-  return <Partida key={rodada} aoConcluir={aoConcluir} />
+  return <Partida key={rodada} aoConcluir={setFim} />
 }
 
 function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
@@ -143,22 +123,6 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
   const errosAjuste = useRef<{ erroPx: number; ok: boolean }[]>([])
   const [totalAjustes, setTotalAjustes] = useState(0)
   const encerrada = useRef(false)
-
-  // Salvamento em fila: cada chamada espera a anterior (a fase precisa do id da sessão). Se uma
-  // falhar, as seguintes não são tentadas e o erro aparece no resultado; o jogo segue sem esperar.
-  const fila = useRef<Promise<void>>(Promise.resolve())
-  const sessaoId = useRef<string | null>(null)
-  const erroSalvar = useRef<string | null>(null)
-  const enfileirar = useCallback((tarefa: () => Promise<unknown>) => {
-    fila.current = fila.current.then(async () => {
-      if (erroSalvar.current) return
-      try {
-        await tarefa()
-      } catch (e) {
-        erroSalvar.current = e instanceof Error ? e.message : String(e)
-      }
-    })
-  }, [])
 
   const layout = viewport ? calcularLayout(viewport) : null
   const paraPx = useCallback(
@@ -237,12 +201,6 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
     const resultado = concluirCalibracao(modelo!, todas.flat(), erroFinal, Math.hypot(largura, altura))
     const polegadas = polegadasDe(configTela)
     const pxCm = polegadas ? pxPorCm(polegadas, screen.width, screen.height) : null
-    const tela: TelaSessao = {
-      larguraPx: largura,
-      alturaPx: altura,
-      polegadas,
-      pxPorCm: pxCm === null ? null : Math.round(pxCm * 100) / 100,
-    }
     const resumoSessao = resumoCalibracao(resultado, { oculos: camera.lerLeitura().ambiente.oculos, reflexoIgnorado })
     setCalibracao(resultado)
     setModeloJogo(resultado.modelo)
@@ -251,9 +209,6 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
     const recentes = ajustes.current.length >= 3 ? ajustes.current : rodadas.current[rodadas.current.length - 1]
     setPoseReferencia(poseDeReferencia(recentes.flatMap((c) => c.amostras.map((a) => a.pose))))
     setEscala(pxCm ?? PX_POR_CM_PADRAO)
-    enfileirar(async () => {
-      sessaoId.current = (await iniciarSessao({ tela, calibracao: resumoSessao })).id
-    })
     setIndiceFase(0)
     setEtapa('modal')
   }
@@ -267,20 +222,15 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
   function finalizar(concluida: boolean, fases: FaseResumo[]) {
     if (encerrada.current) return
     encerrada.current = true
-    enfileirar(() => (sessaoId.current ? encerrarSessao(sessaoId.current, concluida ? 'CONCLUIDA' : 'CANCELADA') : Promise.resolve()))
-    const salvamento = fila.current.then(() => {
-      if (erroSalvar.current) throw new Error(erroSalvar.current)
-    })
-    aoConcluir({ fases, calibracao: calibracaoSessao, concluida, salvamento, sessaoId: sessaoId.current })
+    aoConcluir({ fases, calibracao: calibracaoSessao, concluida })
   }
 
-  function aoTerminarFase(tentativas: TentativaEnviada[], modeloCorrigido: MapeamentoOlhar) {
+  function aoTerminarFase(tentativas: TentativaMedida[], modeloCorrigido: MapeamentoOlhar) {
     setModeloJogo(modeloCorrigido)
     const config = FASES[indiceFase]
     const resumo = resumirFase(config.fase, config.nome, tentativas)
     const fases = [...resumos, resumo]
     setResumos(fases)
-    enfileirar(() => (sessaoId.current ? registrarFase(sessaoId.current, config.fase, tentativas) : Promise.resolve()))
     if (indiceFase + 1 >= FASES.length) {
       finalizar(true, fases)
     } else {

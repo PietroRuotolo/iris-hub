@@ -5,7 +5,7 @@ describe('ehTelaCheia', () => {
   it('reconhece as rotas sem menu e suas subrotas', () => {
     expect(ehTelaCheia('/partida')).toBe(true)
     expect(ehTelaCheia('/partida/algo')).toBe(true)
-    expect(ehTelaCheia('/resultado')).toBe(true)
+    expect(ehTelaCheia('/introducao')).toBe(true)
     expect(ehTelaCheia('/introducao')).toBe(true)
   })
 

@@ -1,4 +1,4 @@
-import { Clapperboard, Home, ListChecks, Settings, UserPlus, type LucideIcon } from 'lucide-react'
+import { Clapperboard, Home, Settings, UserPlus, type LucideIcon } from 'lucide-react'
 import { JOGOS } from './jogos'
 
 export type ItemMenu = { rota: string; label: string; Icone: LucideIcon }
@@ -18,7 +18,6 @@ export const GRUPOS_MENU: GrupoMenu[] = [
     titulo: 'Experiência',
     itens: [
       { rota: '/cadastro', label: 'Criar conta', Icone: UserPlus },
-      { rota: '/sessoes', label: 'Sessões', Icone: ListChecks },
     ],
   },
 ]
@@ -27,8 +26,8 @@ export const GRUPOS_MENU: GrupoMenu[] = [
 export const ITEM_CONFIGURACOES: ItemMenu = { rota: '/configuracoes', label: 'Configurações', Icone: Settings }
 
 // Rotas de tela cheia, sem o menu: a partida (calibração e fases) usa o viewport inteiro para os
-// alvos, a introdução é uma história em tela cheia, e o resultado é aberto no celular pelo QR code.
-export const ROTAS_TELA_CHEIA = ['/partida', '/introducao', '/resultado']
+// alvos, e a introdução é uma história em tela cheia.
+export const ROTAS_TELA_CHEIA = ['/partida', '/introducao']
 
 export function ehTelaCheia(caminho: string): boolean {
   return ROTAS_TELA_CHEIA.some((rota) => caminho === rota || caminho.startsWith(`${rota}/`))
