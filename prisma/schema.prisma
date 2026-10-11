@@ -12,27 +12,19 @@ datasource db {
   url      = env("MONGO_URI")
 }
 
-/// Contas de usuário. O MongoDB chama estas estruturas de coleções, não tabelas.
+/// Contas dos jogadores (criadas em /cadastro; não há login: quem joga é escolhido no site).
+/// O MongoDB chama estas estruturas de coleções, não tabelas.
 model User {
-  id    String @id @default(uuid(7)) @map("_id")
-  nome  String
-  email String @unique
-  /// Quando a pessoa terminou de ver a história de introdução (obrigatória no primeiro acesso).
+  id       String  @id @default(uuid(7)) @map("_id")
+  nome     String
+  email    String  @unique
+  /// Só os números, com DDD. Opcional no banco porque as contas antigas não têm; o cadastro exige.
+  telefone String?
+  /// Quando a pessoa terminou de ver a história de introdução (obrigatória antes da 1ª partida).
   historiaVistaEm DateTime?
 
+  @@index([nome])
   @@map("users")
-}
-
-/// Sessão de usuário autenticado, separada das sessões do jogo (`sessoes`).
-model Session {
-  id        String   @id @default(uuid(7)) @map("_id")
-  userId    String
-  tokenHash String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  @@index([userId])
-  @@map("sessions")
 }
 
 type Tela {

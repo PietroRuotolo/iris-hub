@@ -2,13 +2,13 @@ import { Body, Controller, Get, Headers, HttpCode, HttpStatus, Param, Post, Res,
 import type { Response } from 'express'
 import { repassar } from '../../../core/utils/encaminhar.js'
 import { JogosSessionsClient, type JogoDeSessao } from '../clients/jogos-sessions.client.js'
-import { ParticipanteService, comParticipante } from '../participante.service.js'
+import { HEADER_JOGADOR, ParticipanteService, comParticipante } from '../participante.service.js'
 
 /**
  * Controller das sessões de um jogo com as rotas simples (iniciar, listar, obter, encerrar):
  * `POST /sessions/<jogo>`, `GET /sessions/<jogo>`, `GET /sessions/<jogo>/:id` e
- * `POST /sessions/<jogo>/:id/finish`. Exigem login: o gateway descobre a pessoa pelo token e envia o
- * id dela como participanteId (o site nunca escolhe de quem é a sessão).
+ * `POST /sessions/<jogo>/:id/finish`. Exigem o jogador escolhido no site (cabeçalho x-jogador-id):
+ * o gateway confere que a conta existe e envia o id dela como participanteId.
  *
  * Um jogo novo com esse formato ganha as rotas com uma linha (veja o SessionsModule), e o
  * controller gerado precisa vir ANTES do SessionsController: `GET /sessions/<jogo>` não pode cair em
@@ -23,30 +23,30 @@ export function criarControllerSessoesJogo(jogo: JogoDeSessao): Type<unknown> {
     ) {}
 
     @Post()
-    async iniciar(@Headers('authorization') authorization: string | undefined, @Body() corpo: unknown, @Res({ passthrough: true }) res: Response) {
-      const participanteId = await this.participante.doLogin(authorization)
+    async iniciar(@Headers(HEADER_JOGADOR) jogadorId: string | undefined, @Body() corpo: unknown, @Res({ passthrough: true }) res: Response) {
+      const participanteId = await this.participante.idDoJogador(jogadorId)
       return repassar(await this.sessoes.iniciar(jogo, comParticipante(corpo, participanteId)), res)
     }
 
     @Get()
-    async listar(@Headers('authorization') authorization: string | undefined, @Res({ passthrough: true }) res: Response) {
-      return repassar(await this.sessoes.listar(jogo, await this.participante.doLogin(authorization)), res)
+    async listar(@Headers(HEADER_JOGADOR) jogadorId: string | undefined, @Res({ passthrough: true }) res: Response) {
+      return repassar(await this.sessoes.listar(jogo, await this.participante.idDoJogador(jogadorId)), res)
     }
 
     @Get(':id')
-    async obter(@Headers('authorization') authorization: string | undefined, @Param('id') id: string, @Res({ passthrough: true }) res: Response) {
-      return repassar(await this.sessoes.obter(jogo, id, await this.participante.doLogin(authorization)), res)
+    async obter(@Headers(HEADER_JOGADOR) jogadorId: string | undefined, @Param('id') id: string, @Res({ passthrough: true }) res: Response) {
+      return repassar(await this.sessoes.obter(jogo, id, await this.participante.idDoJogador(jogadorId)), res)
     }
 
     @Post(':id/finish')
     @HttpCode(HttpStatus.OK)
     async encerrar(
-      @Headers('authorization') authorization: string | undefined,
+      @Headers(HEADER_JOGADOR) jogadorId: string | undefined,
       @Param('id') id: string,
       @Body() corpo: unknown,
       @Res({ passthrough: true }) res: Response,
     ) {
-      const participanteId = await this.participante.doLogin(authorization)
+      const participanteId = await this.participante.idDoJogador(jogadorId)
       return repassar(await this.sessoes.encerrar(jogo, id, comParticipante(corpo, participanteId)), res)
     }
   }

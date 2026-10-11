@@ -1,13 +1,13 @@
 import { Controller, Get, Headers, Param, Post, Res } from '@nestjs/common'
 import type { Response } from 'express'
 import { repassar } from '../../../core/utils/encaminhar.js'
-import { ParticipanteService } from '../../sessions/participante.service.js'
+import { HEADER_JOGADOR, ParticipanteService } from '../../sessions/participante.service.js'
 import { ResumosClient } from '../clients/resumos.client.js'
 
 /**
- * Resumo compartilhado (QR code). Criar exige login: o dono e o nome vêm do token, nunca do corpo.
- * Abrir pelo token não exige login (é o celular que leu o QR code), só a x-api-key, que o servidor
- * do site adiciona.
+ * Resumo compartilhado (QR code). Criar exige o jogador escolhido (cabeçalho x-jogador-id): o dono
+ * e o nome vêm da conta conferida, nunca do corpo. Abrir pelo token não exige jogador (é o celular
+ * que leu o QR code), só a x-api-key, que o servidor do site adiciona.
  */
 @Controller('resumos')
 export class ResumosController {
@@ -17,8 +17,8 @@ export class ResumosController {
   ) {}
 
   @Post()
-  async criar(@Headers('authorization') authorization: string | undefined, @Res({ passthrough: true }) res: Response) {
-    const { id, nome } = await this.participante.pessoaDoLogin(authorization)
+  async criar(@Headers(HEADER_JOGADOR) jogadorId: string | undefined, @Res({ passthrough: true }) res: Response) {
+    const { id, nome } = await this.participante.jogador(jogadorId)
     return repassar(await this.resumos.criar(id, nome), res)
   }
 
