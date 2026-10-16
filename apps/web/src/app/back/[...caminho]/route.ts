@@ -1,19 +1,15 @@
-import { cookies } from 'next/headers'
 import type { NextRequest } from 'next/server'
-import { COOKIE_SESSAO } from '@/lib/server/auth-api'
 import { ErroBackend, urlBackend } from '@/lib/server/backend'
 
-// /back/<rota> → gateway/<rota>, no mesmo domínio do site (sem porta, sem CORS).
-// A API_KEY e o token da sessão são adicionados aqui, no servidor.
+// /back/<rota> → gateway/<rota>, no mesmo domínio do site (sem porta, sem CORS). A API_KEY é
+// adicionada aqui, no servidor; o jogador escolhido na página (x-jogador-id) segue junto, e o gateway
+// confere que a conta existe.
+const HEADER_JOGADOR = 'x-jogador-id'
+
 type Contexto = { params: Promise<{ caminho: string[] }> }
 
 async function repassar(req: NextRequest, { params }: Contexto): Promise<Response> {
   const { caminho } = await params
-
-  // As rotas de auth devolvem o token no corpo; elas passam por /api/auth, que o guarda em cookie HttpOnly.
-  if (caminho[0] === 'auth') {
-    return Response.json({ erro: 'Use /api/auth para autenticação' }, { status: 404 })
-  }
 
   const apiKey = process.env.API_KEY
   if (!apiKey) return Response.json({ erro: 'API_KEY não configurada no servidor web' }, { status: 500 })
@@ -30,8 +26,8 @@ async function repassar(req: NextRequest, { params }: Contexto): Promise<Respons
   const headers = new Headers({ 'x-api-key': apiKey })
   const tipo = req.headers.get('content-type')
   if (tipo) headers.set('content-type', tipo)
-  const token = (await cookies()).get(COOKIE_SESSAO)?.value
-  if (token) headers.set('authorization', `Bearer ${token}`)
+  const jogador = req.headers.get(HEADER_JOGADOR)
+  if (jogador) headers.set(HEADER_JOGADOR, jogador)
 
   const temCorpo = req.method !== 'GET' && req.method !== 'HEAD'
   let resposta: Response

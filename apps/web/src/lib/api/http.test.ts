@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ErroApi, comRepeticao, valeRepetirPedido } from './http'
+import { ErroApi, HEADER_JOGADOR, buscar, comRepeticao, definirJogadorDaApi, postar, valeRepetirPedido } from './http'
 
 describe('valeRepetirPedido', () => {
   it('repete quando o pedido comprovadamente não foi processado', () => {
@@ -41,5 +41,26 @@ describe('comRepeticao', () => {
       await expect(comRepeticao(tarefa, { esperaMs: 0 })).rejects.toMatchObject({ status })
       expect(tarefa).toHaveBeenCalledTimes(1)
     }
+  })
+})
+
+describe('jogador nas chamadas', () => {
+  it('envia o jogador escolhido no cabeçalho x-jogador-id, e para de enviar quando ele é limpo', async () => {
+    const chamadas: Headers[] = []
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
+      chamadas.push(new Headers(init.headers))
+      return new Response('{}', { status: 200 })
+    }))
+    definirJogadorDaApi('ana-id')
+    await buscar('/sessions')
+    await postar('/sessions', {})
+    definirJogadorDaApi(null)
+    await buscar('/sessions')
+    vi.unstubAllGlobals()
+
+    expect(chamadas[0].get(HEADER_JOGADOR)).toBe('ana-id')
+    expect(chamadas[1].get(HEADER_JOGADOR)).toBe('ana-id')
+    expect(chamadas[1].get('content-type')).toBe('application/json')
+    expect(chamadas[2].get(HEADER_JOGADOR)).toBeNull()
   })
 })

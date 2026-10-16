@@ -9,9 +9,8 @@ import type { Ponto } from '@/features/rastreamento-ocular/features'
 import { criarSuavizador, type MapeamentoOlhar } from '@/features/rastreamento-ocular/mapeamento'
 import { MENSAGEM_DESVIO, desvioDaPose, type DesvioPose, type LIMITES_POSE, type Pose } from '@/features/rastreamento-ocular/pose'
 import { MENSAGEM_PROBLEMA, type Problema } from '@/features/rastreamento-ocular/qualidade'
-import type { TentativaEnviada } from '@/lib/api/sessoes'
 import type { LeituraOlhar } from '@/lib/mediapipe/useFaceLandmarker'
-import { avaliarAlvo, fimDoAlvo, fixacaoPerto, type AlvoEmJogo, type AmostraOlhar } from '../avaliacao'
+import { avaliarAlvo, fimDoAlvo, fixacaoPerto, type AlvoEmJogo, type AmostraOlhar, type TentativaMedida } from '../avaliacao'
 import { raioEmPx, type AlvoPlanejado, type ConfigFase } from '../fases'
 
 type Alvo = AlvoEmJogo & { planejado: AlvoPlanejado }
@@ -78,7 +77,7 @@ export default function TelaFase({
   raioMinFracao?: number
   lerLeitura: () => LeituraOlhar
   /** Ao fim da fase: as tentativas e o mapeamento já com a correção contínua (para a próxima fase). */
-  aoTerminar: (tentativas: TentativaEnviada[], modelo: MapeamentoOlhar) => void
+  aoTerminar: (tentativas: TentativaMedida[], modelo: MapeamentoOlhar) => void
 }) {
   const [vista, setVista] = useState<Vista | null>(null)
   const props = useRef({ planejados, layout, viewport, pxPorCm, erroCalibracaoPx, modelo, poseReferencia, limitesPose, raioMinFracao, lerLeitura, aoTerminar })
@@ -110,7 +109,7 @@ export default function TelaFase({
     let modelo = p.modelo
     const suavizar = criarSuavizador()
     const amostras: AmostraOlhar[] = []
-    const tentativas: TentativaEnviada[] = []
+    const tentativas: TentativaMedida[] = []
     let retornos: Retorno[] = []
     let olhar: Ponto | null = null
     let ultimoQuadro = -1
@@ -176,7 +175,7 @@ export default function TelaFase({
       while (tentativas.length < alvos.length && fimDoAlvo(alvos[tentativas.length]) < agora) {
         const alvo = alvos[tentativas.length]
         const r = avaliarAlvo(alvo, amostras)
-        const tentativa: TentativaEnviada = {
+        const tentativa: TentativaMedida = {
           numeroAlvo: alvo.planejado.numero,
           alvoX: Math.round((alvo.cx / props.current.viewport.largura) * 10000) / 10000,
           alvoY: Math.round((alvo.cy / props.current.viewport.altura) * 10000) / 10000,

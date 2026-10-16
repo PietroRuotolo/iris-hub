@@ -2,7 +2,7 @@
 // Prisma 6: a linha 7+ ainda não suporta MongoDB. O MongoDB precisa ser replica set (o Atlas já é).
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   // native: a máquina de quem roda; rhel-openssl-3.0.x: as funções da Vercel (Node 22).
   binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
@@ -12,202 +12,277 @@ datasource db {
   url      = env("MONGO_URI")
 }
 
-/// Contas de usuário. O MongoDB chama estas estruturas de coleções, não tabelas.
+/// Contas dos jogadores (criadas em /cadastro; não há login: quem joga é escolhido no site).
+/// O MongoDB chama estas estruturas de coleções, não tabelas.
 model User {
-  id    String @id @default(uuid(7)) @map("_id")
-  nome  String
-  email String @unique
-  /// Quando a pessoa terminou de ver a história de introdução (obrigatória no primeiro acesso).
-  historiaVistaEm DateTime?
+  id       String  @id @default(uuid(7)) @map("_id")
+  nome     String
+  email    String  @unique
+  /// Só os números, com DDD. Opcional no banco porque as contas antigas não têm; o cadastro exige.
+  telefone String?
 
+  reflexSessions ReflexSession[]
+  colorSessions  ColorSession[]
+  rhythmSessions RhythmSession[]
+  gameResults    GameResult[]
+
+  @@index([nome])
   @@map("users")
 }
 
-/// Sessão de usuário autenticado, separada das sessões do jogo (`sessoes`).
-model Session {
-  id        String   @id @default(uuid(7)) @map("_id")
-  userId    String
-  tokenHash String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+// --- Jogo do reflexo (ESP32) ------------------------------------------------------------------
+// reflex_attempts é a fonte da verdade; reflex_sessions guarda o resultado consolidado, calculado a
+// partir das tentativas no encerramento da partida (na mesma transação). Tempos em milissegundos.
+// O MongoDB não tem CHECK nem chave estrangeira: os limites (contagens, faixa da espera, tempo só
+// em success) ficam na validação do serviço, e as relações são garantidas pelo Prisma.
 
-  @@index([userId])
-  @@map("sessions")
+enum ReflexSessionStatus {
+  in_progress
+  completed
+  disqualified
+  abandoned
 }
 
-type Tela {
-  larguraPx Int
-  alturaPx  Int
+enum ReflexAttemptResult {
+  success
+  false_start
+  timeout
 }
 
-/// Resultado de uma calibração do rastreamento ocular.
-model Calibracao {
-  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
-  participanteId      String?
-  realizadaEm         DateTime
-  pontosCalibracao    Int
-  erroMedioPx         Float?
-  erroMedioFracaoTela Float?
-  tela                Tela
+/// Uma partida do reflexo: dados gerais e o resultado consolidado.
+model ReflexSession {
+  id                  String              @id @default(uuid(7)) @map("_id")
+  playerId            String              @map("player_id")
+  player              User                @relation(fields: [playerId], references: [id])
+  status              ReflexSessionStatus @default(in_progress)
+  totalAttempts       Int                 @default(0) @map("total_attempts")
+  validAttempts       Int                 @default(0) @map("valid_attempts")
+  falseStarts         Int                 @default(0) @map("false_starts")
+  /// Média dos tempos das tentativas success; null enquanto não há nenhuma.
+  averageTimeMs       Float?              @map("average_time_ms")
+  bestTimeMs          Int?                @map("best_time_ms")
+  standardDeviationMs Float?              @map("standard_deviation_ms")
+  startedAt           DateTime            @default(now()) @map("started_at")
+  finishedAt          DateTime?           @map("finished_at")
 
-  @@map("calibracoes")
+  attempts    ReflexAttempt[]
+  gameResults GameResult[]
+
+  @@index([playerId, startedAt(sort: Desc)])
+  @@map("reflex_sessions")
 }
 
-// ---------------------------------------------------------------------------------------------
-// Jogo de ritmo. Resumos pequenos (tela, calibração, cinco fases) ficam embutidos na sessão; as
-// tentativas por alvo crescem com o jogo e ficam numa coleção própria. Amostras contínuas do olhar
-// e vídeo da webcam não são guardadas.
+/// Uma tentativa do reflexo, inclusive as falhas.
+model ReflexAttempt {
+  id             String              @id @default(uuid(7)) @map("_id")
+  sessionId      String              @map("session_id")
+  session        ReflexSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  attemptNumber  Int                 @map("attempt_number")
+  /// Só em success; null em false_start e timeout.
+  reactionTimeMs Int?                @map("reaction_time_ms")
+  /// Espera sorteada pelo ESP32 (2000 a 5000 ms), quando informada.
+  waitTimeMs     Int?                @map("wait_time_ms")
+  result         ReflexAttemptResult
+  createdAt      DateTime            @default(now()) @map("created_at")
 
-type TelaSessao {
-  larguraPx Int
-  alturaPx  Int
-  polegadas Float?
-  pxPorCm   Float?
+  // Também serve de índice por session_id (é o prefixo).
+  @@unique([sessionId, attemptNumber])
+  @@map("reflex_attempts")
 }
 
-type CalibracaoResumo {
-  pontos           Int
-  erroMedioPx      Float?
-  qualidade        Float?
-  coberturaValida  Float?
-  distanciaMediaCm Float?
-  oculos           Boolean?
-  fracaoReflexo    Float?
-  reflexoIgnorado  Boolean?
+// --- Jogo das cores (Genius com ESP32) --------------------------------------------------------
+// Mesmo padrão do reflexo: color_rounds é a fonte da verdade e color_sessions o resultado
+// consolidado. O recorde não é guardado: é o maior score das partidas completed de cada jogador.
+// Os limites (contagens >= 0, total_errors <= 1, round_number e sequence_length > 0) ficam na
+// validação do serviço, já que o MongoDB não tem CHECK.
+
+enum ColorSessionStatus {
+  in_progress
+  completed
+  abandoned
 }
 
-type FaseResumo {
-  fase                     Int
-  nome                     String
-  alvosApresentados        Int
-  acertos                  Int
-  semResposta              Int
-  rastreamentoInsuficiente Int
-  pontuacao                Float
-  coberturaRastreamento    Float?
+enum ColorGameOverReason {
+  wrong_color
+  timeout
+  abandoned
 }
 
-/// Uma partida do jogo de ritmo (calibração + até cinco fases).
-model Sessao {
-  id              String            @id @default(auto()) @map("_id") @db.ObjectId
-  /// Id da conta (User.id); pseudônimo, sem dados pessoais na sessão.
-  participanteId  String?
-  iniciadaEm      DateTime          @default(now())
-  concluidaEm     DateTime?
-  /// EM_ANDAMENTO, CONCLUIDA ou CANCELADA
-  status          String
-  tela            TelaSessao
-  calibracao      CalibracaoResumo?
-  fases           FaseResumo[]
-  pontuacaoTotal  Float?
-  coberturaTotal  Float?
-  versaoPontuacao String
+/// Uma partida das cores: dados gerais e o resultado consolidado.
+model ColorSession {
+  id                    String               @id @default(uuid(7)) @map("_id")
+  playerId              String               @map("player_id")
+  player                User                 @relation(fields: [playerId], references: [id])
+  status                ColorSessionStatus   @default(in_progress)
+  /// Pontuação final informada pelo ESP32 (o serviço só guarda, não recalcula).
+  score                 Int                  @default(0)
+  roundsCompleted       Int                  @default(0) @map("rounds_completed")
+  maxSequenceLength     Int                  @default(0) @map("max_sequence_length")
+  totalErrors           Int                  @default(0) @map("total_errors")
+  averageResponseTimeMs Float?               @map("average_response_time_ms")
+  durationMs            Int?                 @map("duration_ms")
+  gameOverReason        ColorGameOverReason? @map("game_over_reason")
+  startedAt             DateTime             @default(now()) @map("started_at")
+  finishedAt            DateTime?            @map("finished_at")
 
-  @@index([participanteId, iniciadaEm])
-  @@map("sessoes")
+  rounds      ColorRound[]
+  gameResults GameResult[]
+
+  @@index([playerId, startedAt(sort: Desc)])
+  @@map("color_sessions")
 }
 
-/// Um alvo apresentado numa fase, com o resultado medido pelo site e os pontos calculados aqui.
-model TentativaAlvo {
-  id            String    @id @default(auto()) @map("_id") @db.ObjectId
-  sessaoId      String    @db.ObjectId
-  fase          Int
-  numeroAlvo    Int
-  /// Posição normalizada (0 a 1) na tela
-  alvoX         Float
-  alvoY         Float
-  raioPx        Float
-  janelaMs      Int
-  apresentadoEm DateTime
-  batidaEm      DateTime
-  respostaEm    DateTime?
-  /// ACERTO, SEM_RESPOSTA ou RASTREAMENTO_INSUFICIENTE
-  resultado     String
-  latenciaMs    Int?
-  erroTempoMs   Int?
-  erroEspacial  Float?
-  permanenciaMs Int?
-  cobertura     Float
-  /// Desvio médio do olhar em relação ao alvo na janela da batida (px; + = direita/baixo)
-  desvioXPx     Int?
-  desvioYPx     Int?
-  pontuacao     Float
+/// Uma rodada das cores, inclusive a que terminou o jogo.
+model ColorRound {
+  id               String       @id @default(uuid(7)) @map("_id")
+  sessionId        String       @map("session_id")
+  session          ColorSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  roundNumber      Int          @map("round_number")
+  sequenceLength   Int          @map("sequence_length")
+  /// Cores (números do ESP32) da sequência mostrada e da que a pessoa apertou. Vazias quando não
+  /// foram registradas (o MongoDB não aceita lista opcional no Prisma).
+  expectedSequence Int[]        @default([]) @map("expected_sequence")
+  playerSequence   Int[]        @default([]) @map("player_sequence")
+  isCorrect        Boolean      @map("is_correct")
+  responseTimeMs   Int?         @map("response_time_ms")
+  scoreAfterRound  Int          @default(0) @map("score_after_round")
+  createdAt        DateTime     @default(now()) @map("created_at")
 
-  @@index([sessaoId, fase])
-  @@map("tentativas_alvo")
+  // Também serve de índice por session_id (é o prefixo).
+  @@unique([sessionId, roundNumber])
+  @@map("color_rounds")
 }
 
-// ---------------------------------------------------------------------------------------------
-// Jogo de reflexo (avaliação psicomotora de tempo de reação).
-// As tentativas são guardadas diretamente embutidas na sessão, sem coleções extras.
+// --- Jogo de ritmo (rastreamento ocular) ------------------------------------------------------
+// Partida → fases → alvos. rhythm_targets é a fonte da verdade; rhythm_phases e rhythm_sessions
+// guardam os consolidados. Coberturas em percentual (0–100); notas de tempo e precisão em 0–1.
+// Os limites do CHECK da proposta (fase 1–5, score do alvo por resultado, hits + misses +
+// insufficient_tracking <= total_targets etc.) ficam na validação do serviço: o MongoDB não tem CHECK.
 
-type TentativaReflexo {
-  rodada        Int
-  tempoEsperaMs Int
-  tempoReacaoMs Int?
-  queimou       Boolean
-  acionamento   String   // "MOUSE_CLICK", "SPACE_KEY" ou "ESP32_BUTTON"
+enum RhythmStatus {
+  in_progress
+  completed
+  abandoned
 }
 
-model SessaoReflexo {
-  id             String             @id @default(auto()) @map("_id") @db.ObjectId
-  participanteId String?
-  iniciadaEm     DateTime           @default(now())
-  concluidaEm    DateTime?
-  status         String             // EM_ANDAMENTO, CONCLUIDA ou CANCELADA
-  tempoMedioMs   Float?
-  melhorTempoMs  Int?
-  tentativas     TentativaReflexo[]
-
-  @@index([participanteId, iniciadaEm])
-  @@map("sessoes_reflexo")
+enum RhythmTargetResult {
+  hit
+  no_response
+  insufficient_tracking
 }
 
-// ---------------------------------------------------------------------------------------------
-// Jogo das cores (Genius com ESP32). Uma partida guarda as rodadas embutidas: são poucas (a
-// sequência cresce a cada acerto e o jogo acaba no primeiro erro), então não precisam de coleção
-// própria. A pontuação final vem do ESP32; maior sequência e tempo médio o serviço recalcula.
+/// Uma partida do jogo de ritmo: resultado consolidado das fases.
+model RhythmSession {
+  id                        String       @id @default(uuid(7)) @map("_id")
+  playerId                  String       @map("player_id")
+  player                    User         @relation(fields: [playerId], references: [id])
+  status                    RhythmStatus @default(in_progress)
+  /// Média das pontuações das fases jogadas (0–100); null sem nenhuma fase com dados válidos.
+  totalScore                Float?       @map("total_score")
+  /// Só as fases concluídas por inteiro (0–5).
+  phasesCompleted           Int          @default(0) @map("phases_completed")
+  totalHits                 Int          @default(0) @map("total_hits")
+  totalMisses               Int          @default(0) @map("total_misses")
+  totalInsufficientTracking Int          @default(0) @map("total_insufficient_tracking")
+  startedAt                 DateTime     @default(now()) @map("started_at")
+  finishedAt                DateTime?    @map("finished_at")
 
-type RodadaCores {
-  rodada           Int
-  tamanhoSequencia Int
-  acertou          Boolean
-  tempoRespostaMs  Int?
+  phases      RhythmPhase[]
+  gameResults GameResult[]
+
+  @@index([playerId, startedAt(sort: Desc)])
+  @@map("rhythm_sessions")
 }
 
-model SessaoCores {
-  id                   String        @id @default(auto()) @map("_id") @db.ObjectId
-  /// Id da conta (User.id); pseudônimo, sem dados pessoais na sessão.
-  participanteId       String?
-  iniciadaEm           DateTime      @default(now())
-  concluidaEm          DateTime?
-  /// EM_ANDAMENTO, CONCLUIDA ou CANCELADA
-  status               String
-  pontuacaoFinal       Float?
-  maiorSequencia       Int?
-  tempoRespostaMedioMs Float?
-  rodadas              RodadaCores[]
+/// Uma das 5 fases da partida.
+model RhythmPhase {
+  id                   String        @id @default(uuid(7)) @map("_id")
+  sessionId            String        @map("session_id")
+  session              RhythmSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  phaseNumber          Int           @map("phase_number")
+  status               RhythmStatus  @default(in_progress)
+  /// Média dos pontos dos alvos válidos (0–100); null se todos tiveram rastreamento insuficiente.
+  score                Float?
+  totalTargets         Int           @default(0) @map("total_targets")
+  hits                 Int           @default(0)
+  misses               Int           @default(0)
+  insufficientTracking Int           @default(0) @map("insufficient_tracking")
+  trackingCoverage     Float?        @map("tracking_coverage")
+  /// Raio configurado da fase; o efetivo em px (ajustado pela calibração) fica em cada alvo.
+  targetRadiusCm       Float         @map("target_radius_cm")
+  beatIntervalMs       Int           @map("beat_interval_ms")
+  startedAt            DateTime      @default(now()) @map("started_at")
+  finishedAt           DateTime?     @map("finished_at")
 
-  @@index([participanteId, iniciadaEm])
-  @@map("sessoes_cores")
+  targets RhythmTarget[]
+
+  // Também serve de índice por session_id (é o prefixo).
+  @@unique([sessionId, phaseNumber])
+  @@map("rhythm_phases")
 }
 
-// ---------------------------------------------------------------------------------------------
-// Resumo compartilhado: o link do QR code (aberto no celular, sem login) com a última partida
-// encerrada de cada jogo. Guarda só o hash do token; as sessões ficam fixadas pelos ids.
+/// A avaliação de um alvo.
+model RhythmTarget {
+  id                      String             @id @default(uuid(7)) @map("_id")
+  phaseId                 String             @map("phase_id")
+  phase                   RhythmPhase        @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+  targetNumber            Int                @map("target_number")
+  result                  RhythmTargetResult
+  /// hit: 50–100; no_response: 0; insufficient_tracking: null (não entra na média da fase).
+  score                   Float?
+  /// Entrada do olhar menos a batida (ms); negativo = entrou antes.
+  entryOffsetMs           Int?               @map("entry_offset_ms")
+  dwellTimeMs             Int?               @map("dwell_time_ms")
+  averageCenterDistancePx Float?             @map("average_center_distance_px")
+  targetRadiusPx          Float?             @map("target_radius_px")
+  timeScore               Float?             @map("time_score")
+  precisionScore          Float?             @map("precision_score")
+  trackingCoverage        Float?             @map("tracking_coverage")
+  createdAt               DateTime           @default(now()) @map("created_at")
 
-model ResumoCompartilhado {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
-  tokenHash       String   @unique
-  participanteId  String
-  /// Primeiro nome, para o cabeçalho do resumo no celular.
-  nome            String?
-  sessaoRitmoId   String?  @db.ObjectId
-  sessaoReflexoId String?  @db.ObjectId
-  sessaoCoresId   String?  @db.ObjectId
-  criadoEm        DateTime @default(now())
-  expiraEm        DateTime
+  // Também serve de índice por phase_id (é o prefixo).
+  @@unique([phaseId, targetNumber])
+  @@map("rhythm_targets")
+}
 
-  @@index([participanteId, criadoEm])
-  @@map("resumos_compartilhados")
+// --- Resultado geral (os três jogos) ----------------------------------------------------------
+// Uma avaliação geral de um usuário, com até uma partida de cada jogo. Guarda as métricas de cada
+// jogo na escala original e a pontuação geral normalizada (0–100); não é um acumulador vitalício.
+//
+// Diferença para o SQL da proposta: lá as três FKs são UNIQUE. No MongoDB, um índice único conta
+// "sem valor" como valor repetido, então a segunda avaliação sem partida de reflexo já falharia.
+// Por isso as relações são N:1 sem @unique, e o serviço garante que uma partida está em no máximo
+// uma avaliação e que as três são do mesmo usuário. Os limites do CHECK também ficam no serviço.
+
+enum GameResultStatus {
+  in_progress
+  completed
+  abandoned
+}
+
+model GameResult {
+  id              String           @id @default(uuid(7)) @map("_id")
+  userId          String           @map("user_id")
+  user            User             @relation(fields: [userId], references: [id])
+  reflexSessionId String?          @map("reflex_session_id")
+  reflexSession   ReflexSession?   @relation(fields: [reflexSessionId], references: [id])
+  colorSessionId  String?          @map("color_session_id")
+  colorSession    ColorSession?    @relation(fields: [colorSessionId], references: [id])
+  rhythmSessionId String?          @map("rhythm_session_id")
+  rhythmSession   RhythmSession?   @relation(fields: [rhythmSessionId], references: [id])
+  /// Métricas de cada jogo na escala original (cópia do consolidado da partida).
+  reflexAvgMs     Float?           @map("reflex_avg_ms")
+  colorScore      Int?             @map("color_score")
+  rhythmScore     Float?           @map("rhythm_score")
+  /// Média das notas normalizadas (0–100) de cada jogo. A regra de normalização ainda não existe.
+  totalScore      Float?           @map("total_score")
+  status          GameResultStatus @default(in_progress)
+  startedAt       DateTime         @default(now()) @map("started_at")
+  finishedAt      DateTime?        @map("finished_at")
+
+  @@index([userId, startedAt(sort: Desc)])
+  @@index([reflexSessionId])
+  @@index([colorSessionId])
+  @@index([rhythmSessionId])
+  @@map("game_results")
 }

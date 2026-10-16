@@ -1,57 +1,19 @@
 import Link from 'next/link'
-import { AlertTriangle, ArrowLeft, CheckCircle2, LoaderCircle, RotateCcw } from 'lucide-react'
+import { ArrowLeft, RotateCcw } from 'lucide-react'
 import { resumirSessao, type CalibracaoSessao, type FaseResumo } from '@iris/contracts'
 
-export type EstadoSalvamento = { tipo: 'salvando' } | { tipo: 'salvo' } | { tipo: 'erro'; mensagem: string }
-
 const pct = (v: number | null) => (v === null ? '—' : `${Math.round(v * 100)}%`)
-
-function Salvamento({ estado, sessaoId }: { estado: EstadoSalvamento; sessaoId: string | null }) {
-  if (estado.tipo === 'salvando') {
-    return (
-      <p className="flex items-center gap-2 text-sm text-[var(--color-ink-soft)]">
-        <LoaderCircle size={16} className="animate-spin" /> Salvando resultados…
-      </p>
-    )
-  }
-  if (estado.tipo === 'salvo') {
-    return (
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <p className="flex items-center gap-2 text-sm text-[var(--color-good)]">
-          <CheckCircle2 size={16} /> Resultados salvos na sua conta.
-        </p>
-        {sessaoId && (
-          <Link
-            href={`/sessao/${encodeURIComponent(sessaoId)}/resumo`}
-            className="text-sm font-medium text-[var(--color-navy)] underline"
-          >
-            Ver o resumo salvo
-          </Link>
-        )}
-      </div>
-    )
-  }
-  return (
-    <p className="flex items-start gap-2 text-sm text-[var(--color-warn)]">
-      <AlertTriangle size={16} className="mt-0.5 shrink-0" /> Não foi possível salvar: {estado.mensagem}
-    </p>
-  )
-}
 
 // Fim da partida: pontuação geral (média das fases), cada fase e a qualidade dos dados.
 export default function TelaResultadoJogo({
   fases,
   calibracao,
   concluida,
-  salvamento,
-  sessaoId,
   aoJogarDeNovo,
 }: {
   fases: FaseResumo[]
   calibracao: CalibracaoSessao | null
   concluida: boolean
-  salvamento: EstadoSalvamento
-  sessaoId: string | null
   aoJogarDeNovo: () => void
 }) {
   const { pontuacaoTotal, coberturaTotal } = resumirSessao(fases)
@@ -122,10 +84,6 @@ export default function TelaResultadoJogo({
             <dd className="mt-1 font-semibold text-[var(--color-ink)]">{pct(coberturaTotal)}</dd>
           </div>
         </dl>
-
-        <div className="mt-4">
-          <Salvamento estado={salvamento} sessaoId={sessaoId} />
-        </div>
       </div>
 
       <button

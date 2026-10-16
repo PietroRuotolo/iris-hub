@@ -5,7 +5,7 @@ import { Eye, Palette, Zap, type LucideIcon } from 'lucide-react'
 
 export type StatusJogo = 'disponivel' | 'desenvolvimento'
 
-/** Como cada jogo é identificado nas sessões salvas (e no `?jogo=` da página de resumo). */
+/** Identificador curto de cada jogo. */
 export type ChaveJogo = 'ritmo' | 'reflexo' | 'cores'
 
 export interface SecaoApresentacao {
@@ -21,7 +21,10 @@ export interface SecaoApresentacao {
 export interface Jogo {
   id: string
   chave: ChaveJogo
+  /** Apresentação do jogo (menu lateral). */
   rota: string
+  /** Onde a partida começa, com o jogador escolhido (?jogador=). */
+  rotaJogar: string
   nome: string
   tipo: string
   descricao: string
@@ -35,6 +38,7 @@ export const JOGOS: Jogo[] = [
     id: 'jogo-ritmo',
     chave: 'ritmo',
     rota: '/jogo',
+    rotaJogar: '/partida',
     nome: 'Jogo de ritmo',
     tipo: 'Aplicação web (webcam)',
     descricao: 'Jogo de ritmo controlado pelo olhar, que gera dados de acompanhamento para triagem neurológica.',
@@ -104,6 +108,7 @@ export const JOGOS: Jogo[] = [
     id: 'jogo-reflexo',
     chave: 'reflexo',
     rota: '/jogo-reflexo',
+    rotaJogar: '/jogo-reflexo',
     nome: 'Jogo do reflexo',
     tipo: 'Hardware ESP32 (teste de reação)',
     descricao: 'Avaliação do tempo de reação motora simples a um estímulo visual, com o botão físico do ESP32.',
@@ -120,7 +125,7 @@ export const JOGOS: Jogo[] = [
         },
         {
           titulo: 'Jogar',
-          texto: 'Conecte o ESP32 pela USB, aguarde o sinal verde e aperte o botão. Ao terminar, clique em "Encerrar e salvar sessão".',
+          texto: 'Conecte o ESP32 pela USB, aguarde o sinal verde e aperte o botão. Para recomeçar a contagem, clique em "Zerar tentativas".',
           link: { href: '/jogo-reflexo', label: 'Começar partida' },
         },
         {
@@ -156,6 +161,7 @@ export const JOGOS: Jogo[] = [
     id: 'jogo-cores',
     chave: 'cores',
     rota: '/jogo-cores',
+    rotaJogar: '/jogo-cores',
     nome: 'Jogo das cores',
     tipo: 'Hardware ESP32 (Genius)',
     descricao: 'Jogo de memória sequencial com estímulos visuais e sonoros de 5 cores, jogado nos botões do ESP32.',
@@ -172,7 +178,7 @@ export const JOGOS: Jogo[] = [
         },
         {
           titulo: 'Jogar',
-          texto: 'Conecte o ESP32 pela USB e clique em "Iniciar partida". A partida é salva sozinha quando termina.',
+          texto: 'Conecte o ESP32 pela USB e clique em "Iniciar partida".',
           link: { href: '/jogo-cores', label: 'Jogar agora' },
         },
         {
@@ -202,7 +208,7 @@ export const JOGOS: Jogo[] = [
   },
 ]
 
-/** O jogo pela chave das sessões salvas. */
+/** O jogo pela chave. */
 export function jogoPorChave(chave: ChaveJogo): Jogo {
   const jogo = JOGOS.find((j) => j.chave === chave)
   if (!jogo) throw new Error(`Jogo desconhecido: ${chave}`)

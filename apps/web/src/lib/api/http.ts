@@ -1,38 +1,43 @@
 // Chamadas ao backend pelo /back (mesmo domínio do site; o servidor Next repassa ao gateway com a
-// API_KEY e o login). Usado pelos clientes de sessão de cada jogo.
+// API_KEY). Não há login: as chamadas levam o jogador escolhido na página (cabeçalho x-jogador-id),
+// e o gateway confere que a conta existe.
 
 /** Erro de uma chamada ao backend. `status` é null quando nem houve resposta (rede fora do ar). */
 export class ErroApi extends Error {
   constructor(
     mensagem: string,
     readonly status: number | null,
+    /** No 400, o que está errado em cada campo ("telefone: Informe o telefone com DDD"). */
+    readonly detalhes?: string[],
   ) {
     super(mensagem)
   }
 }
 
+/** Cabeçalho com o jogador da página (o mesmo nome que o gateway lê). */
+export const HEADER_JOGADOR = 'x-jogador-id'
+
+let jogadorDaPagina: string | null = null
+
 /**
- * A sessão foi criada, mas encerrá-la falhou de vez. Guarda o id para a tela tentar só o que faltou
- * (encerrar), em vez de criar outra sessão e deixar esta sem dono no banco.
+ * O jogador escolhido na página atual (ComJogador define ao confirmar a conta e limpa ao sair).
+ * Todas as chamadas seguintes vão com ele, sem cada função da API precisar receber o id.
  */
-export class ErroAoEncerrar extends Error {
-  constructor(
-    mensagem: string,
-    readonly idSessao: string,
-  ) {
-    super(mensagem)
-  }
+export function definirJogadorDaApi(id: string | null): void {
+  jogadorDaPagina = id
 }
 
 async function requisitar<T>(caminho: string, init: RequestInit): Promise<T> {
   let resposta: Response
+  const headers = new Headers(init.headers)
+  if (jogadorDaPagina) headers.set(HEADER_JOGADOR, jogadorDaPagina)
   try {
-    resposta = await fetch(`/back${caminho}`, { ...init, cache: 'no-store' })
+    resposta = await fetch(`/back${caminho}`, { ...init, headers, cache: 'no-store' })
   } catch {
     throw new ErroApi('Sem conexão com o servidor', null)
   }
-  const dados = (await resposta.json().catch(() => null)) as { erro?: string } | null
-  if (!resposta.ok) throw new ErroApi(dados?.erro ?? `Erro ${resposta.status}`, resposta.status)
+  const dados = (await resposta.json().catch(() => null)) as { erro?: string; detalhes?: string[] } | null
+  if (!resposta.ok) throw new ErroApi(dados?.erro ?? `Erro ${resposta.status}`, resposta.status, dados?.detalhes)
   return dados as T
 }
 

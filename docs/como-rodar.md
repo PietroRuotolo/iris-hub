@@ -78,21 +78,21 @@ de novo).
 
 O `email-service` envia templates HTML reutilizáveis pelo Microsoft Graph. Configure no `.env` a `MICROSOFT_SEND_MAIL_URL` (endereço do POST de envio do Graph) e a `EMAIL_API_KEY` (o access token do Graph, sem escrever `Bearer `, com a permissão delegada `Mail.Send`). O envio é o mesmo POST do Graph: `Authorization: Bearer <EMAIL_API_KEY>`. Como access tokens expiram, atualize a `EMAIL_API_KEY` quando o token vencer. Entre o gateway e o `email-service`, a proteção `x-api-key` usa a mesma `API_KEY` do gateway.
 
-O gateway expõe `POST /emails/send`, autenticado com a `API_KEY`. Na chamada interna do gateway ao `email-service`, ele envia `x-api-key` com a mesma `API_KEY`. Quando um usuário novo conclui o cadastro pelo `/auth/register`, o gateway dispara esse template para o e-mail cadastrado; falha de envio é registrada sem desfazer o cadastro. O corpo manual é JSON `{ "para": "pessoa@exemplo.com", "template": "welcome" }`; esse template envia a imagem HTML configurada no próprio template. Os templates ficam em `apps/email-service/src/modules/emails/templates/` e reutilizam componentes de `components/`.
+O gateway expõe `POST /emails/send`, autenticado com a `API_KEY`. Na chamada interna do gateway ao `email-service`, ele envia `x-api-key` com a mesma `API_KEY`. O cadastro de jogadores **não** manda e-mail de boas-vindas (o template continua disponível para uso futuro). O corpo manual é JSON `{ "para": "pessoa@exemplo.com", "template": "welcome" }`; esse template envia a imagem HTML configurada no próprio template. Os templates ficam em `apps/email-service/src/modules/emails/templates/` e reutilizam componentes de `components/`.
 
 ## Rota `/back` (backend pelo site)
 
 O navegador não chama o gateway pela porta 3001. Ele chama `/back/<rota>` no próprio site
 (`http://localhost:3000/back/...` local, `https://<site>.vercel.app/back/...` em produção), e o Next
-repassa para o gateway em `BACKEND_URL`, adicionando no servidor o `x-api-key` e o token da sessão
-(do cookie). Assim não há porta nem CORS no front-end, e a `API_KEY` nunca chega ao navegador.
+repassa para o gateway em `BACKEND_URL`, adicionando no servidor o `x-api-key` (o jogador escolhido
+na página segue no cabeçalho `x-jogador-id`). Assim não há porta nem CORS no front-end, e a `API_KEY`
+nunca chega ao navegador.
 
 ```bash
 curl localhost:3000/back/health
 # {"status":"ok","servico":"api-gateway"}
 ```
 
-As rotas de login ficam em `/api/auth/*` (elas guardam o token em cookie); `/back/auth/*` responde 404.
 
 **Deploy (Vercel, site e backend no mesmo projeto):** a Vercel não mantém servidores ligados, então
 o `npm run build:vercel` empacota o gateway e os serviços (user, session, email) em
@@ -113,28 +113,46 @@ conferindo se as funções levam o backend e o motor do Prisma para a Vercel; se
 com a explicação. Para testar o modo embutido localmente: `npm run build:vercel` e depois
 `BACKEND_EMBUTIDO=1 npm run start:web`.
 
-## Autenticação
+## Jogadores (sem login)
 
-Ao abrir o hub, a pessoa informa o e-mail. Se já estiver cadastrado, o serviço cria uma sessão; caso contrário, o modal pede o nome e cria usuário e sessão. A sessão dura 30 dias, fica em cookie `HttpOnly` e pode ser encerrada pelo menu lateral.
+Não há login. O site é aberto, e quem joga é escolhido na hora:
 
-O `user-service` precisa de `MONGO_URI`; o gateway continua exigindo o `x-api-key` já configurado. Em produção (Vercel), o backend vai embutido no site (veja o deploy na seção da rota `/back`). A `API_KEY` fica no servidor e nunca deve usar o prefixo `NEXT_PUBLIC_`.
+1. **Criar conta** (`/cadastro`, também no menu): nome, e-mail e telefone com DDD, todos obrigatórios.
+   O e-mail não pode repetir; o telefone é guardado só com os números. Não há e-mail de boas-vindas.
+2. **Quem vai jogar?** Ao clicar no card de um jogo (ou abrir um jogo sem
+   jogador), aparece a busca por nome: os resultados só aparecem a partir de 2 letras (a lista de
+   contas não fica à mostra) e não diferenciam acentos ("joao" acha "João"), com o e-mail mascarado.
+3. O jogador escolhido vai na URL (`?jogador=<id>`) e em toda chamada à API (cabeçalho
+   `x-jogador-id`). O gateway confere no user-service que a conta existe: sem jogador responde 400,
+   conta inexistente 404. A faixa "Jogador: … · Trocar" mostra quem está jogando.
 
-Este fluxo identifica a conta apenas pelo e-mail digitado; ele não confirma que a pessoa controla aquela caixa de e-mail.
+Contas no user-service: `POST /users` (só criação), `GET /users?busca=` (pelo menos 2 letras),
+e `GET /users/:id`. O `user-service` precisa de `MONGO_URI`; o gateway
+exige o `x-api-key`. A `API_KEY` fica no servidor e nunca deve usar o prefixo `NEXT_PUBLIC_`.
+
+**Banco só com `users` (reorganização):** o schema tem apenas o modelo `User` (`nome`, `email` único,
+`telefone`). As partidas não são gravadas por enquanto: as coleções de sessões, tentativas, resumos e
+calibrações saíram, junto com as telas de Sessões, resumo e QR code. Para deixar o Atlas igual ao schema:
+
+```bash
+npm run banco:migrar-so-users                 # só mostra o que vai apagar
+npm run banco:migrar-so-users -- --confirmar  # apaga as outras coleções e o campo historiaVistaEm
+npm run migration:run                         # recria os índices de users
+```
 
 ## Introdução (história)
 
-No primeiro acesso de cada conta, antes de qualquer tela, aparece a história de introdução: 7 telas
-de 10 s com as imagens de `apps/web/public/history/` e o texto animado por cima. Ela não pode ser
-pulada; ao terminar, a conta registra `historiaVistaEm` (user-service, `POST /auth/me/intro-seen`) e
-ela não aparece de novo. Pelo menu **Introdução** (`/introducao`) a mesma história pode ser vista a
-qualquer momento, com **Voltar**, **Pular** e **Sair** (também pelas setas e `Esc`). Textos e ordem
+A história de introdução tem 7 telas de 10 s com as imagens de `apps/web/public/history/` e o texto
+animado por cima. Hoje ela não é obrigatória antes da partida (a regra volta a ser decidida depois da
+reorganização do banco). Pelo menu **Introdução** (`/introducao`) ela pode ser vista a qualquer momento, com **Voltar**, **Pular** e **Sair** (também pelas setas e `Esc`). Textos e ordem
 das telas: `apps/web/src/features/historia/slides.ts`.
 
 ## Jogar
 
-1. Entre no site (login pelo e-mail) e, se quiser, escolha o tamanho da tela em **Configurações**
-   (padrão: computador, 24"). O tamanho dos alvos segue essa escolha.
-2. Vá em **Jogo de ritmo → Começar partida** (`/partida`). O navegador pede a câmera.
+1. Se quiser, escolha o tamanho da tela em **Configurações** (o aparelho é detectado sozinho). O
+   tamanho dos alvos segue essa escolha.
+2. No início, clique no card **Jogo de ritmo** e escolha (ou crie) o jogador; a partida abre em
+   `/partida?jogador=…`. O navegador pede a câmera.
 3. **Posicione-se:** um checklist ao vivo confere distância (40 a 75 cm, estimada pelo tamanho da
    íris), rosto centralizado, cabeça reta (em graus), luz e reflexo nos olhos (óculos), com os dois
    olhos ampliados na tela. Com tudo verde por 1,5 s, a calibração começa sozinha: 9 pontos. Depois de
@@ -162,13 +180,13 @@ das telas: `apps/web/src/features/historia/slides.ts`.
    da cabeça: movimentos pequenos são compensados. Se a cabeça sair muito da posição da calibração
    (±20% de distância, ±15°, ou fora do centro) ou a leitura falhar por mais de 1 s (rosto sumiu,
    reflexo), o jogo pausa, diz o que corrigir e continua sozinho quando a pessoa volta.
-6. No fim, a tela de resultado mostra a pontuação de cada fase e a geral, e salva tudo na conta
-   (coleções `sessoes` e `tentativas_alvo`).
+6. No fim, a tela de resultado mostra a pontuação de cada fase e a geral. Por enquanto a partida não é
+   salva no banco.
 
 Regra de acerto: olhar entra no alvo até 500 ms antes ou depois da batida (quando o anel fecha) e
 fica nele por 250 ms. Cada acerto vale `50 + 30 × notaTempo + 20 × notaPrecisao` (de 50 a 100);
 alvos sem rastreamento suficiente não contam como erro. A fórmula fica em
-`packages/contracts/src/sessoes.ts` e o session-service recalcula os pontos a partir das medidas.
+`packages/contracts/src/sessoes.ts`.
 
 **Testar sem câmera (só em desenvolvimento):** abra `http://localhost:3000/partida?simular`. O mouse
 faz o papel do olhar. Teclas: **C** tira o rosto do centro, **P** aproxima da câmera, **R** liga um
@@ -189,11 +207,10 @@ curl localhost:3003/health
 # {"status":"ok","servico":"session-service"}
 ```
 
-3. Crie uma calibração pela API (grava no seu banco):
+3. Busque contas pela API (lê do seu banco):
 
 ```bash
-curl -X POST localhost:3001/calibrations -H 'content-type: application/json' -H "x-api-key: $API_KEY" \
-  -d '{"pontosCalibracao":9,"tela":{"larguraPx":1366,"alturaPx":768}}'
+curl 'localhost:3001/users?busca=an' -H "x-api-key: $API_KEY"
 ```
 
 ## 6. Rodar cada parte separada (opcional)
@@ -203,8 +220,8 @@ curl -X POST localhost:3001/calibrations -H 'content-type: application/json' -H 
 ```bash
 npm run dev:web        # site
 npm run dev:gateway    # API (gateway)
-npm run dev:session    # sessões e calibrações (precisa do MONGO_URI)
-npm run dev:user       # usuários (ainda sem rotas, só /health)
+npm run dev:session    # session-service (sem rotas por enquanto, só /health)
+npm run dev:user       # contas dos jogadores (precisa do MONGO_URI)
 npm run dev:worker     # worker (ainda sem consumidores)
 npm run dev:email      # email-service
 ```
@@ -217,7 +234,7 @@ Depois de alterar `prisma/schema.prisma`, aplique o schema ao banco configurado 
 npm run migration:run
 ```
 
-Como o projeto usa MongoDB, o comando executa `prisma db push`: sincroniza coleções e índices definidos no schema; não cria arquivos de migrations relacionais. O modelo `User` cria a coleção `users`, com `_id` UUID v7, `nome` e `email` único. As sessões do jogo usam `sessoes` e `tentativas_alvo`; rode o comando uma vez para criar os índices delas.
+Como o projeto usa MongoDB, o comando executa `prisma db push`: sincroniza coleções e índices definidos no schema; não cria arquivos de migrations relacionais. O schema tem só o modelo `User`: a coleção `users`, com `_id` UUID v7, `nome`, `email` único e `telefone`. O `db push` não apaga coleções que saíram do schema; para isso existe o `banco:migrar-so-users` (veja "Jogadores").
 
 ## 7. Ver os dados do banco
 
@@ -225,7 +242,7 @@ Como o projeto usa MongoDB, o comando executa `prisma db push`: sincroniza cole�
 npm run prisma:studio
 ```
 
-Abre o Prisma Studio no navegador, com as coleções do banco (`users`, `sessoes`, `tentativas_alvo` etc.). Se mudar o `MONGO_URI`,
+Abre o Prisma Studio no navegador, com a coleção `users`. Se mudar o `MONGO_URI`,
 feche o Studio e abra de novo.
 
 ## 8. Testes e verificações

@@ -3,15 +3,13 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { LogOut, X } from 'lucide-react'
-import { useAuth } from '@/components/auth/AuthGate'
+import { X } from 'lucide-react'
 import { GRUPOS_MENU, ITEM_CONFIGURACOES, itemAtivo, type ItemMenu } from '@/lib/navegacao'
 
 type Props = { aberta: boolean; aoFechar: () => void }
 
 export default function Sidebar({ aberta, aoFechar }: Props) {
   const caminho = usePathname()
-  const { usuario, sair } = useAuth()
 
   return (
     <>
@@ -56,15 +54,8 @@ export default function Sidebar({ aberta, aoFechar }: Props) {
           ))}
         </nav>
 
-        <div className="mt-auto px-3 pb-2">
+        <div className="mt-auto border-t border-navy/10 px-3 py-3">
           <LinkMenu item={ITEM_CONFIGURACOES} caminho={caminho} aoClicar={aoFechar} />
-        </div>
-
-        <div className="border-t border-navy/10 p-4">
-          <p className="truncate text-sm font-semibold text-[var(--color-ink)]">{usuario.nome}</p>
-          <button type="button" onClick={() => void sair()} className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-bg)] hover:text-[var(--color-navy)]">
-            <LogOut size={16} /> Sair
-          </button>
         </div>
       </aside>
     </>

@@ -27,7 +27,7 @@ passo('Site: next build')
 rodar('npx next build apps/web')
 
 passo('Conferindo as funções que falam com o backend')
-const funcoes = ['apps/web/.next/server/app/back/[...caminho]/route.js.nft.json', 'apps/web/.next/server/app/api/auth/me/route.js.nft.json']
+const funcoes = ['apps/web/.next/server/app/back/[...caminho]/route.js.nft.json']
 const exigidos = [
   ['o backend embutido', '.backend/backend.cjs'],
   ['o cliente do Prisma', '@prisma/client/'],
