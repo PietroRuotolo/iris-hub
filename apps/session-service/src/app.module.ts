@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common'
-import { ModuloCompartilhado } from '@iris/shared'
+import { ModuloCompartilhado, ModuloPrisma } from '@iris/shared'
+import { RhythmModule } from './modules/rhythm/rhythm.module.js'
 
-// Sem módulos por enquanto: as tabelas de partidas (sessões, tentativas, resumos) saíram para a
-// reorganização do banco. O serviço segue no ar, só com GET /health.
+// Partidas dos jogos. Por enquanto só o ritmo (rhythm_sessions, rhythm_phases e rhythm_targets); reflexo
+// e cores entram aqui quando forem gravados.
 @Module({
-  imports: [ModuloCompartilhado.paraServico('session-service')],
+  imports: [ModuloCompartilhado.paraServico('session-service'), ModuloPrisma, RhythmModule],
 })
 export class AppModule {}
