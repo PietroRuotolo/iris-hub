@@ -1,4 +1,4 @@
-import { Clapperboard, Home, Settings, UserPlus, type LucideIcon } from 'lucide-react'
+import { Clapperboard, Settings, Trophy, UserPlus, type LucideIcon } from 'lucide-react'
 import { JOGOS } from './jogos'
 
 export type ItemMenu = { rota: string; label: string; Icone: LucideIcon }
@@ -8,7 +8,7 @@ export type GrupoMenu = { titulo?: string; itens: ItemMenu[] }
 export const GRUPOS_MENU: GrupoMenu[] = [
   {
     itens: [
-      { rota: '/', label: 'Início', Icone: Home },
+      { rota: '/', label: 'Ranking', Icone: Trophy },
       { rota: '/introducao', label: 'Introdução', Icone: Clapperboard },
       // Um item por jogo do catálogo (lib/jogos.ts): jogo novo entra no menu sozinho.
       ...JOGOS.map(({ rota, nome, Icone }) => ({ rota, label: nome, Icone })),
