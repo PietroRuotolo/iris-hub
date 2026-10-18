@@ -15,6 +15,9 @@ export interface Ambiente {
   /** Access token do Microsoft Graph (EMAIL_API_KEY), enviado como Bearer no envio de e-mails. */
   emailApiKey: string | null
   microsoftSendMailUrl: string | null
+  /** WhatsApp: o endereço do POST (texto e imagem) e a chave (header apikey). */
+  whatsappSendUrl: string | null
+  whatsappApiKey: string | null
   logLevel: NivelLog
 }
 
@@ -52,6 +55,8 @@ export function lerAmbiente(env: Record<string, string | undefined> = process.en
     apiKey: env.API_KEY || null,
     emailApiKey: env.EMAIL_API_KEY || null,
     microsoftSendMailUrl: env.MICROSOFT_SEND_MAIL_URL || null,
+    whatsappSendUrl: env.WHATSAPP_SEND_URL || null,
+    whatsappApiKey: env.WHATSAPP_API_KEY || null,
     logLevel: nivel(env.LOG_LEVEL),
   }
 }

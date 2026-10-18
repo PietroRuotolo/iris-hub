@@ -80,6 +80,22 @@ O `email-service` envia templates HTML reutilizáveis pelo Microsoft Graph. Conf
 
 O gateway expõe `POST /emails/send`, autenticado com a `API_KEY`. Na chamada interna do gateway ao `email-service`, ele envia `x-api-key` com a mesma `API_KEY`. Ao criar uma conta (`POST /users`), o gateway manda o e-mail de boas-vindas (`welcome`) para o e-mail cadastrado e responde com `emailEnviado: true/false`; ele espera o envio por até 5 s e o cadastro nunca falha por causa do e-mail (falha ou demora vão para o log). Com a `EMAIL_API_KEY` vencida, as contas continuam sendo criadas, mas sem o e-mail. O corpo manual é JSON `{ "para": "pessoa@exemplo.com", "template": "welcome" }`; esse template envia a imagem HTML configurada no próprio template. Os templates ficam em `apps/email-service/src/modules/emails/templates/` e reutilizam componentes de `components/`.
 
+**WhatsApp** (módulo `whatsapp` do `email-service`): configure no `.env` a `WHATSAPP_SEND_URL` (o endereço
+do POST, o mesmo para texto e imagem) e a `WHATSAPP_API_KEY` (enviada no header `apikey`). Sem elas, o envio
+responde 503; se o provedor recusar, 502. O gateway expõe `POST /whatsapp/send` (com a `x-api-key`):
+
+```bash
+# texto
+curl -X POST localhost:3001/whatsapp/send -H 'content-type: application/json' -H "x-api-key: $API_KEY" \
+  -d '{"para":"11987654321","texto":"Olá! Sua conta no Íris Hub foi criada."}'
+# imagem (o texto vira a legenda; o tipo sai da extensão, png por padrão)
+curl -X POST localhost:3001/whatsapp/send -H 'content-type: application/json' -H "x-api-key: $API_KEY" \
+  -d '{"para":"11987654321","texto":"Bem-vinda!","imagem":{"url":"https://exemplo.com/boas-vindas.png"}}'
+```
+
+O telefone vai com DDD, com ou sem o 55 (o módulo põe o 55 quando falta). A imagem precisa de um endereço
+público: o provedor a baixa de lá.
+
 ## Rota `/back` (backend pelo site)
 
 O navegador não chama o gateway pela porta 3001. Ele chama `/back/<rota>` no próprio site
@@ -106,7 +122,7 @@ para ele; as requisições seguintes já o encontram no ar. Configuração do pr
 | Build Command | Override: `npm run build:vercel` |
 | Output Directory | Override: `apps/web/.next` |
 | Root Directory | `./`, com "Include files outside the root directory" ligado |
-| Environment Variables | `MONGO_URI`, `API_KEY`, `EMAIL_API_KEY`, `MICROSOFT_SEND_MAIL_URL` (`BACKEND_URL` não é usado na Vercel) |
+| Environment Variables | `MONGO_URI`, `API_KEY`, `EMAIL_API_KEY`, `MICROSOFT_SEND_MAIL_URL`, `WHATSAPP_SEND_URL`, `WHATSAPP_API_KEY` (`BACKEND_URL` não é usado na Vercel) |
 
 No Atlas, em **Network Access**, libere `0.0.0.0/0` (os IPs da Vercel mudam). O build termina
 conferindo se as funções levam o backend e o motor do Prisma para a Vercel; se faltar algo, ele falha
