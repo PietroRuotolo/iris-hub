@@ -18,6 +18,9 @@ export interface Ambiente {
   /** WhatsApp: o endereço do POST (texto e imagem) e a chave (header apikey). */
   whatsappSendUrl: string | null
   whatsappApiKey: string | null
+  /** Boas-vindas pelo WhatsApp (no cadastro): a legenda (caption) e a imagem (media: endereço ou base64). */
+  whatsappWelcomeCaption: string | null
+  whatsappWelcomeMedia: string | null
   logLevel: NivelLog
 }
 
@@ -56,6 +59,8 @@ export function lerAmbiente(env: Record<string, string | undefined> = process.en
     emailApiKey: env.EMAIL_API_KEY || null,
     microsoftSendMailUrl: env.MICROSOFT_SEND_MAIL_URL || null,
     whatsappSendUrl: env.WHATSAPP_SEND_URL || null,
+    whatsappWelcomeCaption: env.WHATSAPP_WELCOME_CAPTION || null,
+    whatsappWelcomeMedia: env.WHATSAPP_WELCOME_MEDIA || null,
     whatsappApiKey: env.WHATSAPP_API_KEY || null,
     logLevel: nivel(env.LOG_LEVEL),
   }

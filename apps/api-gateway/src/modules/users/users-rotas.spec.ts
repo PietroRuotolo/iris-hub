@@ -3,6 +3,7 @@ import type { INestApplication } from '@nestjs/common'
 import { Test } from '@nestjs/testing'
 import request from 'supertest'
 import { EmailsClient } from '../emails/clients/emails.client.js'
+import { WhatsappClient } from '../whatsapp/clients/whatsapp.client.js'
 import { UsersClient } from './clients/users.client.js'
 import { UsersController } from './controllers/users.controller.js'
 
@@ -10,6 +11,7 @@ import { UsersController } from './controllers/users.controller.js'
 // e-mail de boas-vindas e que o cadastro nunca depende dele.
 const usuarios = { criar: vi.fn(), buscar: vi.fn(), obter: vi.fn() }
 const emails = { enviar: vi.fn() }
+const whatsapp = { enviar: vi.fn() }
 let app: INestApplication
 
 beforeAll(async () => {
@@ -18,6 +20,7 @@ beforeAll(async () => {
     providers: [
       { provide: UsersClient, useValue: usuarios },
       { provide: EmailsClient, useValue: emails },
+      { provide: WhatsappClient, useValue: whatsapp },
     ],
   }).compile()
   app = modulo.createNestApplication({ logger: false })
@@ -31,13 +34,28 @@ const conta = { id: 'u1', nome: 'Ana Souza', email: 'ana@exemplo.com', emailMasc
 beforeEach(() => {
   usuarios.criar.mockReset().mockResolvedValue({ status: 201, corpo: conta })
   emails.enviar.mockReset().mockResolvedValue({ status: 202, corpo: { enviado: true } })
+  whatsapp.enviar.mockReset().mockResolvedValue({ status: 202, corpo: { enviado: true } })
 })
 
-describe('gateway: cadastro e e-mail de boas-vindas', () => {
-  it('com a conta criada, manda o boas-vindas para o e-mail cadastrado', async () => {
+describe('gateway: cadastro e boas-vindas (e-mail e WhatsApp)', () => {
+  it('com a conta criada, manda o e-mail e o WhatsApp de boas-vindas', async () => {
     const { body } = await request(app.getHttpServer()).post('/users').send({ nome: 'Ana Souza' }).expect(201)
     expect(emails.enviar).toHaveBeenCalledWith({ para: 'ana@exemplo.com', template: 'welcome' })
-    expect(body).toEqual({ ...conta, emailEnviado: true })
+    expect(whatsapp.enviar).toHaveBeenCalledWith({ para: '11987654321', template: 'welcome' })
+    expect(body).toEqual({ ...conta, emailEnviado: true, whatsappEnviado: true })
+  })
+
+  it('um falhar não atrapalha o outro nem o cadastro', async () => {
+    whatsapp.enviar.mockResolvedValue({ status: 503, corpo: { erro: 'WHATSAPP_WELCOME_MEDIA não está configurada' } })
+    const { body } = await request(app.getHttpServer()).post('/users').send({}).expect(201)
+    expect(body).toMatchObject({ emailEnviado: true, whatsappEnviado: false })
+  })
+
+  it('conta sem telefone: não tenta o WhatsApp', async () => {
+    usuarios.criar.mockResolvedValue({ status: 201, corpo: { ...conta, telefone: null } })
+    const { body } = await request(app.getHttpServer()).post('/users').send({}).expect(201)
+    expect(whatsapp.enviar).not.toHaveBeenCalled()
+    expect(body.whatsappEnviado).toBe(false)
   })
 
   it('sem conta criada (409, 400), não manda nada e repassa o erro', async () => {
@@ -46,6 +64,7 @@ describe('gateway: cadastro e e-mail de boas-vindas', () => {
     usuarios.criar.mockResolvedValue({ status: 400, corpo: { erro: 'Dados inválidos' } })
     await request(app.getHttpServer()).post('/users').send({}).expect(400)
     expect(emails.enviar).not.toHaveBeenCalled()
+    expect(whatsapp.enviar).not.toHaveBeenCalled()
   })
 
   it('o e-mail falhar não desfaz o cadastro', async () => {

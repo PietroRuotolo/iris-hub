@@ -21,8 +21,9 @@ export class ImagemWhatsappDto {
 }
 
 /**
- * POST /whatsapp/send. Sem `imagem`: mensagem de texto (`texto` obrigatório). Com `imagem`: a imagem,
- * com o `texto` como legenda (opcional).
+ * POST /whatsapp/send. Com `template: 'welcome'`: a imagem de boas-vindas, com legenda e imagem das
+ * variáveis de ambiente. Sem template e sem `imagem`: mensagem de texto (`texto` obrigatório). Com
+ * `imagem`: a imagem, com o `texto` como legenda (opcional).
  */
 export class SendWhatsappRequestDto {
   /** Telefone com DDD, com ou sem o 55 do Brasil; qualquer formatação ("(11) 98765-4321"). */
@@ -31,7 +32,11 @@ export class SendWhatsappRequestDto {
   @Matches(/^(55)?[1-9]{2}9?\d{8}$/, { message: 'Informe o telefone com DDD (com ou sem o 55)' })
   para: string
 
-  @ValidateIf((dados: SendWhatsappRequestDto) => !dados.imagem || dados.texto !== undefined)
+  @IsOptional()
+  @IsIn(['welcome'])
+  template?: 'welcome'
+
+  @ValidateIf((dados: SendWhatsappRequestDto) => (!dados.imagem && !dados.template) || dados.texto !== undefined)
   @IsString({ message: 'Informe o texto da mensagem (ou uma imagem)' })
   @MaxLength(4096, { message: 'O texto pode ter no máximo 4096 caracteres' })
   texto?: string

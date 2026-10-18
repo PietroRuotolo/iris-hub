@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable, ServiceUnavailableException } from '@nestjs/common'
+import type { Ambiente } from '@iris/config'
+import { AMBIENTE } from '@iris/shared'
 import type { SendWhatsappRequestDto } from '../dtos/request/send-whatsapp.request.dto.js'
 import { EvolutionClient } from './evolution.client.js'
 
@@ -18,13 +20,24 @@ export function tipoDaImagem(url: string): string {
 
 const nomeDaImagem = (url: string) => decodeURIComponent(new URL(url).pathname.split('/').pop() || '') || 'imagem.png'
 
+/** Nome do arquivo da imagem de boas-vindas. */
+export const ARQUIVO_BOAS_VINDAS = 'bem-vindo.png'
+
 @Injectable()
 export class WhatsappService {
-  constructor(private readonly evolution: EvolutionClient) {}
+  constructor(
+    private readonly evolution: EvolutionClient,
+    @Inject(AMBIENTE) private readonly ambiente: Ambiente,
+  ) {}
 
   async enviar(dados: SendWhatsappRequestDto): Promise<{ enviado: true }> {
     const numero = numeroComPais(dados.para)
-    if (dados.imagem) {
+    if (dados.template === 'welcome') {
+      // Boas-vindas: a imagem e a legenda vêm do ambiente (WHATSAPP_WELCOME_MEDIA e _CAPTION).
+      const { whatsappWelcomeMedia: imagem, whatsappWelcomeCaption: legenda } = this.ambiente
+      if (!imagem) throw new ServiceUnavailableException('WHATSAPP_WELCOME_MEDIA não está configurada para as boas-vindas')
+      await this.evolution.enviarImagem({ numero, url: imagem, tipo: 'image/png', nomeArquivo: ARQUIVO_BOAS_VINDAS, legenda: legenda ?? '' })
+    } else if (dados.imagem) {
       await this.evolution.enviarImagem({
         numero,
         url: dados.imagem.url,

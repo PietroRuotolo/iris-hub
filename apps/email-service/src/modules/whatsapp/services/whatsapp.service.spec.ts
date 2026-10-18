@@ -4,6 +4,8 @@ import { validateSync } from 'class-validator'
 import { describe, expect, it, vi } from 'vitest'
 import { SendWhatsappRequestDto } from '../dtos/request/send-whatsapp.request.dto.js'
 import type { EvolutionClient } from './evolution.client.js'
+import type { Ambiente } from '@iris/config'
+import { ServiceUnavailableException } from '@nestjs/common'
 import { WhatsappService, numeroComPais, tipoDaImagem } from './whatsapp.service.js'
 
 const problemas = (corpo: object) => validateSync(plainToInstance(SendWhatsappRequestDto, corpo)).map((e) => e.property)
@@ -23,7 +25,7 @@ describe('WhatsappService', () => {
 
   it('sem imagem manda texto; com imagem manda a imagem com o texto de legenda', async () => {
     const evolution = { enviarTexto: vi.fn(), enviarImagem: vi.fn() }
-    const servico = new WhatsappService(evolution as unknown as EvolutionClient)
+    const servico = new WhatsappService(evolution as unknown as EvolutionClient, {} as Ambiente)
     await servico.enviar({ para: '11987654321', texto: 'Olá!' })
     expect(evolution.enviarTexto).toHaveBeenCalledWith({ numero: '5511987654321', texto: 'Olá!' })
 
@@ -35,6 +37,33 @@ describe('WhatsappService', () => {
       nomeArquivo: 'iris hub.jpg',
       legenda: 'Veja',
     })
+  })
+})
+
+describe('boas-vindas (template welcome)', () => {
+  it('manda a imagem do ambiente, com a legenda do ambiente e o arquivo bem-vindo.png', async () => {
+    const evolution = { enviarTexto: vi.fn(), enviarImagem: vi.fn() }
+    const ambiente = { whatsappWelcomeMedia: 'https://cdn.exemplo/boas-vindas.png', whatsappWelcomeCaption: 'Bem-vindo ao Íris Hub!' } as Ambiente
+    await new WhatsappService(evolution as unknown as EvolutionClient, ambiente).enviar({ para: '11987654321', template: 'welcome' })
+    expect(evolution.enviarImagem).toHaveBeenCalledWith({
+      numero: '5511987654321',
+      url: 'https://cdn.exemplo/boas-vindas.png',
+      tipo: 'image/png',
+      nomeArquivo: 'bem-vindo.png',
+      legenda: 'Bem-vindo ao Íris Hub!',
+    })
+  })
+
+  it('sem a imagem no ambiente: 503, sem chamar o provedor', async () => {
+    const evolution = { enviarTexto: vi.fn(), enviarImagem: vi.fn() }
+    const servico = new WhatsappService(evolution as unknown as EvolutionClient, {} as Ambiente)
+    await expect(servico.enviar({ para: '11987654321', template: 'welcome' })).rejects.toBeInstanceOf(ServiceUnavailableException)
+    expect(evolution.enviarImagem).not.toHaveBeenCalled()
+  })
+
+  it('o template não precisa de texto', () => {
+    expect(problemas({ para: '11987654321', template: 'welcome' })).toEqual([])
+    expect(problemas({ para: '11987654321', template: 'outro' })).toEqual(['template'])
   })
 })
 

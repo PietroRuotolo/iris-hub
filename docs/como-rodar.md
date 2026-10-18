@@ -78,11 +78,12 @@ de novo).
 
 O `email-service` envia templates HTML reutilizáveis pelo Microsoft Graph. Configure no `.env` a `MICROSOFT_SEND_MAIL_URL` (endereço do POST de envio do Graph) e a `EMAIL_API_KEY` (o access token do Graph, sem escrever `Bearer `, com a permissão delegada `Mail.Send`). O envio é o mesmo POST do Graph: `Authorization: Bearer <EMAIL_API_KEY>`. Como access tokens expiram, atualize a `EMAIL_API_KEY` quando o token vencer. Entre o gateway e o `email-service`, a proteção `x-api-key` usa a mesma `API_KEY` do gateway.
 
-O gateway expõe `POST /emails/send`, autenticado com a `API_KEY`. Na chamada interna do gateway ao `email-service`, ele envia `x-api-key` com a mesma `API_KEY`. Ao criar uma conta (`POST /users`), o gateway manda o e-mail de boas-vindas (`welcome`) para o e-mail cadastrado e responde com `emailEnviado: true/false`; ele espera o envio por até 5 s e o cadastro nunca falha por causa do e-mail (falha ou demora vão para o log). Com a `EMAIL_API_KEY` vencida, as contas continuam sendo criadas, mas sem o e-mail. O corpo manual é JSON `{ "para": "pessoa@exemplo.com", "template": "welcome" }`; esse template envia a imagem HTML configurada no próprio template. Os templates ficam em `apps/email-service/src/modules/emails/templates/` e reutilizam componentes de `components/`.
+O gateway expõe `POST /emails/send`, autenticado com a `API_KEY`. Na chamada interna do gateway ao `email-service`, ele envia `x-api-key` com a mesma `API_KEY`. Ao criar uma conta (`POST /users`), o gateway manda, ao mesmo tempo, o e-mail de boas-vindas (`welcome`) para o e-mail cadastrado e o WhatsApp de boas-vindas (a imagem `WHATSAPP_WELCOME_MEDIA` com a legenda `WHATSAPP_WELCOME_CAPTION`, arquivo `bem-vindo.png`) para o telefone cadastrado, e responde com `emailEnviado` e `whatsappEnviado` (true/false); ele espera os envios por até 5 s e o cadastro nunca falha por causa deles (falha ou demora vão para o log). Com a `EMAIL_API_KEY` vencida, as contas continuam sendo criadas, mas sem o e-mail. O corpo manual é JSON `{ "para": "pessoa@exemplo.com", "template": "welcome" }`; esse template envia a imagem HTML configurada no próprio template. Os templates ficam em `apps/email-service/src/modules/emails/templates/` e reutilizam componentes de `components/`.
 
 **WhatsApp** (módulo `whatsapp` do `email-service`): configure no `.env` a `WHATSAPP_SEND_URL` (o endereço
-do POST, o mesmo para texto e imagem) e a `WHATSAPP_API_KEY` (enviada no header `apikey`). Sem elas, o envio
-responde 503; se o provedor recusar, 502. O gateway expõe `POST /whatsapp/send` (com a `x-api-key`):
+do POST, o mesmo para texto e imagem) e a `WHATSAPP_API_KEY` (enviada no header `apikey`). Para as boas-vindas do cadastro, também
+`WHATSAPP_WELCOME_MEDIA` (a imagem: endereço público ou base64) e `WHATSAPP_WELCOME_CAPTION` (a legenda). Sem
+elas, o envio responde 503; se o provedor recusar, 502. O gateway expõe `POST /whatsapp/send` (com a `x-api-key`):
 
 ```bash
 # texto
@@ -122,7 +123,7 @@ para ele; as requisições seguintes já o encontram no ar. Configuração do pr
 | Build Command | Override: `npm run build:vercel` |
 | Output Directory | Override: `apps/web/.next` |
 | Root Directory | `./`, com "Include files outside the root directory" ligado |
-| Environment Variables | `MONGO_URI`, `API_KEY`, `EMAIL_API_KEY`, `MICROSOFT_SEND_MAIL_URL`, `WHATSAPP_SEND_URL`, `WHATSAPP_API_KEY` (`BACKEND_URL` não é usado na Vercel) |
+| Environment Variables | `MONGO_URI`, `API_KEY`, `EMAIL_API_KEY`, `MICROSOFT_SEND_MAIL_URL`, `WHATSAPP_SEND_URL`, `WHATSAPP_API_KEY`, `WHATSAPP_WELCOME_CAPTION`, `WHATSAPP_WELCOME_MEDIA` (`BACKEND_URL` não é usado na Vercel) |
 
 No Atlas, em **Network Access**, libere `0.0.0.0/0` (os IPs da Vercel mudam). O build termina
 conferindo se as funções levam o backend e o motor do Prisma para a Vercel; se faltar algo, ele falha
