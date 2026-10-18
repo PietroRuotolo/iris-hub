@@ -123,3 +123,21 @@ export function raioEmPx(
   const teto = Math.max(0.16 * menorLado, piso)
   return Math.round(Math.min(Math.max(raioCm * pxPorCm, piso), teto))
 }
+
+const mediana = (valores: number[]) => {
+  const o = [...valores].sort((a, b) => a - b)
+  return o.length % 2 ? o[(o.length - 1) / 2] : (o[o.length / 2 - 1] + o[o.length / 2]) / 2
+}
+
+/**
+ * O raio (cm) e o intervalo entre batidas (ms) de uma fase, para gravar com a partida: a mediana dos
+ * alvos, porque nas fases 4 e 5 eles mudam de um alvo para o outro.
+ */
+export function parametrosDaFase(planejados: AlvoPlanejado[]): { raioCm: number; intervaloMs: number } {
+  if (planejados.length === 0) return { raioCm: 0, intervaloMs: 0 }
+  const intervalos = planejados.slice(1).map((a, i) => a.batidaMs - planejados[i].batidaMs)
+  return {
+    raioCm: Math.round(mediana(planejados.map((a) => a.raioCm)) * 100) / 100,
+    intervaloMs: Math.round(intervalos.length ? mediana(intervalos) : planejados[0].antecedenciaMs),
+  }
+}

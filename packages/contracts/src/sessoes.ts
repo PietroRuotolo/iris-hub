@@ -73,6 +73,8 @@ export interface TentativaAlvo {
   /** Desvio médio do olhar em relação ao alvo na janela da batida (px; + = direita/baixo). */
   desvioXPx: number | null
   desvioYPx: number | null
+  /** Acerto só pelo ímã: o olhar ficou fora do alvo desenhado, mas perto o bastante. Vale metade. */
+  peloIma?: boolean
   pontuacao: number
 }
 
@@ -106,16 +108,31 @@ export interface SessaoJogo {
 const limitar01 = (v: number) => Math.min(1, Math.max(0, v))
 const media = (valores: number[]) => valores.reduce((s, v) => s + v, 0) / valores.length
 
+/** Um acerto só pelo ímã (o olhar perto do alvo, não dentro) vale esta fração dos pontos. */
+export const FRACAO_PONTOS_IMA = 0.5
+
+/**
+ * As duas notas de um acerto (0 a 1): notaTempo = 1 − erroTempo/janela e notaPrecisao = 1 − d/R. Sem
+ * acerto, null (não houve entrada no alvo para medir).
+ */
+export function notasTentativa(t: Pick<TentativaAlvo, 'resultado' | 'erroTempoMs' | 'janelaMs' | 'erroEspacial'>): { notaTempo: number; notaPrecisao: number } | null {
+  if (t.resultado !== 'ACERTO') return null
+  return {
+    notaTempo: t.erroTempoMs === null || t.janelaMs <= 0 ? 0 : limitar01(1 - t.erroTempoMs / t.janelaMs),
+    notaPrecisao: t.erroEspacial === null ? 0 : limitar01(1 - t.erroEspacial),
+  }
+}
+
 /**
  * Pontos de um alvo (0 a 100). Só acerto pontua:
- * 50 + 30 × notaTempo + 20 × notaPrecisao, com notaTempo = 1 − erroTempo/janela e
- * notaPrecisao = 1 − d/R (cada nota limitada a 0..1).
+ * 50 + 30 × notaTempo + 20 × notaPrecisao (notas de notasTentativa). Acerto só pelo ímã vale a metade.
  */
-export function pontuarTentativa(t: Pick<TentativaAlvo, 'resultado' | 'erroTempoMs' | 'janelaMs' | 'erroEspacial'>): number {
-  if (t.resultado !== 'ACERTO') return 0
-  const notaTempo = t.erroTempoMs === null || t.janelaMs <= 0 ? 0 : limitar01(1 - t.erroTempoMs / t.janelaMs)
-  const notaPrecisao = t.erroEspacial === null ? 0 : limitar01(1 - t.erroEspacial)
-  return Math.round((50 + 30 * notaTempo + 20 * notaPrecisao) * 10) / 10
+export function pontuarTentativa(t: Pick<TentativaAlvo, 'resultado' | 'erroTempoMs' | 'janelaMs' | 'erroEspacial' | 'peloIma'>): number {
+  const notas = notasTentativa(t)
+  if (!notas) return 0
+  const { notaTempo, notaPrecisao } = notas
+  const pontos = (50 + 30 * notaTempo + 20 * notaPrecisao) * (t.peloIma ? FRACAO_PONTOS_IMA : 1)
+  return Math.round(pontos * 10) / 10
 }
 
 /** Resumo de uma fase. Alvos com rastreamento insuficiente não entram na pontuação (nem como erro). */
@@ -149,4 +166,57 @@ export function resumirSessao(fases: Pick<FaseResumo, 'pontuacao' | 'coberturaRa
     pontuacaoTotal: Math.round(media(fases.map((f) => f.pontuacao)) * 10) / 10,
     coberturaTotal: coberturas.length ? Math.round(media(coberturas) * 1000) / 1000 : null,
   }
+}
+
+// --- Gravação da partida (site → gateway → session-service) -----------------------------------
+
+/** Limites só contra valores absurdos (bug ou entrada forjada). */
+export const MAX_ALVOS_FASE = 100
+export const DURACAO_MAXIMA_MS = 600_000
+
+export type StatusPartidaRitmo = 'in_progress' | 'completed' | 'abandoned'
+export type ResultadoAlvoSalvo = 'hit' | 'no_response' | 'insufficient_tracking'
+
+/** A partida como ficou gravada (rhythm_sessions, com fases e alvos). */
+export interface PartidaRitmoSalva {
+  id: string
+  playerId: string
+  status: StatusPartidaRitmo
+  /** Média das fases (0–100); null sem nenhuma fase com dados válidos. */
+  totalScore: number | null
+  phasesCompleted: number
+  totalHits: number
+  totalMisses: number
+  totalInsufficientTracking: number
+  scoringVersion: string
+  startedAt: string
+  finishedAt: string | null
+  phases: {
+    phaseNumber: number
+    score: number | null
+    totalTargets: number
+    hits: number
+    misses: number
+    insufficientTracking: number
+    /** Percentual (0–100) do tempo dos alvos com o olhar rastreado. */
+    trackingCoverage: number | null
+    targetRadiusCm: number
+    beatIntervalMs: number
+    targets: {
+      targetNumber: number
+      result: ResultadoAlvoSalvo
+      score: number | null
+      byMagnet: boolean
+      targetX: number
+      targetY: number
+      latencyMs: number | null
+      entryOffsetMs: number | null
+      dwellTimeMs: number | null
+      averageCenterDistancePx: number | null
+      targetRadiusPx: number | null
+      timeScore: number | null
+      precisionScore: number | null
+      trackingCoverage: number | null
+    }[]
+  }[]
 }

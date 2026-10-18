@@ -87,3 +87,32 @@ describe('criarSuavizador (One Euro)', () => {
     expect(suavizar([10, 20], 66)).toEqual([10, 20])
   })
 })
+
+describe('ajustarMapeamento com pesos', () => {
+  const amostra = (h: number, v: number): FeaturesOlhar => ({
+    h,
+    v,
+    abertura: 0.3,
+    pose: { distanciaCm: 60, yawGraus: 0, pitchGraus: 0, rollGraus: 0, centroX: 0.5, centroY: 0.45 },
+  })
+  const grade = [0.1, 0.5, 0.9].flatMap((y) => [0.1, 0.5, 0.9].map((x) => [x, y]))
+  const features = grade.map(([x, y]) => amostra((x - 0.5) * 0.3, (y - 0.5) * 0.2))
+  const alvos = grade.map(([x, y]) => [x * 1920, y * 1080] as Ponto)
+
+  it('sem pesos é igual a pesos todos 1', () => {
+    const a = ajustarMapeamento(features, alvos).prever(amostra(0.05, 0.02))
+    const b = ajustarMapeamento(features, alvos, 1e-2, features.map(() => 1)).prever(amostra(0.05, 0.02))
+    expect(a[0]).toBeCloseTo(b[0], 6)
+    expect(a[1]).toBeCloseTo(b[1], 6)
+  })
+
+  it('uma leitura errada com peso pequeno atrapalha menos que com peso cheio', () => {
+    const comErro = [...features, amostra(0, 0)] // o centro, mas rotulado no canto
+    const alvosComErro = [...alvos, [1900, 1060] as Ponto]
+    const centro = (pesos?: number[]) => {
+      const [x, y] = ajustarMapeamento(comErro, alvosComErro, 1e-2, pesos).prever(amostra(0, 0))
+      return Math.hypot(x - 960, y - 540)
+    }
+    expect(centro([...features.map(() => 1), 0.1])).toBeLessThan(centro())
+  })
+})

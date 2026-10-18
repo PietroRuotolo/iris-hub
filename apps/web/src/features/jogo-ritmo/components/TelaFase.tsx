@@ -1,17 +1,21 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { PauseCircle } from 'lucide-react'
 import { JANELA_ACERTO_MS, PERMANENCIA_MINIMA_MS, pontuarTentativa } from '@iris/contracts'
+import { MIN_AMOSTRAS, recentralizar, type ColetaPonto } from '@/features/calibracao/calibrar'
+import AlvoFixacao from '@/features/calibracao/components/AlvoFixacao'
+import CaixaPausa from '@/features/calibracao/components/AvisoPausa'
 import CabecalhoTelaCheia from '@/features/calibracao/components/CabecalhoTelaCheia'
 import { paraPixels, type Layout } from '@/features/calibracao/layout'
-import type { Ponto } from '@/features/rastreamento-ocular/features'
+import type { FeaturesOlhar, Ponto } from '@/features/rastreamento-ocular/features'
 import { criarSuavizador, type MapeamentoOlhar } from '@/features/rastreamento-ocular/mapeamento'
-import { MENSAGEM_DESVIO, desvioDaPose, type DesvioPose, type LIMITES_POSE, type Pose } from '@/features/rastreamento-ocular/pose'
+import { ESTADO_LIVRE, avisoDaPausa, estaPausado, passoPausa, type AvisoPausa, type EstadoPausa } from '@/features/rastreamento-ocular/pausa'
+import { desvioDaPose, type LIMITES_POSE, type Pose } from '@/features/rastreamento-ocular/pose'
 import { MENSAGEM_PROBLEMA, type Problema } from '@/features/rastreamento-ocular/qualidade'
 import type { LeituraOlhar } from '@/lib/mediapipe/useFaceLandmarker'
 import { avaliarAlvo, fimDoAlvo, fixacaoPerto, type AlvoEmJogo, type AmostraOlhar, type TentativaMedida } from '../avaliacao'
 import { raioEmPx, type AlvoPlanejado, type ConfigFase } from '../fases'
+import { grudarOlhar, raiosDoIma } from '@/features/rastreamento-ocular/ima'
 
 type Alvo = AlvoEmJogo & { planejado: AlvoPlanejado }
 type Retorno = { x: number; y: number; texto: string; tipo: 'acerto' | 'erro' | 'invalido'; ate: number }
@@ -23,22 +27,15 @@ interface Vista {
   retornos: Retorno[]
   avaliados: number
   acertos: number
-  pausa: MotivoPausa | null
+  /** Aviso da pausa na tela (null: jogando, ou pausa silenciosa de uma piscada). */
+  aviso: AvisoPausa | null
+  /** Recentralizando depois de mudar a distância: o ponto no centro. */
+  centro: Ponto | null
 }
-
-type MotivoPausa = DesvioPose | Exclude<Problema, 'piscada'>
-
-const mensagemPausa = (m: MotivoPausa) => (m in MENSAGEM_DESVIO ? MENSAGEM_DESVIO[m as DesvioPose] : MENSAGEM_PROBLEMA[m as Problema])
 
 /** Quanto o anel de aproximação é maior que o alvo quando ele aparece. */
 const ANEL_INICIAL = 1.2
 const DURACAO_RETORNO_MS = 800
-/** Pausa quando a cabeça fica fora da posição por esse tempo; sem leitura do olho (rosto sumiu,
- * reflexo…), espera mais, porque piscadas e reflexos rápidos são normais. */
-const FORA_PARA_PAUSAR_MS = 400
-const SEM_LEITURA_PARA_PAUSAR_MS = 1000
-/** Tempo de volta à posição antes de retomar. */
-const DENTRO_PARA_RETOMAR_MS = 500
 /**
  * Correção contínua: depois de avaliar cada alvo, se o olhar ficou parado perto dele, corrige esta
  * fração do desalinhamento (no máximo CORRECAO_MAXIMA_PX por alvo). Vale só para os alvos seguintes.
@@ -47,8 +44,10 @@ const GANHO_CORRECAO = 0.3
 const CORRECAO_MAXIMA_PX = 50
 
 // Uma fase em andamento. Toda a contagem de tempo roda num laço de animação; o React só desenha a
-// "vista" de cada frame. Se a cabeça sai da posição da calibração, a fase pausa: os alvos param e
-// o tempo deles é empurrado para depois da pausa. Ao avaliar o último alvo, devolve as tentativas.
+// "vista" de cada frame. A fase pausa (os alvos param e o tempo deles é empurrado para depois) pelas
+// regras de rastreamento-ocular/pausa.ts: piscada (em silêncio), cabeça fora da posição, leitura
+// falhando, ou mudança de distância (aviso, recentralização e segue). Ao avaliar o último alvo,
+// devolve as tentativas.
 export default function TelaFase({
   config,
   planejados,
@@ -60,6 +59,7 @@ export default function TelaFase({
   poseReferencia,
   limitesPose,
   raioMinFracao = 0,
+  pausadaFora = false,
   lerLeitura,
   aoTerminar,
 }: {
@@ -75,15 +75,17 @@ export default function TelaFase({
   limitesPose?: typeof LIMITES_POSE
   /** Raio mínimo dos alvos em fração da área (telas pequenas). */
   raioMinFracao?: number
+  /** Pausa vinda de fora (a pessoa saiu da tela cheia): os alvos param; o aviso é de quem pausou. */
+  pausadaFora?: boolean
   lerLeitura: () => LeituraOlhar
   /** Ao fim da fase: as tentativas e o mapeamento já com a correção contínua (para a próxima fase). */
   aoTerminar: (tentativas: TentativaMedida[], modelo: MapeamentoOlhar) => void
 }) {
   const [vista, setVista] = useState<Vista | null>(null)
-  const props = useRef({ planejados, layout, viewport, pxPorCm, erroCalibracaoPx, modelo, poseReferencia, limitesPose, raioMinFracao, lerLeitura, aoTerminar })
+  const props = useRef({ planejados, layout, viewport, pxPorCm, erroCalibracaoPx, modelo, poseReferencia, limitesPose, raioMinFracao, pausadaFora, lerLeitura, aoTerminar })
 
   useEffect(() => {
-    props.current = { planejados, layout, viewport, pxPorCm, erroCalibracaoPx, modelo, poseReferencia, limitesPose, raioMinFracao, lerLeitura, aoTerminar }
+    props.current = { planejados, layout, viewport, pxPorCm, erroCalibracaoPx, modelo, poseReferencia, limitesPose, raioMinFracao, pausadaFora, lerLeitura, aoTerminar }
   })
 
   useEffect(() => {
@@ -103,8 +105,12 @@ export default function TelaFase({
         batidaEm: inicio + planejado.batidaMs,
         janelaMs: JANELA_ACERTO_MS,
         permanenciaMinMs: PERMANENCIA_MINIMA_MS,
+        // Ímã: perto o bastante do alvo, o olhar conta como dentro (e a bolinha gruda nele).
+        ...raiosDoIma(raio),
       }
     })
+    // Em qual alvo (na tela) a bolinha está grudada, para soltar só um pouco mais longe.
+    let grudadoEm: Alvo | null = null
     let fimDaFase = Math.max(...alvos.map(fimDoAlvo)) + 600
     let modelo = p.modelo
     const suavizar = criarSuavizador()
@@ -115,58 +121,79 @@ export default function TelaFase({
     let ultimoQuadro = -1
     let acertos = 0
     let frameId = 0
-    let pausa: { inicio: number; motivo: MotivoPausa } | null = null
-    let semLeituraDesde: number | null = null
-    let foraDesde: number | null = null
-    let dentroDesde: number | null = null
+    let pausa: EstadoPausa = ESTADO_LIVRE
+    // A posição da cabeça de referência: a da calibração, com a distância trocada se a pessoa se mudar.
+    const referencia: Pose = { ...p.poseReferencia }
+    // O ponto no centro da recentralização e as leituras dele.
+    const centro = paraPixels({ x: 0.5, y: 0.5 }, area)
+    let coletaCentro: { amostras: FeaturesOlhar[]; frames: number } | null = null
     const iso = (t: number) => new Date(epoca + t).toISOString()
+
+    // Fora da tela cheia: desde quando (os alvos ficam parados e o tempo deles é empurrado ao voltar).
+    let foraDesde: number | null = null
 
     const loop = () => {
       const agora = performance.now()
+      if (props.current.pausadaFora) {
+        foraDesde ??= agora
+        setVista((v) => (v ? { ...v, olhar: null, retornos: [], alvos: [], aviso: null, centro: null } : v))
+        frameId = requestAnimationFrame(loop)
+        return
+      }
+      if (foraDesde !== null) {
+        // Se já estava numa pausa (piscada, cabeça...), é ela que empurra o tempo ao retomar.
+        if (!estaPausado(pausa)) {
+          const atraso = agora - foraDesde
+          for (const alvo of alvos.slice(tentativas.length)) {
+            alvo.apareceEm += atraso
+            alvo.batidaEm += atraso
+          }
+          fimDaFase += atraso
+        }
+        foraDesde = null
+        suavizar(null, agora)
+      }
       const { features, pose, problemas, quadro } = props.current.lerLeitura()
       if (quadro !== ultimoQuadro) {
         ultimoQuadro = quadro
-        // Motivo para pausar: cabeça longe da posição da calibração (na hora) ou a leitura do olho
-        // falhando seguido (rosto sumiu, reflexo, muito virado…); piscadas não contam.
-        const falha = problemas.find((x): x is Exclude<Problema, 'piscada'> => x !== 'piscada')
-        semLeituraDesde = falha ? (semLeituraDesde ?? agora) : null
-        const motivo: MotivoPausa | null =
-          (pose && desvioDaPose(pose, props.current.poseReferencia, props.current.limitesPose)) ||
-          (falha && agora - semLeituraDesde! >= SEM_LEITURA_PARA_PAUSAR_MS ? falha : null)
-
-        if (!pausa) {
-          foraDesde = motivo ? (foraDesde ?? agora) : null
-          if (motivo && agora - foraDesde! >= FORA_PARA_PAUSAR_MS) {
-            pausa = { inicio: agora, motivo }
-            dentroDesde = null
+        const falha = problemas.find((x): x is Exclude<Problema, 'piscada'> => x !== 'piscada') ?? null
+        const desvio = pose && desvioDaPose(pose, referencia, props.current.limitesPose)
+        const passo = passoPausa(pausa, { agora, olhosFechados: problemas.includes('piscada'), desvio, falha })
+        pausa = passo.estado
+        for (const evento of passo.eventos) {
+          if (evento.tipo === 'adotar-distancia' && pose) referencia.distanciaCm = pose.distanciaCm
+          if (evento.tipo === 'recentralizar') coletaCentro = { amostras: [], frames: 0 }
+          if (evento.tipo === 'recentralizado' && coletaCentro) {
+            const coleta: ColetaPonto = { ponto: { x: 0.5, y: 0.5 }, alvoPx: centro, ...coletaCentro, problemas: {}, framesComReflexo: 0 }
+            if (coleta.amostras.length >= MIN_AMOSTRAS) modelo = recentralizar(modelo, coleta, Math.hypot(props.current.viewport.largura, props.current.viewport.altura)).modelo
+            coletaCentro = null
           }
-        } else if (motivo) {
-          pausa.motivo = motivo
-          dentroDesde = null
-        } else {
-          dentroDesde ??= agora
-          if (agora - dentroDesde >= DENTRO_PARA_RETOMAR_MS) {
-            // Retoma: os alvos ainda não avaliados continuam de onde pararam.
-            const atraso = agora - pausa.inicio
+          if (evento.tipo === 'retomou') {
+            // Os alvos ainda não avaliados continuam de onde pararam.
             for (const alvo of alvos.slice(tentativas.length)) {
-              alvo.apareceEm += atraso
-              alvo.batidaEm += atraso
+              alvo.apareceEm += evento.pausaMs
+              alvo.batidaEm += evento.pausaMs
             }
-            fimDaFase += atraso
-            pausa = null
-            foraDesde = null
+            fimDaFase += evento.pausaMs
             suavizar(null, agora)
           }
         }
+        // Recentralizando: as leituras boas, depois de o olho chegar ao ponto (a primeira metade).
+        if (pausa.tipo === 'recentrando' && coletaCentro && agora - pausa.desde > 800) {
+          coletaCentro.frames++
+          if (features) coletaCentro.amostras.push(features)
+        }
 
-        // Fora da posição, a estimativa do olhar não vale: a leitura conta como sem rastreamento.
-        olhar = suavizar(features && !motivo && !pausa ? modelo.prever(features) : null, agora)
-        if (!pausa) amostras.push({ t: agora, ponto: olhar })
+        // Pausado, a estimativa do olhar não vale: a leitura não entra nos alvos.
+        olhar = suavizar(features && !estaPausado(pausa) && !desvio ? modelo.prever(features) : null, agora)
+        if (!estaPausado(pausa)) amostras.push({ t: agora, ponto: olhar })
       }
 
-      if (pausa) {
-        const motivoPausa = pausa.motivo
-        setVista((v) => (v ? { ...v, agora, alvos: [], olhar: null, retornos: [], pausa: motivoPausa } : v))
+      if (estaPausado(pausa)) {
+        const aviso = avisoDaPausa(pausa, agora, (f) => MENSAGEM_PROBLEMA[f])
+        const ponto = pausa.tipo === 'recentrando' ? centro : null
+        // Pausa silenciosa (piscada): os alvos ficam na tela, parados; com aviso, somem atrás dele.
+        setVista((v) => (v ? { ...v, olhar: null, retornos: [], aviso, centro: ponto, alvos: aviso || ponto ? [] : v.alvos } : v))
         frameId = requestAnimationFrame(loop)
         return
       }
@@ -192,6 +219,7 @@ export default function TelaFase({
           cobertura: r.cobertura,
           desvioXPx: r.desvioXPx,
           desvioYPx: r.desvioYPx,
+          peloIma: r.peloIma,
         }
         tentativas.push(tentativa)
 
@@ -222,14 +250,21 @@ export default function TelaFase({
         return
       }
 
+      // A bolinha desenhada gruda no alvo perto dela; a avaliação usa o olhar de verdade (com o mesmo ímã).
+      const naTela = alvos.filter((a) => a.apareceEm <= agora && agora <= fimDoAlvo(a))
+      const imantaveis = naTela.map((a) => ({ cx: a.cx, cy: a.cy, captura: a.captura ?? a.raio, soltura: a.soltura ?? a.raio }))
+      const indiceGrudado = grudadoEm ? naTela.indexOf(grudadoEm) : -1
+      const grudado = grudarOlhar(olhar, imantaveis, indiceGrudado === -1 ? null : indiceGrudado)
+      grudadoEm = grudado.preso === null ? null : naTela[grudado.preso]
       setVista({
         agora,
-        alvos: alvos.filter((a) => a.apareceEm <= agora && agora <= fimDoAlvo(a)),
-        olhar,
+        alvos: naTela,
+        olhar: grudado.ponto,
         retornos,
         avaliados: tentativas.length,
         acertos,
-        pausa: null,
+        aviso: null,
+        centro: null,
       })
       frameId = requestAnimationFrame(loop)
     }
@@ -251,17 +286,15 @@ export default function TelaFase({
         posicao={layout.cabecalho}
       />
 
-      {vista?.pausa && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-navy/40 px-4" role="alertdialog" aria-live="assertive">
-          <div className="w-full max-w-sm rounded-2xl bg-[var(--color-surface)] p-6 text-center shadow-sm">
-            <PauseCircle size={36} className="mx-auto text-[var(--color-warn)]" />
-            <h2 className="mt-3 font-display text-2xl font-semibold text-[var(--color-navy)]">Jogo pausado</h2>
-            <p className="mt-2 text-base text-[var(--color-ink)]">{mensagemPausa(vista.pausa)}</p>
-            <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
-              O jogo continua sozinho quando você voltar à posição da calibração.
-            </p>
-          </div>
-        </div>
+      {vista?.aviso && <CaixaPausa aviso={vista.aviso} />}
+
+      {vista?.centro && (
+        <>
+          <AlvoFixacao x={vista.centro[0]} y={vista.centro[1]} progresso={1} coletando />
+          <p className="pointer-events-none fixed inset-x-0 text-center text-base font-medium text-[var(--color-navy)]" style={{ top: vista.centro[1] + 70 }}>
+            Olhe para o ponto no centro
+          </p>
+        </>
       )}
 
       {aguardando && (

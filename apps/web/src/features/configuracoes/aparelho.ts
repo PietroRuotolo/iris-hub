@@ -26,7 +26,7 @@ export const PERFIS: Record<Aparelho, PerfilAparelho> = {
   celular: {
     distanciaCm: { min: 20, max: 45 },
     leituraDistanciaCm: { min: 12, max: 70 },
-    pose: { distancia: 0.3, rotacaoGraus: 22, posicao: 0.22 },
+    pose: { distancia: 0.3, rotacaoGraus: 12, posicao: 0.22 },
     coleta: { acomodacaoMs: 1000, coletaMs: 1800 },
     raioMinFracao: 0.11,
     exigeHorizontal: true,
@@ -35,7 +35,7 @@ export const PERFIS: Record<Aparelho, PerfilAparelho> = {
   tablet: {
     distanciaCm: { min: 30, max: 60 },
     leituraDistanciaCm: { min: 18, max: 85 },
-    pose: { distancia: 0.25, rotacaoGraus: 18, posicao: 0.18 },
+    pose: { distancia: 0.25, rotacaoGraus: 10, posicao: 0.18 },
     coleta: { acomodacaoMs: 1000, coletaMs: 1500 },
     raioMinFracao: 0.08,
     exigeHorizontal: false,
@@ -44,7 +44,7 @@ export const PERFIS: Record<Aparelho, PerfilAparelho> = {
   computador: {
     distanciaCm: { min: 40, max: 75 },
     leituraDistanciaCm: { min: 28, max: 100 },
-    pose: { distancia: 0.2, rotacaoGraus: 15, posicao: 0.15 },
+    pose: { distancia: 0.2, rotacaoGraus: 8, posicao: 0.15 },
     coleta: { acomodacaoMs: 800, coletaMs: 1200 },
     raioMinFracao: 0,
     exigeHorizontal: false,

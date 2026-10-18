@@ -4,7 +4,7 @@
 // Ajustado com as amostras da calibração (features do olhar + posição conhecida do alvo em px).
 
 import type { FeaturesOlhar, Ponto } from './features'
-import { desvioPadrao, media, multiplicar, resolverSistema, somarNaDiagonal, transposta, type Matriz } from './linalg'
+import { multiplicar, resolverSistema, somarNaDiagonal, transposta, type Matriz } from './linalg'
 
 /** Distância de referência (cm) para escalar os termos de distância. */
 const DISTANCIA_REFERENCIA_CM = 60
@@ -51,18 +51,31 @@ export class MapeamentoOlhar {
   }
 }
 
-export function ajustarMapeamento(features: FeaturesOlhar[], alvosPx: Ponto[], ridge = 1e-2): MapeamentoOlhar {
+/** Média ponderada. */
+const mediaPonderada = (valores: number[], pesos: number[], total: number) => valores.reduce((s, v, i) => s + v * pesos[i], 0) / total
+
+/**
+ * Ajusta o mapeamento (regressão ridge). `pesosLeituras` dá o peso de cada leitura (padrão 1): as da
+ * calibração por perseguição, mais ruidosas, entram com peso menor que as dos pontos fixos.
+ */
+export function ajustarMapeamento(features: FeaturesOlhar[], alvosPx: Ponto[], ridge = 1e-2, pesosLeituras?: number[]): MapeamentoOlhar {
+  const w = pesosLeituras ?? features.map(() => 1)
+  const total = w.reduce((s, v) => s + v, 0)
   const design = features.map(linhaDesign)
   const colunas = transposta(design)
-  const medias = colunas.map(media)
-  const desvios = colunas.map((c, j) => Math.max(desvioPadrao(c), DESVIO_MINIMO[j]))
+  const medias = colunas.map((c) => mediaPonderada(c, w, total))
+  const desvios = colunas.map((c, j) => Math.max(Math.sqrt(mediaPonderada(c.map((v) => (v - medias[j]) ** 2), w, total)), DESVIO_MINIMO[j]))
   const z = padronizar(design, medias, desvios)
 
-  const mediaAlvo: Ponto = [media(alvosPx.map((p) => p[0])), media(alvosPx.map((p) => p[1]))]
+  const mediaAlvo: Ponto = [mediaPonderada(alvosPx.map((p) => p[0]), w, total), mediaPonderada(alvosPx.map((p) => p[1]), w, total)]
   const yCentrado = alvosPx.map((p) => [p[0] - mediaAlvo[0], p[1] - mediaAlvo[1]])
 
-  const zt = transposta(z)
-  const pesos = resolverSistema(somarNaDiagonal(multiplicar(zt, z), ridge * z.length), multiplicar(zt, yCentrado))
+  // Mínimos quadrados ponderados: cada linha multiplicada pela raiz do seu peso.
+  const raiz = w.map(Math.sqrt)
+  const zw = z.map((linha, i) => linha.map((v) => v * raiz[i]))
+  const yw = yCentrado.map((linha, i) => linha.map((v) => v * raiz[i]))
+  const zt = transposta(zw)
+  const pesos = resolverSistema(somarNaDiagonal(multiplicar(zt, zw), ridge * total), multiplicar(zt, yw))
   return new MapeamentoOlhar(pesos, medias, desvios, mediaAlvo)
 }
 

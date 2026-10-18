@@ -3,6 +3,7 @@ import type { FeaturesOlhar, PoseCabeca } from './features'
 import {
   checklistPosicionamento,
   luminancia,
+  notaOlhoFechado,
   poseParada,
   medirLuz,
   medirPonteOculos,
@@ -128,5 +129,19 @@ describe('celular no posicionamento', () => {
     expect(poseParada(parado)).toBe(true)
     expect(poseParada(tremendo)).toBe(false)
     expect(poseParada(parado.slice(0, 5))).toBeNull()
+  })
+})
+
+describe('olho fechado pelo MediaPipe', () => {
+  it('a nota é a média de eyeBlinkLeft e eyeBlinkRight', () => {
+    expect(notaOlhoFechado([{ categoryName: 'eyeBlinkLeft', score: 0.9 }, { categoryName: 'eyeBlinkRight', score: 0.7 }, { categoryName: 'jawOpen', score: 0.1 }])).toBeCloseTo(0.8)
+    expect(notaOlhoFechado(undefined)).toBeNull()
+  })
+
+  it('acima do limite vira piscada, mesmo com as pálpebras parecendo abertas', () => {
+    const aberto = { h: 0, v: 0, abertura: 0.3, pose: { distanciaCm: 60, yawGraus: 0, pitchGraus: 0, rollGraus: 0, centroX: 0.5, centroY: 0.5 } }
+    expect(problemasDaLeitura(aberto, false, undefined, 0.8)).toContain('piscada')
+    expect(problemasDaLeitura(aberto, false, undefined, 0.2)).not.toContain('piscada')
+    expect(problemasDaLeitura(aberto, false)).not.toContain('piscada')
   })
 })

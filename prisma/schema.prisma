@@ -155,7 +155,9 @@ model ColorRound {
 
 // --- Jogo de ritmo (rastreamento ocular) ------------------------------------------------------
 // Partida → fases → alvos. rhythm_targets é a fonte da verdade; rhythm_phases e rhythm_sessions
-// guardam os consolidados. Coberturas em percentual (0–100); notas de tempo e precisão em 0–1.
+// guardam os consolidados, calculados pelo session-service a partir dos alvos (não pelo site). Cada
+// partida jogada é uma rhythm_session nova (o id é gerado pelo site no começo da partida: repetir o
+// envio não duplica). Coberturas em percentual (0–100); notas de tempo e precisão em 0–1.
 // Os limites do CHECK da proposta (fase 1–5, score do alvo por resultado, hits + misses +
 // insufficient_tracking <= total_targets etc.) ficam na validação do serviço: o MongoDB não tem CHECK.
 
@@ -184,6 +186,8 @@ model RhythmSession {
   totalHits                 Int          @default(0) @map("total_hits")
   totalMisses               Int          @default(0) @map("total_misses")
   totalInsufficientTracking Int          @default(0) @map("total_insufficient_tracking")
+  /// Versão da fórmula de pontuação (VERSAO_PONTUACAO em packages/contracts), para comparar partidas.
+  scoringVersion            String       @default("v1") @map("scoring_version")
   startedAt                 DateTime     @default(now()) @map("started_at")
   finishedAt                DateTime?    @map("finished_at")
 
@@ -228,8 +232,16 @@ model RhythmTarget {
   phase                   RhythmPhase        @relation(fields: [phaseId], references: [id], onDelete: Cascade)
   targetNumber            Int                @map("target_number")
   result                  RhythmTargetResult
-  /// hit: 50–100; no_response: 0; insufficient_tracking: null (não entra na média da fase).
+  /// hit: 50–100 (só pelo ímã, a metade: 25–50); no_response: 0; insufficient_tracking: null (não
+  /// entra na média da fase).
   score                   Float?
+  /// Acerto só pelo ímã: o olhar ficou perto do alvo, não dentro dele (vale metade).
+  byMagnet                Boolean            @default(false) @map("by_magnet")
+  /// Centro do alvo, normalizado (0–1) na tela.
+  targetX                 Float              @map("target_x")
+  targetY                 Float              @map("target_y")
+  /// Da aparição do alvo até o olhar entrar nele.
+  latencyMs               Int?               @map("latency_ms")
   /// Entrada do olhar menos a batida (ms); negativo = entrou antes.
   entryOffsetMs           Int?               @map("entry_offset_ms")
   dwellTimeMs             Int?               @map("dwell_time_ms")

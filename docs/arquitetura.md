@@ -21,14 +21,14 @@ apps/web (Next.js, /back) ──HTTP──▶ apps/api-gateway ──HTTP──�
 | `apps/web` | Interface dos jogos: cadastro, escolha do jogador, calibração e os três jogos. Webcam e MediaPipe rodam no navegador. | 3000 |
 | `apps/api-gateway` | Entrada única para o front-end: encaminha para os serviços, padroniza erros e CORS. | 3001 |
 | `apps/user-service` | Contas dos jogadores (nome, e-mail, telefone). Sem login: criação, busca por nome e consulta por id. | 3002 |
-| `apps/session-service` | Sem módulos por enquanto (só `GET /health`); as partidas voltam para cá na reorganização do banco. | 3003 |
+| `apps/session-service` | Partidas dos jogos. Por enquanto só o ritmo (`/rhythm-sessions`: grava sessão, fases e alvos e recalcula os pontos); reflexo e cores ainda não gravam. | 3003 |
 | `apps/email-service` | Envio de e-mails por templates reutilizáveis via Microsoft Graph. | 3004 |
 | `apps/analytics-worker` | Estrutura inicial para futuros cálculos assíncronos. Sem HTTP ou consumidores implementados. | — |
 | `packages/contracts` | Tipos e contratos compartilhados entre o front-end e os serviços. | — |
 | `packages/config` | Leitura e validação das variáveis de ambiente, com padrões para rodar local. | — |
 | `packages/logger` | Formato comum de logs (uma linha JSON por evento), com adaptador para o NestJS. | — |
 | `packages/shared` | Peças NestJS comuns: módulo compartilhado, filtro de erros, log de requisições, validação, health check e `PrismaService`. | — |
-| MongoDB (Atlas) | Banco dos serviços, acessado pelo Prisma (`prisma/schema.prisma`). Endereço em `MONGO_URI`; Schema só com `User`; `npm run migration:run` sincroniza índices. | — |
+| MongoDB (Atlas) | Banco dos serviços, acessado pelo Prisma (`prisma/schema.prisma`). Endereço em `MONGO_URI`; `users` e as partidas (`rhythm_sessions`, `rhythm_phases`, `rhythm_targets`; as do reflexo, das cores e `game_results` ainda sem uso); `npm run migration:run` sincroniza índices. | — |
 
 ## Front-end (`apps/web`)
 

@@ -171,7 +171,11 @@ das telas: `apps/web/src/features/historia/slides.ts`.
 1. Se quiser, escolha o tamanho da tela em **Configurações** (o aparelho é detectado sozinho). O
    tamanho dos alvos segue essa escolha.
 2. No início, clique no card **Jogo de ritmo** e escolha (ou crie) o jogador; a partida abre em
-   `/partida?jogador=…`. O navegador pede a câmera.
+   `/partida?jogador=…`. Clique em **Iniciar calibração**: o jogo entra em tela cheia (no Safari do iPhone,
+   que não permite, segue sem) e o navegador pede a câmera. Sair da tela cheia pausa tudo, com
+   **Voltar à tela cheia** ou **Encerrar partida** (durante o jogo; a fase em andamento continua de onde
+   parou). Se o tamanho da tela mudar depois da calibração (aparelho girado, outro monitor), é preciso
+   calibrar de novo, e a partida continua da fase em que parou. No fim, sai da tela cheia.
 3. **Posicione-se:** um checklist ao vivo confere distância (40 a 75 cm, estimada pelo tamanho da
    íris), rosto centralizado, cabeça reta (em graus), luz e reflexo nos olhos (óculos), com os dois
    olhos ampliados na tela. Com tudo verde por 1,5 s, a calibração começa sozinha: 9 pontos. Depois de
@@ -185,6 +189,14 @@ das telas: `apps/web/src/features/historia/slides.ts`.
    pontos com a bolinha do olhar visível. Se a bolinha ficar longe dos pontos, o modelo é reajustado
    com esses pontos (os mais recentes pesam mais, e um desvio para o mesmo lado é corrigido) e a
    conferência repete, até 3 vezes.
+3b. **Siga o ponto** (calibração por perseguição, cerca de 30 s): depois dos 9 pontos, um ponto anda pela
+   tela (três passadas horizontais em zigue-zague, três verticais e as duas diagonais) e a pessoa o segue
+   só com os olhos, a 15° por segundo. O sistema estima o atraso do olhar de cada pessoa, liga cada leitura
+   à posição do ponto aquele tempo antes, descarta os saltos e o começo de cada trecho e junta essas
+   leituras às dos 9 pontos no ajuste do modelo, com metade do peso. Olhos fechados e cabeça virada pausam
+   como nos pontos. Em desenvolvimento, a tela "A calibração está boa?" mostra o erro na conferência sem e
+   com a perseguição, o atraso, o alcance da íris de cada olho e quanto a cabeça girou. Desliga com
+   `NEXT_PUBLIC_PERSEGUICAO=0`. Código: `apps/web/src/features/calibracao/perseguicao.ts`.
 4. **"A calibração está boa?"** (sempre, antes da Fase 1): mexa os olhos e veja se a bolinha
    acompanha. Se ficar longe, olhe para um dos 9 marcadores e clique nele: o olhar daquele instante vira
    um ponto de calibração e a bolinha se ajusta na hora. Repita até ficar boa e clique em **Sim, está
@@ -195,20 +207,44 @@ das telas: `apps/web/src/features/historia/slides.ts`.
    desvio acumulado é corrigido). Durante a fase, sempre que o olhar para perto de um alvo, o
    desalinhamento é corrigido aos poucos para os alvos seguintes (nunca muda o resultado do alvo já
    avaliado). Cada tentativa grava a direção do erro (`desvioXPx`, `desvioYPx`).
-   O olhar é calculado no referencial da cabeça e o modelo considera rotação, posição e distância
-   da cabeça: movimentos pequenos são compensados. Se a cabeça sair muito da posição da calibração
-   (±20% de distância, ±15°, ou fora do centro) ou a leitura falhar por mais de 1 s (rosto sumiu,
-   reflexo), o jogo pausa, diz o que corrigir e continua sozinho quando a pessoa volta.
-6. No fim, a tela de resultado mostra a pontuação de cada fase e a geral. Por enquanto a partida não é
-   salva no banco.
+   O olhar é calculado no referencial da cabeça. Pausas (regras em
+   `apps/web/src/features/rastreamento-ocular/pausa.ts`):
+   - **olhos fechados ou piscada:** o jogo para na hora, em silêncio (os alvos congelam e o tempo
+     deles é empurrado); só depois de 5 s aparece "Jogo pausado · olhos fechados". Volta quando os
+     olhos abrem;
+   - **cabeça virada** (mais de 8° em relação à calibração; 10° no tablet e 12° no celular) **ou fora
+     do centro:** "Jogo pausado", e volta sozinho quando a cabeça volta;
+   - **mudança de distância** (±20%): aviso "Cuidado: mudar a distância da tela afeta a jogabilidade
+     do jogo" por 3 s; a nova distância vira a referência, um ponto no centro recentraliza por 2 s e o
+     jogo continua sozinho;
+   - **leitura falhando** por mais de 1 s (rosto sumiu, reflexo): pausa e diz o que corrigir.
+
+   Na calibração (os 9 pontos, a conferência e a recentralização), os olhos fechados e a cabeça
+   virada (mais de 12° em relação ao começo) também param o tempo do ponto: os olhos fechados em
+   silêncio (aviso só depois de 5 s), a cabeça virada com "Calibração pausada".
+6. No fim, a tela de resultado mostra a pontuação de cada fase e a geral, e a partida é salva no banco
+   para o jogador escolhido (`rhythm_sessions` → `rhythm_phases` → `rhythm_targets`), com "Partida salva"
+   ou "Tentar de novo" se o backend falhar. Cada partida jogada é um documento novo; a interrompida (Esc
+   ou "Encerrar partida") é salva como `abandoned`, só com as fases terminadas, e sem nenhuma fase
+   terminada não é salva. Os pontos gravados são recalculados pelo session-service com a mesma fórmula
+   da tela.
 
 Regra de acerto: olhar entra no alvo até 500 ms antes ou depois da batida (quando o anel fecha) e
 fica nele por 250 ms. Cada acerto vale `50 + 30 × notaTempo + 20 × notaPrecisao` (de 50 a 100);
 alvos sem rastreamento suficiente não contam como erro. A fórmula fica em
 `packages/contracts/src/sessoes.ts`.
 
+**Ímã:** perto o bastante do alvo, a bolinha gruda no centro dele e o olhar conta como dentro. O alcance é
+`NEXT_PUBLIC_IMA_FATOR` × o raio do alvo (padrão **1,6**; de 1 a 3, e 1 desliga); já grudada, ela só solta
+0,3 raio mais longe, para não tremer na borda. Um acerto **só pelo ímã** (o olhar, em média, fora do alvo
+desenhado) vale **metade dos pontos**, e a nota de precisão usa sempre a distância real. Só no jogo: nas
+telas de calibração a bolinha mostra o olhar de verdade. Regra em
+`apps/web/src/features/rastreamento-ocular/ima.ts`. Como toda `NEXT_PUBLIC_`, o valor entra no site na
+hora do build: na Vercel, mude a variável e faça um novo deploy; local, reinicie o `npm run dev:all`.
+
 **Testar sem câmera (só em desenvolvimento):** abra `http://localhost:3000/partida?simular`. O mouse
-faz o papel do olhar. Teclas: **C** tira o rosto do centro, **P** aproxima da câmera, **R** liga um
+faz o papel do olhar. Teclas: **C** tira o rosto do centro, **P** aproxima da câmera, **O** fecha os
+olhos, **V** vira a cabeça, **R** liga um
 reflexo nos óculos e **D** desloca a leitura do olho (testa o ajuste por clique). Não existe no build de produção.
 
 ## 5. Conferir se está funcionando
@@ -239,7 +275,7 @@ curl 'localhost:3001/users?busca=an' -H "x-api-key: $API_KEY"
 ```bash
 npm run dev:web        # site
 npm run dev:gateway    # API (gateway)
-npm run dev:session    # session-service (sem rotas por enquanto, só /health)
+npm run dev:session    # session-service (partidas do ritmo: /rhythm-sessions)
 npm run dev:user       # contas dos jogadores (precisa do MONGO_URI)
 npm run dev:worker     # worker (ainda sem consumidores)
 npm run dev:email      # email-service

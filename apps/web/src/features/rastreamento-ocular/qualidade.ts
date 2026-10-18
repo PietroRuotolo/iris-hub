@@ -108,16 +108,33 @@ export function medirPonteOculos(lum: ArrayLike<number>, largura: number, altura
 
 export const pareceOculos = (bordasPonte: number) => bordasPonte > 0.06
 
+/**
+ * Nota de "olho fechado" do MediaPipe (blendshapes eyeBlinkLeft/Right, 0 a 1), média dos dois olhos.
+ * Acima disto, os olhos estão fechados (ou piscando). É mais confiável que a abertura das pálpebras,
+ * que em alguns olhos (formato, luz, óculos) não cai o bastante com o olho fechado.
+ */
+export const LIMITE_OLHO_FECHADO = 0.5
+
+/** A nota média de olho fechado a partir das categorias do MediaPipe; null se não vierem. */
+export function notaOlhoFechado(categorias: { categoryName: string; score: number }[] | undefined): number | null {
+  const nota = (nome: string) => categorias?.find((c) => c.categoryName === nome)?.score
+  const esquerdo = nota('eyeBlinkLeft')
+  const direito = nota('eyeBlinkRight')
+  return esquerdo === undefined || direito === undefined ? null : (esquerdo + direito) / 2
+}
+
 /** Problemas que invalidam uma leitura (ela não entra na calibração nem conta no jogo). */
 export function problemasDaLeitura(
   features: FeaturesOlhar | null,
   reflexo: boolean,
   distanciaCm: { min: number; max: number } = LEITURA_DISTANCIA_PADRAO,
+  /** Nota de olho fechado do MediaPipe (notaOlhoFechado); null se não houver. */
+  olhoFechado: number | null = null,
 ): Problema[] {
   if (!features) return ['semRosto']
   const { pose } = features
   const problemas: Problema[] = []
-  if (ehPiscada(features)) problemas.push('piscada')
+  if (ehPiscada(features) || (olhoFechado !== null && olhoFechado > LIMITE_OLHO_FECHADO)) problemas.push('piscada')
   if (reflexo) problemas.push('reflexo')
   if (pose.distanciaCm < distanciaCm.min) problemas.push('perto')
   if (pose.distanciaCm > distanciaCm.max) problemas.push('longe')

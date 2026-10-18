@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { pontuarTentativa, resumirFase, resumirSessao } from './sessoes'
+import { notasTentativa, pontuarTentativa, resumirFase, resumirSessao } from './sessoes'
 
 const acerto = { resultado: 'ACERTO' as const, erroTempoMs: 120, janelaMs: 500, erroEspacial: 15 / 50, cobertura: 1 }
+
+describe('pontuarTentativa com ímã', () => {
+  it('o acerto só pelo ímã vale metade', () => {
+    const base = { resultado: 'ACERTO' as const, erroTempoMs: 0, janelaMs: 500, erroEspacial: 1.4 }
+    expect(pontuarTentativa(base)).toBe(80) // 50 + 30 + 0
+    expect(pontuarTentativa({ ...base, peloIma: true })).toBe(40)
+  })
+})
 
 describe('pontuarTentativa', () => {
   it('segue o exemplo da regra: 120 ms fora da batida e 15 px num raio de 50 px ≈ 87 pontos', () => {
@@ -43,5 +51,17 @@ describe('resumirSessao', () => {
       { pontuacao: 60, coberturaRastreamento: null },
     ])).toEqual({ pontuacaoTotal: 70, coberturaTotal: 0.9 })
     expect(resumirSessao([])).toEqual({ pontuacaoTotal: null, coberturaTotal: null })
+  })
+})
+
+describe('notasTentativa', () => {
+  it('dá as notas de tempo e precisão do acerto, que somam os pontos', () => {
+    const t = { resultado: 'ACERTO' as const, erroTempoMs: 250, janelaMs: 500, erroEspacial: 0.25 }
+    expect(notasTentativa(t)).toEqual({ notaTempo: 0.5, notaPrecisao: 0.75 })
+    expect(pontuarTentativa(t)).toBe(50 + 30 * 0.5 + 20 * 0.75)
+  })
+
+  it('sem acerto, não há notas', () => {
+    expect(notasTentativa({ resultado: 'SEM_RESPOSTA', erroTempoMs: null, janelaMs: 500, erroEspacial: null })).toBeNull()
   })
 })
