@@ -9,7 +9,9 @@ export type Pose = PoseCabeca
 export type DesvioPose = 'centralizar' | 'aproximar' | 'afastar' | 'girar'
 
 /** Limites tolerados: distância em fração da de referência, rotação em graus, posição em fração da imagem. */
-export const LIMITES_POSE = { distancia: 0.2, rotacaoGraus: 15, posicao: 0.15 }
+// O giro é apertado de propósito: o modelo não compensa bem a cabeça virada (5° já tiram o olhar uns
+// 200 px do lugar), então é melhor pausar cedo do que deixar a pessoa errar alvos sem saber por quê.
+export const LIMITES_POSE = { distancia: 0.2, rotacaoGraus: 8, posicao: 0.15 }
 
 function mediana(valores: number[]): number {
   const ordenados = [...valores].sort((a, b) => a - b)

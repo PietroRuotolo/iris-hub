@@ -18,6 +18,7 @@ import {
   medirPonteOculos,
   medirReflexo,
   pareceOculos,
+  notaOlhoFechado,
   problemasDaLeitura,
   temReflexo,
   type MedidaLuz,
@@ -70,10 +71,12 @@ export interface LeituraOlhar {
   ambiente: AmbienteCamera
   /** Regiões dos olhos no vídeo (px), para as prévias ampliadas. */
   olhos: { esquerdo: Caixa; direito: Caixa } | null
+  /** Nota de olho fechado do MediaPipe (0 aberto, 1 fechado); null sem rosto. */
+  olhoFechado: number | null
 }
 
 const AMBIENTE_VAZIO: AmbienteCamera = { luz: null, reflexo: { esquerdo: false, direito: false }, medidasReflexo: null, oculos: null }
-const LEITURA_VAZIA: LeituraOlhar = { quadro: 0, features: null, pose: null, problemas: ['semRosto'], reflexo: false, ambiente: AMBIENTE_VAZIO, olhos: null }
+const LEITURA_VAZIA: LeituraOlhar = { quadro: 0, features: null, pose: null, problemas: ['semRosto'], reflexo: false, ambiente: AMBIENTE_VAZIO, olhos: null, olhoFechado: null }
 
 function mensagemDeErro(e: unknown): string {
   const nome = e instanceof Error || e instanceof DOMException ? e.name : ''
@@ -140,16 +143,16 @@ export function useFaceLandmarker() {
     }
 
     // Só em desenvolvimento, com ?simular na URL: o mouse faz o papel do olhar (sem câmera nem
-    // MediaPipe). Teclas: C tira o rosto do centro, P aproxima da câmera, R liga um reflexo nos
+    // MediaPipe). Teclas: C tira o rosto do centro, P aproxima da câmera, O fecha os olhos, V vira a cabeça, R liga um reflexo nos
     // óculos e D desloca a leitura do olho (o modelo passa a errar). Nunca existe no build de produção.
     if (process.env.NODE_ENV !== 'production' && new URLSearchParams(window.location.search).has('simular')) {
       let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
-      const teclas = { c: false, d: false, p: false, r: false }
+      const teclas = { c: false, d: false, o: false, p: false, r: false, v: false }
       const atualizar = (novoQuadro = false) => {
         const pose: PoseCabeca = {
           // No meio da faixa do aparelho; com P, bem mais perto que o mínimo.
           distanciaCm: (aparelho.current.distanciaCm.min + aparelho.current.distanciaCm.max) / 2 - (teclas.p ? 20 : 0),
-          yawGraus: 0,
+          yawGraus: teclas.v ? 14 : 0,
           pitchGraus: 0,
           rollGraus: 0,
           centroX: teclas.c ? 0.78 : 0.5,
@@ -158,11 +161,12 @@ export function useFaceLandmarker() {
         const f: FeaturesOlhar = {
           h: (mouse.x / window.innerWidth - 0.5) * 0.3 + (teclas.d ? 0.033 : 0),
           v: (mouse.y / window.innerHeight - 0.5) * 0.2,
-          abertura: 0.3,
+          abertura: teclas.o ? 0.05 : 0.3,
           pose,
         }
         const reflexo = teclas.r && !ignorarReflexo.current
-        const problemas = problemasDaLeitura(f, reflexo, aparelho.current.leituraDistanciaCm)
+        const olhoFechado = teclas.o ? 0.95 : 0.05
+        const problemas = problemasDaLeitura(f, reflexo, aparelho.current.leituraDistanciaCm, olhoFechado)
         publicar({
           quadro: leituraRef.current.quadro + (novoQuadro ? 1 : 0),
           features: problemas.length ? null : f,
@@ -171,6 +175,7 @@ export function useFaceLandmarker() {
           reflexo: teclas.r,
           ambiente: { luz: { rosto: 140, quadro: 150 }, reflexo: { esquerdo: teclas.r, direito: false }, medidasReflexo: null, oculos: teclas.r },
           olhos: null,
+          olhoFechado,
         })
       }
       const aoMover = (e: MouseEvent) => {
@@ -206,6 +211,8 @@ export function useFaceLandmarker() {
           baseOptions: { modelAssetPath: MODELO_URL, delegate: 'GPU' },
           runningMode: 'VIDEO',
           numFaces: 1,
+          // A nota de "olho fechado" (eyeBlinkLeft/Right) vem das blendshapes.
+          outputFaceBlendshapes: true,
         })
         if (cancelado) return
 
@@ -273,7 +280,8 @@ export function useFaceLandmarker() {
               }
 
               const reflexoVisto = ambiente.reflexo.direito || ambiente.reflexo.esquerdo
-              const problemas = problemasDaLeitura(f, reflexoVisto && !ignorarReflexo.current, aparelho.current.leituraDistanciaCm)
+              const olhoFechado = notaOlhoFechado(resultado.faceBlendshapes?.[0]?.categories)
+              const problemas = problemasDaLeitura(f, reflexoVisto && !ignorarReflexo.current, aparelho.current.leituraDistanciaCm, olhoFechado)
               publicar({
                 quadro: leituraRef.current.quadro + 1,
                 features: problemas.length ? null : f,
@@ -282,6 +290,7 @@ export function useFaceLandmarker() {
                 reflexo: reflexoVisto,
                 ambiente,
                 olhos,
+                olhoFechado,
               })
             }
           }

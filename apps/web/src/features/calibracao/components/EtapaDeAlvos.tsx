@@ -9,6 +9,7 @@ import { posicionarStatus, type Layout } from '../layout'
 import type { PontoTela } from '../pontos'
 import { useSequenciaDeAlvos } from '../useSequenciaDeAlvos'
 import AlvoFixacao from './AlvoFixacao'
+import AvisoPausa from './AvisoPausa'
 import CabecalhoTelaCheia from './CabecalhoTelaCheia'
 import BolinhaOlhar from './BolinhaOlhar'
 import StatusColeta, { type TextosStatus } from './StatusColeta'
@@ -66,6 +67,8 @@ export default function EtapaDeAlvos({
         posicao={posicionarStatus(alvo, viewport)}
         textos={textos}
       />
+      {/* Pausa (cabeça virada, olhos fechados por mais de 5 s): o aviso no centro da tela, como no jogo. */}
+      {seq.aviso && <AvisoPausa aviso={seq.aviso} />}
       {modeloBolinha && <BolinhaOlhar modelo={modeloBolinha} lerLeitura={lerLeitura} />}
     </>
   )
