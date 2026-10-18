@@ -71,3 +71,29 @@ describe('fixacaoPerto', () => {
     expect(fixacaoPerto(alvo, amostras(() => [900, 900]))).toBeNull() // parado, mas longe (>2,5 raios)
   })
 })
+
+describe('avaliarAlvo com ímã', () => {
+  // Raio 50; o ímã de 1,6 pega a até 80 px e solta a 95 px.
+  const comIma: AlvoEmJogo = { ...alvo, captura: 80, soltura: 95 }
+
+  it('olhar perto do alvo (70 px) acerta pelo ímã, com a precisão pela distância real', () => {
+    const r = avaliarAlvo(comIma, amostras((t) => (t >= 990 ? [570, 500] : fora)))
+    expect(r.resultado).toBe('ACERTO')
+    expect(r.peloIma).toBe(true)
+    expect(r.erroEspacial).toBeCloseTo(1.4, 3) // 70 / 50: nota de precisão 0
+  })
+
+  it('sem ímã, o mesmo olhar não acerta', () => {
+    expect(avaliarAlvo(alvo, amostras((t) => (t >= 990 ? [570, 500] : fora))).resultado).toBe('SEM_RESPOSTA')
+  })
+
+  it('dentro do alvo desenhado, o acerto é normal (não é pelo ímã)', () => {
+    const r = avaliarAlvo(comIma, amostras((t) => (t >= 990 ? [510, 500] : fora)))
+    expect(r).toMatchObject({ resultado: 'ACERTO', peloIma: false })
+  })
+
+  it('olhar na borda do ímã: entrar a 78 px e oscilar até 90 px não interrompe (só solta além de 95)', () => {
+    const r = avaliarAlvo(comIma, amostras((t) => (t < 990 ? fora : t % 60 === 0 ? [578, 500] : [590, 500])))
+    expect(r.resultado).toBe('ACERTO')
+  })
+})

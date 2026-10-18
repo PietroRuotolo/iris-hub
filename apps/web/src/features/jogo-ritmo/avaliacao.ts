@@ -1,5 +1,7 @@
 // Regra de acerto de um alvo. Acerto: com o olhar válido, entrar no alvo dentro da janela em torno
-// da batida e ficar nele por pelo menos a permanência mínima. Sem olhar suficiente durante o alvo,
+// da batida e ficar nele por pelo menos a permanência mínima. "Dentro" conta com o ímã (rastreamento-ocular/ima.ts): até
+// o raio de captura, e já dentro, até o de soltura. Se o olhar ficou fora do alvo desenhado, o acerto é
+// "pelo ímã" (vale metade); a precisão usa sempre a distância real. Sem olhar suficiente durante o alvo,
 // a tentativa é "rastreamento insuficiente" (não conta como erro). Lógica pura, testável.
 
 import type { ResultadoTentativa, TentativaAlvo } from '@iris/contracts'
@@ -22,6 +24,9 @@ export interface AlvoEmJogo {
   batidaEm: number
   janelaMs: number
   permanenciaMinMs: number
+  /** Ímã: distância em que o olhar passa a contar como dentro, e em que solta (sem: o raio). */
+  captura?: number
+  soltura?: number
 }
 
 export interface Avaliacao {
@@ -35,6 +40,8 @@ export interface Avaliacao {
   /** Desvio médio do olhar em relação ao centro do alvo na janela da batida (px; + = direita/baixo). */
   desvioXPx: number | null
   desvioYPx: number | null
+  /** Acertou só pelo ímã: em média, o olhar ficou fora do alvo desenhado. */
+  peloIma: boolean
 }
 
 /** Falhas curtas de leitura (uma piscada) não interrompem a permanência. */
@@ -47,6 +54,8 @@ export const fimDoAlvo = (alvo: AlvoEmJogo) => alvo.batidaEm + alvo.janelaMs
 
 export function avaliarAlvo(alvo: AlvoEmJogo, amostras: AmostraOlhar[]): Avaliacao {
   const { cx, cy, raio, apareceEm, batidaEm, janelaMs, permanenciaMinMs } = alvo
+  const captura = alvo.captura ?? raio
+  const soltura = Math.max(alvo.soltura ?? captura, captura)
   const inicioJanela = batidaEm - janelaMs
   const fim = fimDoAlvo(alvo)
   const periodo = amostras.filter((a) => a.t >= apareceEm && a.t <= fim)
@@ -70,7 +79,8 @@ export function avaliarAlvo(alvo: AlvoEmJogo, amostras: AmostraOlhar[]): Avaliac
       continue
     }
     const d = Math.hypot(a.ponto[0] - cx, a.ponto[1] - cy)
-    if (d > raio) {
+    // Já dentro, só sai além da soltura (o olhar parado na borda não fica entrando e saindo).
+    if (d > (inicio === null ? captura : soltura)) {
       if (entrada !== null) {
         saida = a.t
         break
@@ -100,6 +110,7 @@ export function avaliarAlvo(alvo: AlvoEmJogo, amostras: AmostraOlhar[]): Avaliac
       cobertura: arredondar(cobertura, 3),
       desvioXPx,
       desvioYPx,
+      peloIma: false,
     }
   }
 
@@ -115,6 +126,7 @@ export function avaliarAlvo(alvo: AlvoEmJogo, amostras: AmostraOlhar[]): Avaliac
     cobertura: arredondar(cobertura, 3),
     desvioXPx,
     desvioYPx,
+    peloIma: distanciaMedia > raio,
   }
 }
 

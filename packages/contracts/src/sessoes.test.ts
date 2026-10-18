@@ -3,6 +3,14 @@ import { pontuarTentativa, resumirFase, resumirSessao } from './sessoes'
 
 const acerto = { resultado: 'ACERTO' as const, erroTempoMs: 120, janelaMs: 500, erroEspacial: 15 / 50, cobertura: 1 }
 
+describe('pontuarTentativa com ímã', () => {
+  it('o acerto só pelo ímã vale metade', () => {
+    const base = { resultado: 'ACERTO' as const, erroTempoMs: 0, janelaMs: 500, erroEspacial: 1.4 }
+    expect(pontuarTentativa(base)).toBe(80) // 50 + 30 + 0
+    expect(pontuarTentativa({ ...base, peloIma: true })).toBe(40)
+  })
+})
+
 describe('pontuarTentativa', () => {
   it('segue o exemplo da regra: 120 ms fora da batida e 15 px num raio de 50 px ≈ 87 pontos', () => {
     // notaTempo 0,76 · notaPrecisao 0,70 → 50 + 22,8 + 14 = 86,8

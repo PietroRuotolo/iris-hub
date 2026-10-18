@@ -73,6 +73,8 @@ export interface TentativaAlvo {
   /** Desvio médio do olhar em relação ao alvo na janela da batida (px; + = direita/baixo). */
   desvioXPx: number | null
   desvioYPx: number | null
+  /** Acerto só pelo ímã: o olhar ficou fora do alvo desenhado, mas perto o bastante. Vale metade. */
+  peloIma?: boolean
   pontuacao: number
 }
 
@@ -106,16 +108,20 @@ export interface SessaoJogo {
 const limitar01 = (v: number) => Math.min(1, Math.max(0, v))
 const media = (valores: number[]) => valores.reduce((s, v) => s + v, 0) / valores.length
 
+/** Um acerto só pelo ímã (o olhar perto do alvo, não dentro) vale esta fração dos pontos. */
+export const FRACAO_PONTOS_IMA = 0.5
+
 /**
  * Pontos de um alvo (0 a 100). Só acerto pontua:
  * 50 + 30 × notaTempo + 20 × notaPrecisao, com notaTempo = 1 − erroTempo/janela e
- * notaPrecisao = 1 − d/R (cada nota limitada a 0..1).
+ * notaPrecisao = 1 − d/R (cada nota limitada a 0..1). Acerto só pelo ímã vale a metade.
  */
-export function pontuarTentativa(t: Pick<TentativaAlvo, 'resultado' | 'erroTempoMs' | 'janelaMs' | 'erroEspacial'>): number {
+export function pontuarTentativa(t: Pick<TentativaAlvo, 'resultado' | 'erroTempoMs' | 'janelaMs' | 'erroEspacial' | 'peloIma'>): number {
   if (t.resultado !== 'ACERTO') return 0
   const notaTempo = t.erroTempoMs === null || t.janelaMs <= 0 ? 0 : limitar01(1 - t.erroTempoMs / t.janelaMs)
   const notaPrecisao = t.erroEspacial === null ? 0 : limitar01(1 - t.erroEspacial)
-  return Math.round((50 + 30 * notaTempo + 20 * notaPrecisao) * 10) / 10
+  const pontos = (50 + 30 * notaTempo + 20 * notaPrecisao) * (t.peloIma ? FRACAO_PONTOS_IMA : 1)
+  return Math.round(pontos * 10) / 10
 }
 
 /** Resumo de uma fase. Alvos com rastreamento insuficiente não entram na pontuação (nem como erro). */
