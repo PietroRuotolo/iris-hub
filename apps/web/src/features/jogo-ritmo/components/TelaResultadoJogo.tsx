@@ -1,19 +1,26 @@
 import Link from 'next/link'
-import { ArrowLeft, RotateCcw } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, CheckCircle2, LoaderCircle, RotateCcw } from 'lucide-react'
 import { resumirSessao, type CalibracaoSessao, type FaseResumo } from '@iris/contracts'
 
 const pct = (v: number | null) => (v === null ? '—' : `${Math.round(v * 100)}%`)
+
+/** A gravação da partida no banco. 'nada': nenhuma fase terminou, não há o que gravar. */
+export type Salvamento = 'nada' | 'salvando' | 'salva' | 'erro'
 
 // Fim da partida: pontuação geral (média das fases), cada fase e a qualidade dos dados.
 export default function TelaResultadoJogo({
   fases,
   calibracao,
   concluida,
+  salvamento,
+  aoTentarSalvar,
   aoJogarDeNovo,
 }: {
   fases: FaseResumo[]
   calibracao: CalibracaoSessao | null
   concluida: boolean
+  salvamento: Salvamento
+  aoTentarSalvar?: () => void
   aoJogarDeNovo: () => void
 }) {
   const { pontuacaoTotal, coberturaTotal } = resumirSessao(fases)
@@ -30,6 +37,7 @@ export default function TelaResultadoJogo({
       <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
         {fases.length} de 5 fases jogadas. Mostra o desempenho nesta partida, não é um diagnóstico.
       </p>
+      <EstadoSalvamento salvamento={salvamento} aoTentarSalvar={aoTentarSalvar} />
 
       <div className="mt-4 rounded-2xl bg-[var(--color-surface)] p-5 shadow-sm">
         <div className="rounded-xl bg-[var(--color-good-bg)] p-4">
@@ -93,6 +101,34 @@ export default function TelaResultadoJogo({
       >
         <RotateCcw size={18} /> Jogar de novo
       </button>
+    </div>
+  )
+}
+
+function EstadoSalvamento({ salvamento, aoTentarSalvar }: { salvamento: Salvamento; aoTentarSalvar?: () => void }) {
+  if (salvamento === 'nada') return null
+  if (salvamento === 'salvando') {
+    return (
+      <p className="mt-2 flex items-center gap-1.5 text-sm text-[var(--color-ink-soft)]" role="status">
+        <LoaderCircle size={16} className="animate-spin" /> Salvando a partida…
+      </p>
+    )
+  }
+  if (salvamento === 'salva') {
+    return (
+      <p className="mt-2 flex items-center gap-1.5 text-sm text-[var(--color-good)]" role="status">
+        <CheckCircle2 size={16} /> Partida salva
+      </p>
+    )
+  }
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-[var(--color-warn-bg)] px-3 py-2 text-sm text-[var(--color-warn)]" role="alert">
+      <AlertTriangle size={16} /> Não foi possível salvar a partida.
+      {aoTentarSalvar && (
+        <button type="button" onClick={aoTentarSalvar} className="cursor-pointer font-semibold underline underline-offset-2">
+          Tentar de novo
+        </button>
+      )}
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FASES, RAIO_MIN_PX, raioEmPx } from './fases'
+import { FASES, RAIO_MIN_PX, parametrosDaFase, raioEmPx } from './fases'
 
 function rng(seed: number) {
   let s = seed
@@ -54,5 +54,19 @@ describe('raioEmPx', () => {
     const celular = { largura: 800, altura: 330 }
     expect(raioEmPx(0.5, 60, null, celular)).toBe(RAIO_MIN_PX)
     expect(raioEmPx(0.5, 60, null, celular, 0.16)).toBe(53)
+  })
+})
+
+describe('parametrosDaFase', () => {
+  it('raio e intervalo constantes na fase 1', () => {
+    expect(parametrosDaFase(FASES[0].gerar())).toEqual({ raioCm: 3.5, intervaloMs: 2200 })
+  })
+
+  it('na fase 5, que muda alvo a alvo, a mediana', () => {
+    const { raioCm, intervaloMs } = parametrosDaFase(FASES[4].gerar(rng(7)))
+    expect(raioCm).toBeGreaterThanOrEqual(2)
+    expect(raioCm).toBeLessThanOrEqual(2.6)
+    expect(intervaloMs).toBeGreaterThanOrEqual(1000)
+    expect(intervaloMs).toBeLessThanOrEqual(1400)
   })
 })

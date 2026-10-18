@@ -37,12 +37,14 @@ import { useConfigTela } from '@/features/configuracoes/useConfigTela'
 import type { MapeamentoOlhar } from '@/features/rastreamento-ocular/mapeamento'
 import { poseDeReferencia, type Pose } from '@/features/rastreamento-ocular/pose'
 import { MENSAGEM_PROBLEMA, type Problema } from '@/features/rastreamento-ocular/qualidade'
+import { salvarPartidaRitmo, type FaseJogada, type PartidaJogada } from '@/lib/api/ritmo'
+import { novoId } from '@/lib/id'
 import { useFaceLandmarker } from '@/lib/mediapipe/useFaceLandmarker'
 import type { TentativaMedida } from '../avaliacao'
-import { FASES, type AlvoPlanejado } from '../fases'
+import { FASES, parametrosDaFase, type AlvoPlanejado } from '../fases'
 import ModalFase from './ModalFase'
 import TelaFase from './TelaFase'
-import TelaResultadoJogo from './TelaResultadoJogo'
+import TelaResultadoJogo, { type Salvamento } from './TelaResultadoJogo'
 
 const PONTO_CENTRO: PontoTela[] = [{ x: 0.5, y: 0.5 }]
 /** Escala usada se a tela não tiver tamanho configurado (equivale a um monitor de 24"). */
@@ -69,6 +71,8 @@ interface FimPartida {
   fases: FaseResumo[]
   calibracao: CalibracaoSessao | null
   concluida: boolean
+  /** O que vai para o banco; null se nenhuma fase terminou (não há o que gravar). */
+  partida: PartidaJogada | null
 }
 
 function assinarResize(aoMudar: () => void) {
@@ -85,10 +89,27 @@ function useViewport() {
 }
 
 // Página do jogo (/partida): a partida inteira, da câmera ao resultado. Cada nova partida remonta
-// <Partida> com outra key; ao terminar, a câmera é desligada e aparece o resultado.
+// <Partida> com outra key (e outro id); ao terminar, a câmera é desligada, aparece o resultado e a
+// partida é gravada no banco, para o jogador escolhido.
 export default function PartidaJogo() {
   const [rodada, setRodada] = useState(0)
   const [fim, setFim] = useState<FimPartida | null>(null)
+  const [salvamento, setSalvamento] = useState<Salvamento>('nada')
+
+  // Repetir com a mesma partida é seguro: o serviço não grava o mesmo id duas vezes.
+  function salvar(partida: PartidaJogada) {
+    setSalvamento('salvando')
+    salvarPartidaRitmo(partida).then(
+      () => setSalvamento('salva'),
+      () => setSalvamento('erro'),
+    )
+  }
+
+  function aoConcluir(dados: FimPartida) {
+    setFim(dados)
+    if (dados.partida) salvar(dados.partida)
+    else setSalvamento('nada')
+  }
 
   if (fim) {
     return (
@@ -96,14 +117,17 @@ export default function PartidaJogo() {
         fases={fim.fases}
         calibracao={fim.calibracao}
         concluida={fim.concluida}
+        salvamento={salvamento}
+        aoTentarSalvar={fim.partida ? () => salvar(fim.partida!) : undefined}
         aoJogarDeNovo={() => {
           setFim(null)
+          setSalvamento('nada')
           setRodada((r) => r + 1)
         }}
       />
     )
   }
-  return <Partida key={rodada} aoConcluir={setFim} />
+  return <Partida key={rodada} aoConcluir={aoConcluir} />
 }
 
 function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
@@ -149,6 +173,10 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
   const errosAjuste = useRef<{ erroPx: number; ok: boolean }[]>([])
   const [totalAjustes, setTotalAjustes] = useState(0)
   const encerrada = useRef(false)
+  // A partida para o banco: o id (um novo a cada partida), o começo e as fases terminadas, com os alvos.
+  const [partidaId] = useState(novoId)
+  const iniciadaEm = useRef<string | null>(null)
+  const fasesJogadas = useRef<FaseJogada[]>([])
   // Perseguição: o percurso, as leituras já rotuladas (entram em todos os ajustes) e o modelo só dos
   // 9 pontos (para comparar na conferência).
   const [percurso, setPercurso] = useState<{ percurso: Percurso; velocidade: number } | null>(null)
@@ -167,6 +195,7 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
   useEffect(() => () => sairDaTelaCheia(), [sairDaTelaCheia])
 
   async function iniciar() {
+    iniciadaEm.current ??= new Date().toISOString()
     setExigeTelaCheia(telaCheia.suportada && (await telaCheia.entrar()))
     setEtapa('preparando')
   }
@@ -300,13 +329,20 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
   function finalizar(concluida: boolean, fases: FaseResumo[]) {
     if (encerrada.current) return
     encerrada.current = true
-    aoConcluir({ fases, calibracao: calibracaoSessao, concluida })
+    const jogadas = fasesJogadas.current
+    const partida = jogadas.length ? { id: partidaId, concluida, iniciadaEm: iniciadaEm.current ?? jogadas[0].iniciadaEm, fases: jogadas } : null
+    aoConcluir({ fases, calibracao: calibracaoSessao, concluida, partida })
   }
 
   function aoTerminarFase(tentativas: TentativaMedida[], modeloCorrigido: MapeamentoOlhar) {
     setModeloJogo(modeloCorrigido)
     const config = FASES[indiceFase]
     const resumo = resumirFase(config.fase, config.nome, tentativas)
+    const concluidaEm = new Date().toISOString()
+    fasesJogadas.current = [
+      ...fasesJogadas.current,
+      { fase: config.fase, ...parametrosDaFase(planejados), iniciadaEm: tentativas[0]?.apresentadoEm ?? concluidaEm, concluidaEm, alvos: tentativas },
+    ]
     const fases = [...resumos, resumo]
     setResumos(fases)
     if (indiceFase + 1 >= FASES.length) {

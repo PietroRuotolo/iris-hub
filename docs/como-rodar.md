@@ -222,8 +222,12 @@ das telas: `apps/web/src/features/historia/slides.ts`.
    Na calibração (os 9 pontos, a conferência e a recentralização), os olhos fechados e a cabeça
    virada (mais de 12° em relação ao começo) também param o tempo do ponto: os olhos fechados em
    silêncio (aviso só depois de 5 s), a cabeça virada com "Calibração pausada".
-6. No fim, a tela de resultado mostra a pontuação de cada fase e a geral. Por enquanto a partida não é
-   salva no banco.
+6. No fim, a tela de resultado mostra a pontuação de cada fase e a geral, e a partida é salva no banco
+   para o jogador escolhido (`rhythm_sessions` → `rhythm_phases` → `rhythm_targets`), com "Partida salva"
+   ou "Tentar de novo" se o backend falhar. Cada partida jogada é um documento novo; a interrompida (Esc
+   ou "Encerrar partida") é salva como `abandoned`, só com as fases terminadas, e sem nenhuma fase
+   terminada não é salva. Os pontos gravados são recalculados pelo session-service com a mesma fórmula
+   da tela.
 
 Regra de acerto: olhar entra no alvo até 500 ms antes ou depois da batida (quando o anel fecha) e
 fica nele por 250 ms. Cada acerto vale `50 + 30 × notaTempo + 20 × notaPrecisao` (de 50 a 100);
@@ -271,7 +275,7 @@ curl 'localhost:3001/users?busca=an' -H "x-api-key: $API_KEY"
 ```bash
 npm run dev:web        # site
 npm run dev:gateway    # API (gateway)
-npm run dev:session    # session-service (sem rotas por enquanto, só /health)
+npm run dev:session    # session-service (partidas do ritmo: /rhythm-sessions)
 npm run dev:user       # contas dos jogadores (precisa do MONGO_URI)
 npm run dev:worker     # worker (ainda sem consumidores)
 npm run dev:email      # email-service
