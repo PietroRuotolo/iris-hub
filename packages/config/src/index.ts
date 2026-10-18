@@ -44,6 +44,12 @@ function nivel(valor: string | undefined): NivelLog {
   return valor as NivelLog
 }
 
+/**
+ * Texto de várias linhas guardado numa linha só do .env (ou da Vercel): cada `\n` escrito vira quebra de
+ * linha de verdade. Com aspas o Node já quebra; sem aspas, chega o `\n` literal.
+ */
+export const comQuebrasDeLinha = (valor: string | undefined) => (valor ? valor.replace(/\\r\\n|\\n/g, '\n') : null)
+
 /** Lê e valida o ambiente. Lança erro com mensagem clara se algum valor for inválido. */
 export function lerAmbiente(env: Record<string, string | undefined> = process.env): Ambiente {
   return {
@@ -59,7 +65,7 @@ export function lerAmbiente(env: Record<string, string | undefined> = process.en
     emailApiKey: env.EMAIL_API_KEY || null,
     microsoftSendMailUrl: env.MICROSOFT_SEND_MAIL_URL || null,
     whatsappSendUrl: env.WHATSAPP_SEND_URL || null,
-    whatsappWelcomeCaption: env.WHATSAPP_WELCOME_CAPTION || null,
+    whatsappWelcomeCaption: comQuebrasDeLinha(env.WHATSAPP_WELCOME_CAPTION),
     whatsappWelcomeMedia: env.WHATSAPP_WELCOME_MEDIA || null,
     whatsappApiKey: env.WHATSAPP_API_KEY || null,
     logLevel: nivel(env.LOG_LEVEL),

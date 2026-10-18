@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lerAmbiente } from './index.js'
+import { comQuebrasDeLinha, lerAmbiente } from './index.js'
 
 describe('lerAmbiente', () => {
   it('usa os padrões locais quando nada está definido', () => {
@@ -28,5 +28,18 @@ describe('lerAmbiente', () => {
   it('rejeita valores inválidos com mensagem clara', () => {
     expect(() => lerAmbiente({ SESSION_SERVICE_PORT: 'abc' })).toThrow(/SESSION_SERVICE_PORT inválida/)
     expect(() => lerAmbiente({ LOG_LEVEL: 'verbose' })).toThrow(/LOG_LEVEL inválido/)
+  })
+})
+
+describe('comQuebrasDeLinha', () => {
+  it('a legenda com \\n escrito numa linha só vira texto de várias linhas', () => {
+    expect(comQuebrasDeLinha('*Bem-vindo!*\\n\\nLink: https://x.com')).toBe('*Bem-vindo!*\n\nLink: https://x.com')
+    expect(lerAmbiente({ WHATSAPP_WELCOME_CAPTION: 'a\\nb' }).whatsappWelcomeCaption).toBe('a\nb')
+  })
+
+  it('texto que já tem quebras fica igual; vazio vira null', () => {
+    expect(comQuebrasDeLinha('a\nb')).toBe('a\nb')
+    expect(comQuebrasDeLinha('')).toBeNull()
+    expect(comQuebrasDeLinha(undefined)).toBeNull()
   })
 })
