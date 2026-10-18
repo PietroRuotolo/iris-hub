@@ -13,6 +13,9 @@ export interface Jogador {
 export interface JogadorCriado extends Jogador {
   email: string
   telefone: string | null
+  /** Se as boas-vindas saíram (o cadastro não depende delas). */
+  emailEnviado?: boolean
+  whatsappEnviado?: boolean
 }
 
 export function criarJogador(dados: { nome: string; email: string; telefone: string }): Promise<JogadorCriado> {

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { Menu } from 'lucide-react'
 import Image from 'next/image'
 import Sidebar from './Sidebar'
+import { useMenuRecolhido } from './useMenuRecolhido'
 import { ehTelaCheia } from '@/lib/navegacao'
 
 // Casca das páginas: menu lateral e área de conteúdo; calibração, introdução e resultado usam tela
@@ -12,13 +13,15 @@ import { ehTelaCheia } from '@/lib/navegacao'
 export default function Shell({ children }: { children: React.ReactNode }) {
   const caminho = usePathname()
   const [menuAberto, setMenuAberto] = useState(false)
+  // Em telas largas, o menu pode ser recolhido (só os ícones) pela setinha < >.
+  const { recolhido, alternar } = useMenuRecolhido()
 
   if (ehTelaCheia(caminho)) return <>{children}</>
 
   return (
     <div className="min-h-screen">
-      <Sidebar aberta={menuAberto} aoFechar={() => setMenuAberto(false)} />
-      <div className="lg:pl-72">
+      <Sidebar aberta={menuAberto} aoFechar={() => setMenuAberto(false)} recolhida={recolhido} aoAlternar={alternar} />
+      <div className={`transition-[padding] duration-300 ${recolhido ? 'lg:pl-20' : 'lg:pl-72'}`}>
         <header className="sticky top-0 z-30 flex items-center gap-3 bg-[var(--color-bg)] px-4 py-4 lg:hidden">
           <button
             onClick={() => setMenuAberto(true)}

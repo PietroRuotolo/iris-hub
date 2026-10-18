@@ -78,7 +78,25 @@ de novo).
 
 O `email-service` envia templates HTML reutilizáveis pelo Microsoft Graph. Configure no `.env` a `MICROSOFT_SEND_MAIL_URL` (endereço do POST de envio do Graph) e a `EMAIL_API_KEY` (o access token do Graph, sem escrever `Bearer `, com a permissão delegada `Mail.Send`). O envio é o mesmo POST do Graph: `Authorization: Bearer <EMAIL_API_KEY>`. Como access tokens expiram, atualize a `EMAIL_API_KEY` quando o token vencer. Entre o gateway e o `email-service`, a proteção `x-api-key` usa a mesma `API_KEY` do gateway.
 
-O gateway expõe `POST /emails/send`, autenticado com a `API_KEY`. Na chamada interna do gateway ao `email-service`, ele envia `x-api-key` com a mesma `API_KEY`. O cadastro de jogadores **não** manda e-mail de boas-vindas (o template continua disponível para uso futuro). O corpo manual é JSON `{ "para": "pessoa@exemplo.com", "template": "welcome" }`; esse template envia a imagem HTML configurada no próprio template. Os templates ficam em `apps/email-service/src/modules/emails/templates/` e reutilizam componentes de `components/`.
+O gateway expõe `POST /emails/send`, autenticado com a `API_KEY`. Na chamada interna do gateway ao `email-service`, ele envia `x-api-key` com a mesma `API_KEY`. Ao criar uma conta (`POST /users`), o gateway manda, ao mesmo tempo, o e-mail de boas-vindas (`welcome`) para o e-mail cadastrado e o WhatsApp de boas-vindas (a imagem `WHATSAPP_WELCOME_MEDIA` com a legenda `WHATSAPP_WELCOME_CAPTION`, arquivo `bem-vindo.png`) para o telefone cadastrado, e responde com `emailEnviado` e `whatsappEnviado` (true/false); ele espera os envios por até 5 s e o cadastro nunca falha por causa deles (falha ou demora vão para o log). Com a `EMAIL_API_KEY` vencida, as contas continuam sendo criadas, mas sem o e-mail. O corpo manual é JSON `{ "para": "pessoa@exemplo.com", "template": "welcome" }`; esse template envia a imagem HTML configurada no próprio template. Os templates ficam em `apps/email-service/src/modules/emails/templates/` e reutilizam componentes de `components/`.
+
+**WhatsApp** (módulo `whatsapp` do `email-service`): configure no `.env` a `WHATSAPP_SEND_URL` (o endereço
+do POST de texto da Evolution, `.../message/sendText/<instância>`; para imagem, o módulo usa o mesmo endereço
+trocando `sendText` por `sendMedia`) e a `WHATSAPP_API_KEY` (enviada no header `apikey`). Para as boas-vindas do cadastro, também
+`WHATSAPP_WELCOME_MEDIA` (a imagem: endereço público ou base64) e `WHATSAPP_WELCOME_CAPTION` (a legenda). Sem
+elas, o envio responde 503; se o provedor recusar, 502. O gateway expõe `POST /whatsapp/send` (com a `x-api-key`):
+
+```bash
+# texto
+curl -X POST localhost:3001/whatsapp/send -H 'content-type: application/json' -H "x-api-key: $API_KEY" \
+  -d '{"para":"11987654321","texto":"Olá! Sua conta no Íris Hub foi criada."}'
+# imagem (o texto vira a legenda; o tipo sai da extensão, png por padrão)
+curl -X POST localhost:3001/whatsapp/send -H 'content-type: application/json' -H "x-api-key: $API_KEY" \
+  -d '{"para":"11987654321","texto":"Bem-vinda!","imagem":{"url":"https://exemplo.com/boas-vindas.png"}}'
+```
+
+O telefone vai com DDD, com ou sem o 55 (o módulo põe o 55 quando falta). A imagem precisa de um endereço
+público: o provedor a baixa de lá.
 
 ## Rota `/back` (backend pelo site)
 
@@ -106,7 +124,7 @@ para ele; as requisições seguintes já o encontram no ar. Configuração do pr
 | Build Command | Override: `npm run build:vercel` |
 | Output Directory | Override: `apps/web/.next` |
 | Root Directory | `./`, com "Include files outside the root directory" ligado |
-| Environment Variables | `MONGO_URI`, `API_KEY`, `EMAIL_API_KEY`, `MICROSOFT_SEND_MAIL_URL` (`BACKEND_URL` não é usado na Vercel) |
+| Environment Variables | `MONGO_URI`, `API_KEY`, `EMAIL_API_KEY`, `MICROSOFT_SEND_MAIL_URL`, `WHATSAPP_SEND_URL`, `WHATSAPP_API_KEY`, `WHATSAPP_WELCOME_CAPTION`, `WHATSAPP_WELCOME_MEDIA` (`BACKEND_URL` não é usado na Vercel) |
 
 No Atlas, em **Network Access**, libere `0.0.0.0/0` (os IPs da Vercel mudam). O build termina
 conferindo se as funções levam o backend e o motor do Prisma para a Vercel; se faltar algo, ele falha
@@ -118,7 +136,8 @@ com a explicação. Para testar o modo embutido localmente: `npm run build:verce
 Não há login. O site é aberto, e quem joga é escolhido na hora:
 
 1. **Criar conta** (`/cadastro`, também no menu): nome, e-mail e telefone com DDD, todos obrigatórios.
-   O e-mail não pode repetir; o telefone é guardado só com os números. Não há e-mail de boas-vindas.
+   O e-mail não pode repetir; o telefone é guardado só com os números. Ao criar, sai o e-mail de boas-vindas
+   (se o envio estiver configurado; veja o `email-service`).
 2. **Quem vai jogar?** Ao clicar no card de um jogo (ou abrir um jogo sem
    jogador), aparece a busca por nome: os resultados só aparecem a partir de 2 letras (a lista de
    contas não fica à mostra) e não diferenciam acentos ("joao" acha "João"), com o e-mail mascarado.

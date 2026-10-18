@@ -1,5 +1,5 @@
 // Catálogo dos jogos da plataforma: fonte única dos nomes, rotas, ícones e textos de apresentação.
-// Início, menu, apresentações e histórico leem daqui; não copie estes dados para dentro das features.
+// Menu e apresentações leem daqui; não copie estes dados para dentro das features.
 
 import { Eye, Palette, Zap, type LucideIcon } from 'lucide-react'
 

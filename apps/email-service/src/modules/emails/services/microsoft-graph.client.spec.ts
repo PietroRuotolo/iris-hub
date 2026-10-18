@@ -45,4 +45,11 @@ describe('MicrosoftGraphClient', () => {
     await expect(client.enviar({ para: 'destino@example.com', assunto: 'Teste', html: '<p>Oi</p>' }))
       .rejects.toBeInstanceOf(BadGatewayException)
   })
+
+  it('o erro traz o que o Graph respondeu (ex.: token vencido)', async () => {
+    const corpo = '{"error":{"code":"InvalidAuthenticationToken","message":"Lifetime validation failed, the token is expired."}}'
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(corpo, { status: 401, headers: { 'request-id': 'abc-123' } })))
+    const client = new MicrosoftGraphClient(ambiente)
+    await expect(client.enviar({ para: 'destino@example.com', assunto: 'Teste', html: '<p>Oi</p>' })).rejects.toThrow('recusou (401): ' + corpo)
+  })
 })
