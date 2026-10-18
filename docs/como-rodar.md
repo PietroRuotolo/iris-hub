@@ -81,7 +81,8 @@ O `email-service` envia templates HTML reutilizáveis pelo Microsoft Graph. Conf
 O gateway expõe `POST /emails/send`, autenticado com a `API_KEY`. Na chamada interna do gateway ao `email-service`, ele envia `x-api-key` com a mesma `API_KEY`. Ao criar uma conta (`POST /users`), o gateway manda, ao mesmo tempo, o e-mail de boas-vindas (`welcome`) para o e-mail cadastrado e o WhatsApp de boas-vindas (a imagem `WHATSAPP_WELCOME_MEDIA` com a legenda `WHATSAPP_WELCOME_CAPTION`, arquivo `bem-vindo.png`) para o telefone cadastrado, e responde com `emailEnviado` e `whatsappEnviado` (true/false); ele espera os envios por até 5 s e o cadastro nunca falha por causa deles (falha ou demora vão para o log). Com a `EMAIL_API_KEY` vencida, as contas continuam sendo criadas, mas sem o e-mail. O corpo manual é JSON `{ "para": "pessoa@exemplo.com", "template": "welcome" }`; esse template envia a imagem HTML configurada no próprio template. Os templates ficam em `apps/email-service/src/modules/emails/templates/` e reutilizam componentes de `components/`.
 
 **WhatsApp** (módulo `whatsapp` do `email-service`): configure no `.env` a `WHATSAPP_SEND_URL` (o endereço
-do POST, o mesmo para texto e imagem) e a `WHATSAPP_API_KEY` (enviada no header `apikey`). Para as boas-vindas do cadastro, também
+do POST de texto da Evolution, `.../message/sendText/<instância>`; para imagem, o módulo usa o mesmo endereço
+trocando `sendText` por `sendMedia`) e a `WHATSAPP_API_KEY` (enviada no header `apikey`). Para as boas-vindas do cadastro, também
 `WHATSAPP_WELCOME_MEDIA` (a imagem: endereço público ou base64) e `WHATSAPP_WELCOME_CAPTION` (a legenda). Sem
 elas, o envio responde 503; se o provedor recusar, 502. O gateway expõe `POST /whatsapp/send` (com a `x-api-key`):
 
