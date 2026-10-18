@@ -25,6 +25,8 @@ export interface FeaturesOlhar {
   /** Abertura do olho (distância entre as pálpebras / largura do olho): também muda ao olhar para cima/baixo. */
   abertura: number
   pose: PoseCabeca
+  /** h e v de cada olho, antes da média (para medir o alcance e a diferença entre os olhos). */
+  porOlho?: { direito: Ponto; esquerdo: Ponto }
 }
 
 type IndicesOlho = readonly [canto1: number, canto2: number, iris: number, palpebraSup: number, palpebraInf: number]
@@ -129,6 +131,7 @@ export function extrairFeatures(p: Ponto3[], larguraFrame: number, alturaFrame: 
     v: (dir.v + esq.v) / 2,
     abertura: (dir.abertura + esq.abertura) / 2,
     pose: extrairPose(p, larguraFrame, alturaFrame),
+    porOlho: { direito: [dir.h, dir.v], esquerdo: [esq.h, esq.v] },
   }
 }
 

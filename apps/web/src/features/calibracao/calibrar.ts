@@ -74,11 +74,26 @@ export function filtrarLeituras(amostras: FeaturesOlhar[]): FeaturesOlhar[] {
 }
 
 /** Ajusta o mapeamento com todas as coletas (calibração e as rodadas de conferência já feitas). */
-export function ajustarCalibracao(coletas: ColetaPonto[]): MapeamentoOlhar {
+/** Uma leitura já ligada à posição do alvo, com peso próprio (a calibração por perseguição). */
+export interface LeituraRotulada {
+  features: FeaturesOlhar
+  alvoPx: Ponto
+  peso: number
+}
+
+/**
+ * Ajusta o mapeamento com todas as coletas (calibração e as rodadas de conferência já feitas) e,
+ * se houver, as leituras da perseguição (cada uma com o seu peso).
+ */
+export function ajustarCalibracao(coletas: ColetaPonto[], extras: LeituraRotulada[] = []): MapeamentoOlhar {
   const usadas = coletas.filter((c) => c.amostras.length >= MIN_AMOSTRAS).map((c) => ({ ...c, amostras: filtrarLeituras(c.amostras) }))
+  const fixas = usadas.flatMap((c) => c.amostras.map((features) => ({ features, alvoPx: c.alvoPx, peso: 1 })))
+  const todas = [...fixas, ...extras]
   return ajustarMapeamento(
-    usadas.flatMap((c) => c.amostras),
-    usadas.flatMap((c) => c.amostras.map(() => c.alvoPx)),
+    todas.map((l) => l.features),
+    todas.map((l) => l.alvoPx),
+    undefined,
+    extras.length ? todas.map((l) => l.peso) : undefined,
   )
 }
 
@@ -119,11 +134,11 @@ export function recentralizar(modelo: MapeamentoOlhar, coleta: ColetaPonto, diag
  * 2. o desvio que sobra na rodada mais recente, se for para o mesmo lado em todos os pontos, é
  *    corrigido deslocando a estimativa.
  */
-export function reajustarCalibracao(rodadas: ColetaPonto[][]): MapeamentoOlhar {
+export function reajustarCalibracao(rodadas: ColetaPonto[][], extras: LeituraRotulada[] = []): MapeamentoOlhar {
   const ponderadas = rodadas.flatMap((coletas, i) =>
     coletas.map((c) => ({ ...c, amostras: Array.from({ length: i + 1 }, () => c.amostras).flat() })),
   )
-  const modelo = ajustarCalibracao(ponderadas)
+  const modelo = ajustarCalibracao(ponderadas, extras)
   const recente = rodadas[rodadas.length - 1]
   const desvios = recente
     .map((c) => {

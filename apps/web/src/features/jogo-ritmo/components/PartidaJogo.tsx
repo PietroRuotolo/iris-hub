@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, ArrowLeft, LoaderCircle, RotateCcw } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Expand, LoaderCircle, MonitorSmartphone, RotateCcw, X } from 'lucide-react'
 import { resumirFase, type CalibracaoSessao, type FaseResumo } from '@iris/contracts'
 import {
   MAX_RODADAS_CONFERENCIA,
@@ -16,15 +16,21 @@ import {
   problemaPrincipal,
   reajustarCalibracao,
   type ColetaPonto,
+  type LeituraRotulada,
   type ResultadoCalibracao,
   type RodadaConferencia,
 } from '@/features/calibracao/calibrar'
 import CartaoCamera from '@/features/calibracao/components/CartaoCamera'
 import EtapaDeAlvos from '@/features/calibracao/components/EtapaDeAlvos'
+import EtapaPerseguicao from '@/features/calibracao/components/EtapaPerseguicao'
+import { mesmaGeometria, type Geometria } from '@/features/calibracao/geometria'
+import IndicadorOlhoFechado from '@/features/calibracao/components/IndicadorOlhoFechado'
 import Posicionamento from '@/features/calibracao/components/Posicionamento'
 import TelaOlharLivre from '@/features/calibracao/components/TelaOlharLivre'
 import { calcularLayout, paraPixels } from '@/features/calibracao/layout'
+import { criarPercurso, rotularPerseguicao, velocidadePxS, type LeituraPerseguicao, type MedidasOlhar, type Percurso } from '@/features/calibracao/perseguicao'
 import { PONTOS_CALIBRACAO, PONTOS_CONFERENCIA, embaralhar, type PontoTela } from '@/features/calibracao/pontos'
+import { useTelaCheia } from '@/features/calibracao/useTelaCheia'
 import { PERFIS, aparelhoDaConfig } from '@/features/configuracoes/aparelho'
 import { polegadasDe, pxPorCm } from '@/features/configuracoes/tela'
 import { useConfigTela } from '@/features/configuracoes/useConfigTela'
@@ -41,8 +47,23 @@ import TelaResultadoJogo from './TelaResultadoJogo'
 const PONTO_CENTRO: PontoTela[] = [{ x: 0.5, y: 0.5 }]
 /** Escala usada se a tela não tiver tamanho configurado (equivale a um monitor de 24"). */
 const PX_POR_CM_PADRAO = 36
+/** Calibração por perseguição depois dos 9 pontos (NEXT_PUBLIC_PERSEGUICAO=0 desliga). */
+const PERSEGUICAO_LIGADA = process.env.NEXT_PUBLIC_PERSEGUICAO !== '0'
 
-type Etapa = 'preparando' | 'calibrando' | 'conferindo' | 'livre' | 'falhou' | 'modal' | 'recentralizando' | 'jogando'
+/** Etapas que dependem da calibração (e do tamanho de tela em que ela foi feita). */
+const ETAPAS_CALIBRADAS = ['calibrando', 'perseguindo', 'conferindo', 'livre', 'modal', 'recentralizando', 'jogando']
+
+/** O que a perseguição mediu, para mostrar em desenvolvimento. */
+interface InfoPerseguicao {
+  atrasoMs: number
+  aproveitadas: number
+  lidas: number
+  medidas: MedidasOlhar
+  /** Erro médio na 1ª conferência com o modelo só dos 9 pontos e com a perseguição (px). */
+  comparacao: { sem: number | null; com: number | null } | null
+}
+
+type Etapa = 'inicio' | 'preparando' | 'calibrando' | 'perseguindo' | 'conferindo' | 'livre' | 'falhou' | 'modal' | 'recentralizando' | 'jogando'
 
 interface FimPartida {
   fases: FaseResumo[]
@@ -95,7 +116,12 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
   useEffect(() => {
     definirAparelho({ leituraDistanciaCm: perfil.leituraDistanciaCm, distanciaCm: perfil.distanciaCm })
   }, [definirAparelho, perfil])
-  const [etapa, setEtapa] = useState<Etapa>('preparando')
+  const [etapa, setEtapa] = useState<Etapa>('inicio')
+  // Tela cheia ao iniciar a partida (exigida só se o navegador deixou entrar; o iPhone não deixa).
+  const telaCheia = useTelaCheia()
+  const [exigeTelaCheia, setExigeTelaCheia] = useState(false)
+  // Tamanho da tela no começo da calibração: o modelo só vale nele.
+  const [geometria, setGeometria] = useState<Geometria | null>(null)
   const [tentativaCalibracao, setTentativaCalibracao] = useState(0)
   const [pontosCalibracao, setPontosCalibracao] = useState<PontoTela[]>([])
   const [pontosConferencia, setPontosConferencia] = useState<PontoTela[]>([])
@@ -123,6 +149,12 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
   const errosAjuste = useRef<{ erroPx: number; ok: boolean }[]>([])
   const [totalAjustes, setTotalAjustes] = useState(0)
   const encerrada = useRef(false)
+  // Perseguição: o percurso, as leituras já rotuladas (entram em todos os ajustes) e o modelo só dos
+  // 9 pontos (para comparar na conferência).
+  const [percurso, setPercurso] = useState<{ percurso: Percurso; velocidade: number } | null>(null)
+  const perseguicao = useRef<LeituraRotulada[]>([])
+  const modeloSoPontos = useRef<MapeamentoOlhar | null>(null)
+  const [infoPerseguicao, setInfoPerseguicao] = useState<InfoPerseguicao | null>(null)
 
   const layout = viewport ? calcularLayout(viewport) : null
   const paraPx = useCallback(
@@ -130,8 +162,21 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
     [],
   )
 
+  // Ao sair da página (fim da partida, voltar), sai da tela cheia.
+  const { sair: sairDaTelaCheia } = telaCheia
+  useEffect(() => () => sairDaTelaCheia(), [sairDaTelaCheia])
+
+  async function iniciar() {
+    setExigeTelaCheia(telaCheia.suportada && (await telaCheia.entrar()))
+    setEtapa('preparando')
+  }
+
   function comecarCalibracao() {
+    setGeometria({ largura: window.innerWidth, altura: window.innerHeight })
     rodadas.current = []
+    perseguicao.current = []
+    modeloSoPontos.current = null
+    setInfoPerseguicao(null)
     ajustes.current = []
     errosAjuste.current = []
     setTotalAjustes(0)
@@ -156,21 +201,54 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
       return
     }
     rodadas.current = [novas]
-    setModelo(ajustarCalibracao(novas))
+    const base = ajustarCalibracao(novas)
+    modeloSoPontos.current = base
+    setModelo(base)
+    if (!PERSEGUICAO_LIGADA) return comecarConferencia()
+
+    // A velocidade do ponto pelo tamanho da tela e pela distância medida na calibração.
+    const polegadas = polegadasDe(configTela)
+    const distancias = novas.flatMap((c) => c.amostras.map((a) => a.pose.distanciaCm)).sort((a, b) => a - b)
+    const velocidade = velocidadePxS({
+      pxPorCm: polegadas ? pxPorCm(polegadas, screen.width, screen.height) : null,
+      distanciaCm: distancias.length ? distancias[Math.floor(distancias.length / 2)] : null,
+      larguraPx: window.innerWidth,
+    })
+    const area = calcularLayout({ largura: window.innerWidth, altura: window.innerHeight }).areaAlvos
+    setPercurso({ percurso: criarPercurso(area, velocidade), velocidade })
+    setEtapa('perseguindo')
+  }
+
+  function aoFinalizarPerseguicao(leituras: LeituraPerseguicao[]) {
+    if (percurso && modeloSoPontos.current) {
+      const r = rotularPerseguicao(leituras, percurso.percurso, modeloSoPontos.current, {
+        velocidade: percurso.velocidade,
+        diagonalPx: Math.hypot(window.innerWidth, window.innerHeight),
+      })
+      perseguicao.current = r.leituras
+      setInfoPerseguicao({ atrasoMs: r.atrasoMs, aproveitadas: r.aproveitadas, lidas: r.lidas, medidas: r.medidas, comparacao: null })
+      setModelo(ajustarCalibracao(rodadas.current[0], r.leituras))
+    }
     comecarConferencia()
   }
 
   // Cada rodada mede a bolinha em pontos novos. Se algum ficou longe, os pontos entram no ajuste e
   // o modelo é refeito; até MAX_RODADAS_CONFERENCIA vezes sozinho, depois a pessoa decide.
   function aoFinalizarConferencia(novas: ColetaPonto[]) {
-    const rodada = avaliarRodada(modelo!, novas, limiteConferenciaPx(Math.hypot(window.innerWidth, window.innerHeight)))
+    const limite = limiteConferenciaPx(Math.hypot(window.innerWidth, window.innerHeight))
+    const rodada = avaliarRodada(modelo!, novas, limite)
     setUltimaRodada(rodada)
+    // 1ª conferência: os mesmos pontos medidos também com o modelo só dos 9 pontos (sem a perseguição).
+    if (rodadaConferencia === 1 && perseguicao.current.length && modeloSoPontos.current) {
+      const sem = avaliarRodada(modeloSoPontos.current, novas, limite).erroMedioPx
+      setInfoPerseguicao((info) => (info ? { ...info, comparacao: { sem, com: rodada.erroMedioPx } } : info))
+    }
     rodadas.current = [...rodadas.current, novas]
     if (rodada.aprovada) {
       setEtapa('livre')
       return
     }
-    setModelo(reajustarCalibracao(rodadas.current))
+    setModelo(reajustarCalibracao(rodadas.current, perseguicao.current))
     if (rodadaConferencia >= MAX_RODADAS_CONFERENCIA) setEtapa('livre')
     else comecarConferencia()
   }
@@ -180,7 +258,7 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
     const limite = limiteConferenciaPx(Math.hypot(window.innerWidth, window.innerHeight))
     errosAjuste.current = [...errosAjuste.current, { erroPx: erroAntesPx, ok: erroAntesPx <= limite }]
     setTotalAjustes((n) => n + 1)
-    setModelo(reajustarCalibracao([...rodadas.current, ajustes.current]))
+    setModelo(reajustarCalibracao([...rodadas.current, ajustes.current], perseguicao.current))
   }
 
   function confirmarCalibracao() {
@@ -209,7 +287,7 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
     const recentes = ajustes.current.length >= 3 ? ajustes.current : rodadas.current[rodadas.current.length - 1]
     setPoseReferencia(poseDeReferencia(recentes.flatMap((c) => c.amostras.map((a) => a.pose))))
     setEscala(pxCm ?? PX_POR_CM_PADRAO)
-    setIndiceFase(0)
+    // Recalibrar no meio da partida (a tela mudou) continua da fase em que parou.
     setEtapa('modal')
   }
 
@@ -254,10 +332,19 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
 
   if (!viewport || !layout) return null
   const pontosAteAgora = resumos.reduce((s, f) => s + f.pontuacao, 0)
+  // Saiu da tela cheia: tudo para até a pessoa voltar. A fase em andamento fica pausada (não perde os
+  // alvos já jogados); as outras etapas recomeçam do ponto em que estavam.
+  const foraDaTelaCheia = exigeTelaCheia && !telaCheia.ativa && etapa !== 'inicio'
+  // Em tela cheia, outro tamanho de tela (girou, trocou de monitor) invalida a calibração.
+  const telaMudou = !foraDaTelaCheia && geometria !== null && ETAPAS_CALIBRADAS.includes(etapa) && !mesmaGeometria(geometria, viewport)
+  const suspensa = foraDaTelaCheia || telaMudou
+  const emJogo = etapa === 'modal' || etapa === 'recentralizando' || etapa === 'jogando'
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-[var(--color-bg)]">
-      {etapa === 'preparando' &&
+      {etapa === 'inicio' && <InicioTelaCheia suportada={telaCheia.suportada} aoIniciar={iniciar} />}
+
+      {etapa === 'preparando' && !suspensa &&
         (camera.status === 'pronto' ? (
           <Posicionamento
             videoRef={camera.videoRef}
@@ -314,7 +401,7 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
         </div>
       )}
 
-      {etapa === 'calibrando' && (
+      {etapa === 'calibrando' && !suspensa && (
         <EtapaDeAlvos
           key={`calibracao-${tentativaCalibracao}`}
           titulo="Calibrando rastreamento ocular"
@@ -329,7 +416,17 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
         />
       )}
 
-      {etapa === 'conferindo' && modelo && (
+      {etapa === 'perseguindo' && percurso && !suspensa && (
+        <EtapaPerseguicao
+          key={`perseguicao-${tentativaCalibracao}`}
+          percurso={percurso.percurso}
+          lerLeitura={camera.lerLeitura}
+          layout={layout}
+          aoFinalizar={aoFinalizarPerseguicao}
+        />
+      )}
+
+      {etapa === 'conferindo' && modelo && !suspensa && (
         <EtapaDeAlvos
           key={`conferencia-${tentativaCalibracao}-${rodadaConferencia}`}
           titulo={rodadaConferencia === 1 ? 'A bolinha está onde você olha?' : `Ajustando a calibração (${rodadaConferencia})`}
@@ -347,7 +444,7 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
         />
       )}
 
-      {etapa === 'livre' && modelo && (
+      {etapa === 'livre' && !suspensa && modelo && (
         <TelaOlharLivre
           modelo={modelo}
           lerLeitura={camera.lerLeitura}
@@ -360,7 +457,10 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
         />
       )}
 
-      {etapa === 'modal' && (
+      {/* Só em desenvolvimento: o que a perseguição mediu e se ela melhorou a calibração. */}
+      {process.env.NODE_ENV !== 'production' && etapa === 'livre' && infoPerseguicao && <PainelPerseguicao info={infoPerseguicao} />}
+
+      {etapa === 'modal' && !suspensa && (
         <ModalFase
           key={indiceFase}
           config={FASES[indiceFase]}
@@ -374,7 +474,7 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
         />
       )}
 
-      {etapa === 'recentralizando' && (
+      {etapa === 'recentralizando' && !suspensa && (
         <EtapaDeAlvos
           key={`recentralizar-${indiceFase}`}
           titulo={`Fase ${FASES[indiceFase].fase} · ${FASES[indiceFase].nome}`}
@@ -391,7 +491,7 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
         />
       )}
 
-      {etapa === 'jogando' && calibracao && modeloJogo && poseReferencia && (
+      {etapa === 'jogando' && calibracao && modeloJogo && poseReferencia && !telaMudou && (
         <TelaFase
           key={indiceFase}
           config={FASES[indiceFase]}
@@ -404,8 +504,29 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
           poseReferencia={poseReferencia}
           limitesPose={perfil.pose}
           raioMinFracao={perfil.raioMinFracao}
+          pausadaFora={foraDaTelaCheia}
           lerLeitura={camera.lerLeitura}
           aoTerminar={aoTerminarFase}
+        />
+      )}
+
+      {foraDaTelaCheia && (
+        <AvisoSuspensa
+          Icone={Expand}
+          titulo={emJogo ? 'Jogo pausado' : 'Calibração pausada'}
+          texto="Você saiu da tela cheia. O rastreamento só é preciso com a tela inteira."
+          acao={{ label: 'Voltar à tela cheia', aoClicar: () => void telaCheia.entrar() }}
+          aoEncerrar={emJogo ? () => finalizar(false, resumos) : undefined}
+        />
+      )}
+
+      {telaMudou && (
+        <AvisoSuspensa
+          Icone={MonitorSmartphone}
+          titulo="A tela mudou"
+          texto="O tamanho da tela não é mais o da calibração (o aparelho girou ou mudou de monitor). Calibre de novo para continuar."
+          acao={{ label: 'Calibrar de novo', aoClicar: () => setEtapa('preparando') }}
+          aoEncerrar={emJogo ? () => finalizar(false, resumos) : undefined}
         />
       )}
 
@@ -416,6 +537,10 @@ function Partida({ aoConcluir }: { aoConcluir: (dados: FimPartida) => void }) {
         temRosto={camera.temRosto}
         posicao={layout.camera}
       />
+      {/* Só em desenvolvimento: a nota de olho fechado, para ajustar o limite com um rosto de verdade. */}
+      {process.env.NODE_ENV !== 'production' && camera.status === 'pronto' && (
+        <IndicadorOlhoFechado lerLeitura={camera.lerLeitura} posicao={layout.camera} />
+      )}
     </div>
   )
 }
@@ -430,6 +555,76 @@ function resumoCalibracao(r: ResultadoCalibracao, condicoes: { oculos: boolean |
     fracaoReflexo: r.fracaoReflexo,
     ...condicoes,
   }
+}
+
+function InicioTelaCheia({ suportada, aoIniciar }: { suportada: boolean; aoIniciar: () => void }) {
+  return (
+    <div className="mx-auto flex h-full max-w-md flex-col justify-center px-4">
+      <Link href="/jogo" className="mb-6 inline-flex items-center gap-1 text-sm font-medium text-[var(--color-navy)]">
+        <ArrowLeft size={16} /> Voltar
+      </Link>
+      <div className="rounded-2xl bg-[var(--color-surface)] p-6 text-center shadow-sm">
+        <Expand size={36} className="mx-auto text-[var(--color-navy)]" />
+        <h1 className="mt-3 font-display text-2xl font-semibold text-[var(--color-navy)]">Antes de calibrar</h1>
+        <p className="mt-2 text-sm text-[var(--color-ink)]">
+          {suportada
+            ? 'Para garantir maior precisão no rastreamento ocular, o jogo usa a tela cheia. Mantenha a cabeça em uma posição confortável, olhando diretamente para a tela.'
+            : 'Seu navegador não permite tela cheia. Não gire o aparelho nem mude o tamanho da janela durante o jogo, e mantenha a cabeça em uma posição confortável.'}
+        </p>
+        <button
+          type="button"
+          onClick={aoIniciar}
+          className="mt-5 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[var(--color-navy)] px-4 py-3 text-base font-semibold text-[var(--color-surface)]"
+        >
+          Iniciar calibração
+        </button>
+      </div>
+      <p className="mt-4 text-center text-xs text-[var(--color-ink-soft)]">
+        Durante o jogo, mova principalmente os olhos. Esc pausa a partida. As imagens da câmera não saem do seu
+        computador.
+      </p>
+    </div>
+  )
+}
+
+function AvisoSuspensa({
+  Icone,
+  titulo,
+  texto,
+  acao,
+  aoEncerrar,
+}: {
+  Icone: typeof Expand
+  titulo: string
+  texto: string
+  acao: { label: string; aoClicar: () => void }
+  aoEncerrar?: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-30 flex items-center justify-center bg-navy/40 px-4" role="alertdialog" aria-live="assertive">
+      <div className="w-full max-w-sm rounded-2xl bg-[var(--color-surface)] p-6 text-center shadow-sm">
+        <Icone size={36} className="mx-auto text-[var(--color-warn)]" />
+        <h2 className="mt-3 font-display text-2xl font-semibold text-[var(--color-navy)]">{titulo}</h2>
+        <p className="mt-2 text-base text-[var(--color-ink)]">{texto}</p>
+        <button
+          type="button"
+          onClick={acao.aoClicar}
+          className="mt-5 w-full cursor-pointer rounded-xl bg-[var(--color-navy)] px-4 py-3 text-base font-semibold text-[var(--color-surface)]"
+        >
+          {acao.label}
+        </button>
+        {aoEncerrar && (
+          <button
+            type="button"
+            onClick={aoEncerrar}
+            className="mt-2 inline-flex w-full cursor-pointer items-center justify-center gap-1 rounded-xl px-4 py-2 text-sm font-medium text-[var(--color-ink-soft)] hover:bg-[var(--color-bg)]"
+          >
+            <X size={16} /> Encerrar partida
+          </button>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function Preparando({ status, erro }: { status: string; erro: string | null }) {
@@ -460,8 +655,33 @@ function Preparando({ status, erro }: { status: string; erro: string | null }) {
         )}
       </div>
       <p className="mt-4 text-center text-xs text-[var(--color-ink-soft)]">
-        Durante o jogo, mantenha a posição da calibração e mova principalmente os olhos. Esc encerra a partida. As
+        Durante o jogo, mantenha a posição da calibração e mova principalmente os olhos. Esc pausa a partida. As
         imagens da câmera não saem do seu computador.
+      </p>
+    </div>
+  )
+}
+
+function PainelPerseguicao({ info }: { info: InfoPerseguicao }) {
+  const { medidas: m, comparacao } = info
+  const px = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${Math.round(v)} px`)
+  return (
+    <div className="fixed bottom-4 left-4 z-30 max-w-xs rounded-xl bg-[var(--color-surface)] p-3 text-xs text-[var(--color-ink)] shadow-sm" aria-hidden="true">
+      <p className="font-semibold text-[var(--color-navy)]">Perseguição (desenvolvimento)</p>
+      {comparacao && (
+        <p>
+          Erro na conferência: sem <strong>{px(comparacao.sem)}</strong> · com <strong>{px(comparacao.com)}</strong>
+        </p>
+      )}
+      <p>
+        Atraso do olhar: {info.atrasoMs} ms · leituras usadas: {info.aproveitadas} de {info.lidas}
+      </p>
+      <p>
+        Alcance da íris: {m.alcanceH.toFixed(3)} (h) · {m.alcanceV.toFixed(3)} (v)
+        {m.assimetria !== null && <> · olho dir./esq. {m.assimetria.toFixed(2)}</>}
+      </p>
+      <p className={m.cabecaAcompanhou ? 'font-semibold text-[var(--color-warn)]' : ''}>
+        Giro da cabeça: {m.giroCabecaGraus.toFixed(1)}°{m.cabecaAcompanhou && ' · tente mexer só os olhos'}
       </p>
     </div>
   )
