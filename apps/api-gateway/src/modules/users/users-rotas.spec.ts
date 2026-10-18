@@ -38,17 +38,18 @@ beforeEach(() => {
 })
 
 describe('gateway: cadastro e boas-vindas (e-mail e WhatsApp)', () => {
-  it('com a conta criada, manda o e-mail e o WhatsApp de boas-vindas', async () => {
+  // O e-mail de boas-vindas está desligado por enquanto (veja o UsersController): só o WhatsApp sai.
+  it('com a conta criada, manda o WhatsApp de boas-vindas (o e-mail está desligado)', async () => {
     const { body } = await request(app.getHttpServer()).post('/users').send({ nome: 'Ana Souza' }).expect(201)
-    expect(emails.enviar).toHaveBeenCalledWith({ para: 'ana@exemplo.com', template: 'welcome' })
+    expect(emails.enviar).not.toHaveBeenCalled()
     expect(whatsapp.enviar).toHaveBeenCalledWith({ para: '11987654321', template: 'welcome' })
-    expect(body).toEqual({ ...conta, emailEnviado: true, whatsappEnviado: true })
+    expect(body).toEqual({ ...conta, emailEnviado: false, whatsappEnviado: true })
   })
 
   it('um falhar não atrapalha o outro nem o cadastro', async () => {
     whatsapp.enviar.mockResolvedValue({ status: 503, corpo: { erro: 'WHATSAPP_WELCOME_MEDIA não está configurada' } })
     const { body } = await request(app.getHttpServer()).post('/users').send({}).expect(201)
-    expect(body).toMatchObject({ emailEnviado: true, whatsappEnviado: false })
+    expect(body).toMatchObject({ whatsappEnviado: false })
   })
 
   it('conta sem telefone: não tenta o WhatsApp', async () => {
@@ -67,18 +68,16 @@ describe('gateway: cadastro e boas-vindas (e-mail e WhatsApp)', () => {
     expect(whatsapp.enviar).not.toHaveBeenCalled()
   })
 
-  it('o e-mail falhar não desfaz o cadastro', async () => {
-    emails.enviar.mockResolvedValue({ status: 502, corpo: { erro: 'Microsoft Graph não conseguiu enviar o e-mail' } })
-    expect((await request(app.getHttpServer()).post('/users').send({}).expect(201)).body.emailEnviado).toBe(false)
-    emails.enviar.mockRejectedValue(new Error('email-service fora do ar'))
-    expect((await request(app.getHttpServer()).post('/users').send({}).expect(201)).body.emailEnviado).toBe(false)
+  it('o WhatsApp falhar não desfaz o cadastro', async () => {
+    whatsapp.enviar.mockRejectedValue(new Error('email-service fora do ar'))
+    expect((await request(app.getHttpServer()).post('/users').send({}).expect(201)).body.whatsappEnviado).toBe(false)
   })
 
-  it('e-mail que demora: responde sem ele, depois do limite', async () => {
+  it('WhatsApp que demora: responde sem ele, depois do limite', async () => {
     const controller = app.get(UsersController)
     controller.limiteEmailMs = 50
-    emails.enviar.mockReturnValue(new Promise(() => {})) // nunca responde
+    whatsapp.enviar.mockReturnValue(new Promise(() => {})) // nunca responde
     const resposta = await request(app.getHttpServer()).post('/users').send({}).expect(201)
-    expect(resposta.body.emailEnviado).toBe(false)
+    expect(resposta.body.whatsappEnviado).toBe(false)
   })
 })

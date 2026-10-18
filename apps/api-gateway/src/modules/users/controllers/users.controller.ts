@@ -35,7 +35,9 @@ export class UsersController {
     if (resposta.status !== 201 || typeof conta?.email !== 'string') return repassar(resposta, res)
     const telefone = typeof conta.telefone === 'string' && conta.telefone ? conta.telefone : null
     const [emailEnviado, whatsappEnviado] = await Promise.all([
-      this.comLimite('E-mail de boas-vindas', () => this.emails.enviar({ para: conta.email, template: 'welcome' })),
+      // E-mail de boas-vindas desligado por enquanto (o token do Microsoft Graph está inválido). Para voltar:
+      // this.comLimite('E-mail de boas-vindas', () => this.emails.enviar({ para: conta.email, template: 'welcome' })),
+      false,
       telefone ? this.comLimite('WhatsApp de boas-vindas', () => this.whatsapp.enviar({ para: telefone, template: 'welcome' })) : false,
     ])
     return repassar({ ...resposta, corpo: { ...conta, emailEnviado, whatsappEnviado } }, res)
