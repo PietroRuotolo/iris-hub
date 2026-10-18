@@ -13,6 +13,8 @@ export interface Jogador {
 export interface JogadorCriado extends Jogador {
   email: string
   telefone: string | null
+  /** Se o e-mail de boas-vindas saiu (o cadastro não depende dele). */
+  emailEnviado?: boolean
 }
 
 export function criarJogador(dados: { nome: string; email: string; telefone: string }): Promise<JogadorCriado> {

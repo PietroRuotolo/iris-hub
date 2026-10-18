@@ -53,6 +53,9 @@ export default function FormularioCadastro() {
       <div className="rounded-2xl bg-[var(--color-surface)] p-6 shadow-sm">
         <CheckCircle2 size={32} className="text-[var(--color-good)]" />
         <h2 className="mt-3 font-display text-2xl font-semibold text-[var(--color-navy)]">Conta criada</h2>
+        {criado.emailEnviado && (
+          <p className="mt-1 text-sm text-[var(--color-ink-soft)]">Enviamos um e-mail de boas-vindas para {criado.emailMascarado}.</p>
+        )}
 
         {/* Veio da escolha "Quem vai jogar?": volta para lá já com a pessoa nova. */}
         {voltar && (

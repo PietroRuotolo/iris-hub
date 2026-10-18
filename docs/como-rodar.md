@@ -78,7 +78,7 @@ de novo).
 
 O `email-service` envia templates HTML reutilizáveis pelo Microsoft Graph. Configure no `.env` a `MICROSOFT_SEND_MAIL_URL` (endereço do POST de envio do Graph) e a `EMAIL_API_KEY` (o access token do Graph, sem escrever `Bearer `, com a permissão delegada `Mail.Send`). O envio é o mesmo POST do Graph: `Authorization: Bearer <EMAIL_API_KEY>`. Como access tokens expiram, atualize a `EMAIL_API_KEY` quando o token vencer. Entre o gateway e o `email-service`, a proteção `x-api-key` usa a mesma `API_KEY` do gateway.
 
-O gateway expõe `POST /emails/send`, autenticado com a `API_KEY`. Na chamada interna do gateway ao `email-service`, ele envia `x-api-key` com a mesma `API_KEY`. O cadastro de jogadores **não** manda e-mail de boas-vindas (o template continua disponível para uso futuro). O corpo manual é JSON `{ "para": "pessoa@exemplo.com", "template": "welcome" }`; esse template envia a imagem HTML configurada no próprio template. Os templates ficam em `apps/email-service/src/modules/emails/templates/` e reutilizam componentes de `components/`.
+O gateway expõe `POST /emails/send`, autenticado com a `API_KEY`. Na chamada interna do gateway ao `email-service`, ele envia `x-api-key` com a mesma `API_KEY`. Ao criar uma conta (`POST /users`), o gateway manda o e-mail de boas-vindas (`welcome`) para o e-mail cadastrado e responde com `emailEnviado: true/false`; ele espera o envio por até 5 s e o cadastro nunca falha por causa do e-mail (falha ou demora vão para o log). Com a `EMAIL_API_KEY` vencida, as contas continuam sendo criadas, mas sem o e-mail. O corpo manual é JSON `{ "para": "pessoa@exemplo.com", "template": "welcome" }`; esse template envia a imagem HTML configurada no próprio template. Os templates ficam em `apps/email-service/src/modules/emails/templates/` e reutilizam componentes de `components/`.
 
 ## Rota `/back` (backend pelo site)
 
@@ -118,7 +118,8 @@ com a explicação. Para testar o modo embutido localmente: `npm run build:verce
 Não há login. O site é aberto, e quem joga é escolhido na hora:
 
 1. **Criar conta** (`/cadastro`, também no menu): nome, e-mail e telefone com DDD, todos obrigatórios.
-   O e-mail não pode repetir; o telefone é guardado só com os números. Não há e-mail de boas-vindas.
+   O e-mail não pode repetir; o telefone é guardado só com os números. Ao criar, sai o e-mail de boas-vindas
+   (se o envio estiver configurado; veja o `email-service`).
 2. **Quem vai jogar?** Ao clicar no card de um jogo (ou abrir um jogo sem
    jogador), aparece a busca por nome: os resultados só aparecem a partir de 2 letras (a lista de
    contas não fica à mostra) e não diferenciam acentos ("joao" acha "João"), com o e-mail mascarado.
