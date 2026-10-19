@@ -1,57 +1,123 @@
-// Jogo de reflexo: tipos trocados entre o site e o session-service, e a regra do resumo. A regra
-// fica aqui (função pura) porque o site mostra o resumo na hora e o session-service recalcula os
-// mesmos números a partir das tentativas, sem confiar nos que o site calculou.
+// Jogo do reflexo, "o mestre mandou": tipos trocados entre o site e o session-service, e as regras de
+// cada rodada e da pontuação. Ficam aqui (funções puras) porque o site mostra os números na hora e o
+// session-service vai recalcular os mesmos a partir das rodadas, sem confiar nos do site.
+//
+// Cada rodada tem uma espera (a pessoa não pode apertar) e depois a ordem do mestre: "APERTE!" (aperta o
+// mais rápido que puder) ou "NÃO APERTE!" (segura até o tempo acabar). Mede o tempo de reação e o
+// controle de não apertar quando não deve.
 
-export const ACIONAMENTOS_REFLEXO = ['MOUSE_CLICK', 'SPACE_KEY', 'ESP32_BUTTON'] as const
+export const VERSAO_PONTUACAO_REFLEXO = 'mestre-v1'
+
+export const ACIONAMENTOS_REFLEXO = ['ESP32_BUTTON', 'SPACE_KEY', 'MOUSE_CLICK'] as const
 export type AcionamentoReflexo = (typeof ACIONAMENTOS_REFLEXO)[number]
 
-/** Limite alto de propósito: só barra valores absurdos (bug ou entrada forjada), não jogadas lentas. */
+/** Abaixo disto, a resposta é rápida demais para ser reação à ordem: conta como antecipação. */
+export const TEMPO_MINIMO_REACAO_MS = 100
+/** Reação no mínimo humano: vale os 100 pontos. */
+export const TEMPO_REACAO_IDEAL_MS = 150
+/** Limite alto de propósito: só barra valores absurdos (bug ou entrada forjada). */
 export const TEMPO_MAXIMO_MS = 60_000
-export const MAX_TENTATIVAS_REFLEXO = 200
 
-export interface TentativaReflexo {
-  /** 1, 2, 3...: a ordem em que as rodadas aconteceram. */
-  rodada: number
-  /** Da preparação até o sinal de reagir (ms). Em `queimou`, até a pessoa apertar antes da hora. */
-  tempoEsperaMs: number
-  /** Do sinal até o acionamento (ms). null quando queimou a largada. */
+/** A ordem do mestre: apertar ou não apertar. */
+export type OrdemMestre = 'apertar' | 'nao_apertar'
+
+/**
+ * - acerto: o mestre mandou apertar e a pessoa apertou a tempo;
+ * - segurou: o mestre mandou não apertar e a pessoa segurou;
+ * - atrasado: mandou apertar e o tempo acabou;
+ * - apertou_errado: mandou não apertar e a pessoa apertou;
+ * - antecipacao: apertou antes da ordem, ou rápido demais para ter lido (< 100 ms).
+ */
+export type ResultadoRodada = 'acerto' | 'segurou' | 'atrasado' | 'apertou_errado' | 'antecipacao'
+
+export const RESULTADOS_CERTOS: readonly ResultadoRodada[] = ['acerto', 'segurou']
+
+/** Uma rodada como o site mediu. Tempos em ms. */
+export interface RodadaReflexo {
+  /** 1, 2, 3...: a ordem da rodada na partida. */
+  numero: number
+  ordem: OrdemMestre
+  /** Espera sorteada antes da ordem. */
+  esperaMs: number
+  /** Tempo para apertar (ou para segurar) depois da ordem. */
+  janelaMs: number
+  resultado: ResultadoRodada
+  /** Da ordem ao botão; null se não apertou ou se apertou antes da ordem. */
   tempoReacaoMs: number | null
-  queimou: boolean
-  acionamento: AcionamentoReflexo
+}
+
+/** O resultado de uma rodada, dada a ordem e quando a pessoa apertou. */
+export function avaliarRodada(
+  ordem: OrdemMestre,
+  /** ms da ordem até o botão: negativo = apertou na espera; null = não apertou. */
+  apertouAposMs: number | null,
+  janelaMs: number,
+): { resultado: ResultadoRodada; tempoReacaoMs: number | null } {
+  if (apertouAposMs !== null && apertouAposMs < 0) return { resultado: 'antecipacao', tempoReacaoMs: null }
+  const apertou = apertouAposMs !== null && apertouAposMs <= janelaMs
+  if (!apertou) return { resultado: ordem === 'apertar' ? 'atrasado' : 'segurou', tempoReacaoMs: null }
+  const tempo = Math.round(apertouAposMs)
+  if (tempo < TEMPO_MINIMO_REACAO_MS) return { resultado: 'antecipacao', tempoReacaoMs: tempo }
+  return { resultado: ordem === 'apertar' ? 'acerto' : 'apertou_errado', tempoReacaoMs: tempo }
+}
+
+/**
+ * Pontos de uma rodada (0 a 100). Segurar quando o mestre mandou não apertar vale 100. O acerto vale de
+ * 60 a 100: 100 com a reação no mínimo humano (150 ms), caindo até 60 no fim do tempo. Erros valem 0.
+ */
+export function pontuarRodada(r: Pick<RodadaReflexo, 'resultado' | 'tempoReacaoMs' | 'janelaMs'>): number {
+  if (r.resultado === 'segurou') return 100
+  if (r.resultado !== 'acerto' || r.tempoReacaoMs === null) return 0
+  const rapidez = Math.min(1, Math.max(0, (r.janelaMs - r.tempoReacaoMs) / Math.max(1, r.janelaMs - TEMPO_REACAO_IDEAL_MS)))
+  return Math.round((60 + 40 * rapidez) * 10) / 10
 }
 
 export interface ResumoReflexo {
-  /** Rodadas em que a pessoa reagiu depois do sinal. */
-  validas: number
-  queimadas: number
+  rodadas: number
+  acertos: number
+  segurou: number
+  atrasados: number
+  apertouErrado: number
+  antecipacoes: number
+  /** Rodadas certas (acerto + segurou) / rodadas (0 a 1). */
+  precisao: number | null
+  /** Só dos acertos (as rodadas em que o mestre mandou apertar). */
   tempoMedioMs: number | null
   melhorTempoMs: number | null
+  /** Desvio padrão dos tempos: o quanto a reação varia. */
+  desvioPadraoMs: number | null
+  /** Soma dos pontos das rodadas (até 100 por rodada). */
+  pontos: number
 }
 
-const arredondar2 = (v: number) => Math.round(v * 100) / 100
+const arredondar = (v: number, casas = 1) => Math.round(v * 10 ** casas) / 10 ** casas
+const media = (v: number[]) => v.reduce((s, x) => s + x, 0) / v.length
 
-/** Só conta reação depois do sinal: queimar a largada não tem tempo de reação. */
-export function resumirReflexo(tentativas: Pick<TentativaReflexo, 'queimou' | 'tempoReacaoMs'>[]): ResumoReflexo {
-  const tempos = tentativas
-    .filter((t) => !t.queimou && typeof t.tempoReacaoMs === 'number')
-    .map((t) => t.tempoReacaoMs as number)
+/** O resumo de um conjunto de rodadas (a partida inteira). */
+export function resumirReflexo(rodadas: Pick<RodadaReflexo, 'resultado' | 'tempoReacaoMs' | 'janelaMs'>[]): ResumoReflexo {
+  const conta = (r: ResultadoRodada) => rodadas.filter((x) => x.resultado === r).length
+  const tempos = rodadas.filter((r) => r.resultado === 'acerto' && r.tempoReacaoMs !== null).map((r) => r.tempoReacaoMs as number)
+  const m = tempos.length ? media(tempos) : null
   return {
-    validas: tempos.length,
-    queimadas: tentativas.filter((t) => t.queimou).length,
-    tempoMedioMs: tempos.length ? arredondar2(tempos.reduce((s, v) => s + v, 0) / tempos.length) : null,
+    rodadas: rodadas.length,
+    acertos: conta('acerto'),
+    segurou: conta('segurou'),
+    atrasados: conta('atrasado'),
+    apertouErrado: conta('apertou_errado'),
+    antecipacoes: conta('antecipacao'),
+    precisao: rodadas.length ? arredondar((conta('acerto') + conta('segurou')) / rodadas.length, 3) : null,
+    tempoMedioMs: m === null ? null : arredondar(m),
     melhorTempoMs: tempos.length ? Math.min(...tempos) : null,
+    desvioPadraoMs: m !== null && tempos.length > 1 ? arredondar(Math.sqrt(media(tempos.map((t) => (t - m) ** 2)))) : null,
+    pontos: arredondar(rodadas.reduce((s, r) => s + pontuarRodada(r), 0)),
   }
 }
 
-export type StatusSessaoSimples = 'EM_ANDAMENTO' | 'CONCLUIDA' | 'CANCELADA'
-
-export interface SessaoReflexo {
+/** Uma partida: o id é gerado no começo dela (repetir o envio não duplica). Cada fase é uma rodada. */
+export interface PartidaReflexo {
   id: string
-  participanteId: string | null
+  concluida: boolean
+  acionamento: AcionamentoReflexo
   iniciadaEm: string // ISO 8601
-  concluidaEm: string | null
-  status: StatusSessaoSimples
-  tempoMedioMs: number | null
-  melhorTempoMs: number | null
-  tentativas: TentativaReflexo[]
+  rodadas: RodadaReflexo[]
 }

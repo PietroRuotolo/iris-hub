@@ -1,34 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { resumirCores } from './cores'
-import { resumirReflexo } from './reflexo'
-
-describe('resumirReflexo', () => {
-  it('calcula média e melhor tempo só das reações válidas', () => {
-    const r = resumirReflexo([
-      { queimou: false, tempoReacaoMs: 300 },
-      { queimou: false, tempoReacaoMs: 200 },
-      { queimou: true, tempoReacaoMs: null },
-    ])
-    expect(r).toEqual({ validas: 2, queimadas: 1, tempoMedioMs: 250, melhorTempoMs: 200 })
-  })
-
-  it('não usa o tempo de uma rodada queimada, mesmo que venha preenchido', () => {
-    expect(resumirReflexo([{ queimou: true, tempoReacaoMs: 5 }]).melhorTempoMs).toBeNull()
-  })
-
-  it('sem reações válidas, não há média nem melhor tempo', () => {
-    expect(resumirReflexo([])).toEqual({ validas: 0, queimadas: 0, tempoMedioMs: null, melhorTempoMs: null })
-  })
-
-  it('arredonda a média para 2 casas', () => {
-    const r = resumirReflexo([
-      { queimou: false, tempoReacaoMs: 100 },
-      { queimou: false, tempoReacaoMs: 101 },
-      { queimou: false, tempoReacaoMs: 101 },
-    ])
-    expect(r.tempoMedioMs).toBe(100.67)
-  })
-})
 
 describe('resumirCores', () => {
   const rodada = (tamanhoSequencia: number, acertou: boolean, tempoRespostaMs: number | null) => ({ tamanhoSequencia, acertou, tempoRespostaMs })
