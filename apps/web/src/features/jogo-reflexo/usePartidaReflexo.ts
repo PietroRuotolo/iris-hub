@@ -59,8 +59,9 @@ export function usePartidaReflexo() {
   )
 
   /** Começa a partida (botão da tela inicial ou espaço). */
-  const comecar = useCallback(() => {
+   const comecar = useCallback((origem?: AcionamentoReflexo) => {
     if (etapaRef.current.tipo !== 'inicio') return
+    if (origem) acionamento.current = origem // vale se a pessoa não apertar nenhuma vez
     fases.current = gerarFases()
     setPartida({ id: novoId(), iniciadaEm: new Date().toISOString() })
     ir({ tipo: 'anuncio', fase: fases.current[0] })

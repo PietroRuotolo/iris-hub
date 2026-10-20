@@ -2,7 +2,6 @@
 // que o firmware manda pela porta serial, para testar os jogos e a gravação no banco sem o hardware.
 // Os roteiros são funções puras (testadas); `tocarRoteiro` só os dispara no tempo certo.
 
-import type { EventoEsp32 } from '@/features/jogo-reflexo/hooks/useEsp32Serial'
 import type { EventoGenius } from '@/features/jogo-cores/cores.config'
 
 export interface Passo<E> {
@@ -19,21 +18,7 @@ export function simulacaoLigada(): boolean {
 
 const entre = (min: number, max: number, aleatorio: () => number) => Math.round(min + aleatorio() * (max - min))
 
-/** Uma rodada do reflexo: espera aleatória, sinal e o botão (ou a largada queimada). */
-export function roteiroReflexo(queimar: boolean, aleatorio: () => number = Math.random): Passo<EventoEsp32>[] {
-  if (queimar) {
-    return [
-      { depoisMs: 0, evento: { status: 'esperando' } },
-      { depoisMs: entre(400, 900, aleatorio), evento: { status: 'queimou' } },
-    ]
-  }
-  const reacao = entre(180, 450, aleatorio)
-  return [
-    { depoisMs: 0, evento: { status: 'esperando' } },
-    { depoisMs: entre(1000, 2500, aleatorio), evento: { status: 'reagir' } },
-    { depoisMs: reacao, evento: { status: 'sucesso', valor: reacao } },
-  ]
-}
+
 
 /** Uma partida das cores: `acertos` rodadas certas e o erro na seguinte (game over). */
 export function roteiroCores(acertos: number, aleatorio: () => number = Math.random): Passo<EventoGenius>[] {

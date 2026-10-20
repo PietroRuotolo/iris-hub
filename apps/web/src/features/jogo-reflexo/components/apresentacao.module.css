@@ -1,0 +1,19 @@
+/* Animações da tela de apresentação do jogo do reflexo. */
+
+/* "APERTE!": a mão desce e aperta, sem parar. */
+.apertando { animation: aperta 0.8s cubic-bezier(0.5, 0, 0.3, 1) infinite; }
+@keyframes aperta {
+  0%, 100% { transform: translateY(-4px); }
+  45%, 60% { transform: translateY(4px) scale(0.94); }
+}
+
+/* "NÃO APERTE!": a mão balança, como quem se segura. */
+.segurando { animation: segura 0.7s ease-in-out infinite; transform-origin: 50% 90%; }
+@keyframes segura {
+  0%, 100% { transform: rotate(-8deg); }
+  50% { transform: rotate(8deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .apertando, .segurando { animation: none; }
+}

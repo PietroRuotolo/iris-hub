@@ -1,11 +1,14 @@
 'use client'
 
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
-import { ArrowLeft, Gauge, Hand, MousePointerClick, Pointer, Rabbit, ShieldCheck, Square, Turtle, X, Zap, type LucideIcon } from 'lucide-react'
-import { pontuarRodada, type RodadaReflexo } from '@iris/contracts'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
+import { AlertTriangle, ArrowLeft, Cpu, Gauge, Hand, MousePointerClick, Plug, Pointer, Rabbit, ShieldCheck, Square, Turtle, X, Zap, type LucideIcon } from 'lucide-react'
+import { pontuarRodada, type AcionamentoReflexo, type RodadaReflexo } from '@iris/contracts'
+import PainelSimulacao from '@/components/PainelSimulacao'
+import { simulacaoLigada } from '@/lib/serial/simulador'
 import { classificarTempo, type FaixaReflexo } from '../reflexo'
 import { TOTAL_FASES } from '../fases'
 import { usePartidaReflexo, type Etapa, type Toque } from '../usePartidaReflexo'
+import { useEsp32Serial, type EventoEsp32 } from '../hooks/useEsp32Serial'
 import ResultadoReflexo from './ResultadoReflexo'
 import Trilha from './Trilha'
 import estilos from './reflexo.module.css'
@@ -32,33 +35,55 @@ const ERRO = {
 } as const
 
 // A partida do "mestre mandou": 5 fases iguais, uma ordem em cada ("APERTE!" ou "NÃO APERTE!"). O botão
-// é o clique na área do jogo ou a barra de espaço; o botão do ESP32 entra no mesmo `apertar`.
+// é o do ESP32, pela USB (hooks/useEsp32Serial.ts). Sem o ESP32, o modo simulação (?simular na URL, só em
+// desenvolvimento) faz o clique na área do jogo e a barra de espaço imitarem o botão.
 export default function TelaReflexo({ onVoltar }: Props) {
   const jogo = usePartidaReflexo()
   const { etapa, apertar, comecar } = jogo
+  const [simular] = useState(simulacaoLigada)
 
-  // Barra de espaço = botão (e, na tela inicial, começa a partida).
+  /** Um aperto do botão: na tela inicial começa a partida; no jogo, conta como aperto. */
+  const receberAperto = useCallback(
+    (origem: AcionamentoReflexo, agora: number, onde: Toque = null) => {
+      apertar(origem, agora, onde)
+      comecar(origem)
+    },
+    [apertar, comecar],
+  )
+
+  const aoEventoEsp32 = useCallback(
+    (evento: EventoEsp32, agora: number) => {
+      if (evento.evento === 'botao_pressionado') receberAperto('ESP32_BUTTON', agora)
+    },
+    [receberAperto],
+  )
+  const esp = useEsp32Serial(aoEventoEsp32)
+  const podeJogar = esp.conectado || simular
+
+  // No modo simulação, a barra de espaço = botão.
   useEffect(() => {
+    if (!simular) return
     const aoTeclar = (e: KeyboardEvent) => {
       if (e.code !== 'Space' || e.repeat) return
       e.preventDefault()
-      apertar('SPACE_KEY', e.timeStamp)
-      comecar()
+      receberAperto('SPACE_KEY', e.timeStamp)
     }
     window.addEventListener('keydown', aoTeclar)
     return () => window.removeEventListener('keydown', aoTeclar)
-  }, [apertar, comecar])
+  }, [simular, receberAperto])
 
   if (etapa.tipo === 'fim') return <ResultadoReflexo rodadas={jogo.rodadas} onVoltar={onVoltar} onJogarDeNovo={jogo.reiniciar} />
 
   const pontos = jogo.rodadas.reduce((s, r) => s + pontuarRodada(r), 0)
   const faseAtual = etapa.tipo === 'inicio' ? null : etapa.fase.numero
   const jogando = etapa.tipo !== 'inicio'
+  const comMouse = jogando && simular
+  const caiuNoJogo = jogando && !podeJogar // o cabo saiu no meio da partida
 
   const aoApertar = (e: PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return // só o botão esquerdo
     const r = e.currentTarget.getBoundingClientRect()
-    apertar('MOUSE_CLICK', e.timeStamp, { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height })
+    receberAperto('MOUSE_CLICK', e.timeStamp, { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height })
   }
 
   return (
@@ -95,23 +120,57 @@ export default function TelaReflexo({ onVoltar }: Props) {
         </div>
       </div>
 
-      {/* A arena: clicar em qualquer lugar dela é apertar o botão. */}
+      {simular && (
+        <PainelSimulacao>
+          Sem o ESP32: clique na área do jogo ou aperte a barra de espaço, que vale como o botão.
+        </PainelSimulacao>
+      )}
+
+      {caiuNoJogo && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-[var(--color-warn-bg)] px-4 py-3 text-sm text-[var(--color-warn)]" role="alert">
+          <AlertTriangle size={16} /> {esp.erro ?? 'O ESP32 foi desconectado.'}
+          <button type="button" onClick={esp.conectar} className="cursor-pointer font-semibold underline underline-offset-2">
+            Conectar de novo
+          </button>
+        </div>
+      )}
+
+      {/* A arena. No modo simulação, clicar em qualquer lugar dela é apertar o botão. */}
       <div
-        onPointerDown={jogando ? aoApertar : undefined}
-        role={jogando ? 'button' : undefined}
-        aria-label={jogando ? 'Botão do jogo: clique ou aperte espaço' : undefined}
+        onPointerDown={comMouse ? aoApertar : undefined}
+        role={comMouse ? 'button' : undefined}
+        aria-label={comMouse ? 'Botão do jogo: clique ou aperte espaço' : undefined}
         className={`relative isolate flex min-h-[24rem] select-none flex-col items-center justify-center overflow-hidden rounded-3xl p-6 shadow-sm transition-colors duration-300 sm:min-h-[28rem] ${
-          jogando ? 'cursor-pointer touch-manipulation' : ''
+          comMouse ? 'cursor-pointer touch-manipulation' : ''
         } ${fundo(etapa)}`}
       >
-        <Arena etapa={etapa} toque={jogo.toque} aoComecar={comecar} />
+        {etapa.tipo === 'inicio' ? (
+          <Inicio esp={esp} simular={simular} aoComecar={() => comecar(esp.conectado ? 'ESP32_BUTTON' : 'MOUSE_CLICK')} />
+        ) : (
+          <Arena etapa={etapa} toque={jogo.toque} />
+        )}
       </div>
 
-      <p className="flex items-center justify-center gap-2 text-sm text-[var(--color-ink-soft)]">
-        <MousePointerClick size={16} /> Clique na área ou aperte a{' '}
-        <kbd className="rounded bg-[var(--color-surface)] px-1.5 py-0.5 text-xs font-semibold shadow-sm">espaço</kbd>
-      </p>
+      <Dica conectado={esp.conectado} simular={simular} />
     </div>
+  )
+}
+
+/** Embaixo da arena: com o que se joga agora. */
+function Dica({ conectado, simular }: { conectado: boolean; simular: boolean }) {
+  if (conectado) {
+    return (
+      <p className="flex items-center justify-center gap-2 text-sm text-[var(--color-ink-soft)]">
+        <Cpu size={16} /> Use o botão do ESP32
+      </p>
+    )
+  }
+  if (!simular) return null
+  return (
+    <p className="flex items-center justify-center gap-2 text-sm text-[var(--color-ink-soft)]">
+      <MousePointerClick size={16} /> Clique na área ou aperte a{' '}
+      <kbd className="rounded bg-[var(--color-surface)] px-1.5 py-0.5 text-xs font-semibold shadow-sm">espaço</kbd>
+    </p>
   )
 }
 
@@ -121,8 +180,7 @@ function fundo(etapa: Etapa): string {
   return certo ? 'bg-[var(--color-good-bg)]' : 'bg-[var(--color-warn-bg)]'
 }
 
-function Arena({ etapa, toque, aoComecar }: { etapa: Etapa; toque: Toque; aoComecar: () => void }) {
-  if (etapa.tipo === 'inicio') return <Inicio aoComecar={aoComecar} />
+function Arena({ etapa, toque }: { etapa: Etapa; toque: Toque }) {
   if (etapa.tipo === 'anuncio') return <Anuncio numero={etapa.fase.numero} />
   if (etapa.tipo === 'espera') return <Espera />
   if (etapa.tipo === 'ordem') return <Ordem apertar={etapa.fase.ordem === 'apertar'} janelaMs={etapa.fase.janelaMs} />
@@ -130,7 +188,9 @@ function Arena({ etapa, toque, aoComecar }: { etapa: Etapa; toque: Toque; aoCome
   return null
 }
 
-function Inicio({ aoComecar }: { aoComecar: () => void }) {
+type Esp32 = ReturnType<typeof useEsp32Serial>
+
+function Inicio({ esp, simular, aoComecar }: { esp: Esp32; simular: boolean; aoComecar: () => void }) {
   return (
     <div className="flex flex-col items-center gap-6 text-center">
       <div>
@@ -149,15 +209,55 @@ function Inicio({ aoComecar }: { aoComecar: () => void }) {
           <p className="text-sm opacity-80">Segure até o tempo acabar.</p>
         </div>
       </div>
+      {esp.conectado || simular ? (
+        <>
+          <button
+            type="button"
+            onClick={aoComecar}
+            autoFocus
+            className={`flex h-32 w-32 cursor-pointer items-center justify-center rounded-full bg-[var(--color-terracota)] font-display text-xl font-extrabold uppercase tracking-wide text-[var(--color-surface)] outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-navy)]/30 ${estilos.botao}`}
+          >
+            Começar
+          </button>
+          <p className="text-sm text-[var(--color-ink-soft)]">
+            {esp.conectado ? 'Ou aperte o botão do ESP32. ' : ''}
+            {TOTAL_FASES} fases · uma ordem em cada · antes da ordem não vale!
+          </p>
+        </>
+      ) : (
+        <Conectar esp={esp} />
+      )}
+      {esp.conectado && (
+        <span className="inline-flex items-center gap-2 rounded-full bg-[var(--color-good-bg)] px-3 py-1 text-xs font-semibold text-[var(--color-good)]">
+          <span className="h-2 w-2 rounded-full bg-[var(--color-good)]" /> ESP32 conectado
+          <button type="button" onClick={esp.desconectar} className="cursor-pointer font-medium text-[var(--color-ink-soft)] underline underline-offset-2">
+            desconectar
+          </button>
+        </span>
+      )}
+    </div>
+  )
+}
+
+/** Sem o ESP32 conectado: o passo para conectar. */
+function Conectar({ esp }: { esp: Esp32 }) {
+  return (
+    <div className="flex w-full max-w-md flex-col items-center gap-3 rounded-2xl bg-[var(--color-bg)] p-5">
+      <p className="text-base text-[var(--color-ink)]">
+        Ligue a caixa do ESP32 na USB e clique em <strong>Conectar</strong>. Na janela que abrir, escolha a porta dela.
+      </p>
       <button
         type="button"
-        onClick={aoComecar}
-        autoFocus
-        className={`flex h-32 w-32 cursor-pointer items-center justify-center rounded-full bg-[var(--color-terracota)] font-display text-xl font-extrabold uppercase tracking-wide text-[var(--color-surface)] outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-navy)]/30 ${estilos.botao}`}
+        onClick={esp.conectar}
+        className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-[var(--color-navy)] px-6 py-3 text-base font-semibold text-[var(--color-surface)] outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-navy)]/25"
       >
-        Começar
+        <Plug size={18} /> Conectar o ESP32
       </button>
-      <p className="text-sm text-[var(--color-ink-soft)]">{TOTAL_FASES} fases · uma ordem em cada · antes da ordem não vale!</p>
+      {esp.erro && (
+        <p className="flex items-center gap-1.5 text-sm text-[var(--color-warn)]" role="alert">
+          <AlertTriangle size={15} className="shrink-0" /> {esp.erro}
+        </p>
+      )}
     </div>
   )
 }
