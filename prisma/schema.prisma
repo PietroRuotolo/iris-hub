@@ -125,10 +125,11 @@ model ReflexAttempt {
   @@map("reflex_attempts")
 }
 
-// --- Jogo das cores (ESP32) --------------------------------------------------------
-// Mesmo padrão do reflexo: color_rounds é a fonte da verdade e color_sessions o resultado
-// consolidado. O recorde não é guardado: é o maior score das partidas completed de cada jogador.
-// Os limites (contagens >= 0, total_errors <= 1, round_number e sequence_length > 0) ficam na
+// --- Jogo das cores, em 5 fases (ESP32) -------------------------------------------------------
+// Mesmo padrão do reflexo: color_rounds é a fonte da verdade (a sequência mostrada e as cores
+// apertadas em cada fase) e color_sessions o resultado consolidado. O site manda só o que mediu; o
+// resultado de cada fase, os pontos e o consolidado são calculados pelo session-service
+// (packages/contracts/src/cores.ts). Os limites (5 fases, tamanhos 3 a 7, cores 0 a 4) ficam na
 // validação do serviço, já que o MongoDB não tem CHECK.
 
 enum ColorSessionStatus {
@@ -137,28 +138,44 @@ enum ColorSessionStatus {
   abandoned
 }
 
-enum ColorGameOverReason {
+/// Com o que a pessoa jogou: os botões da caixa ou, no modo simulação, o clique e o teclado.
+enum ColorInput {
+  ESP32_BUTTON
+  MOUSE_CLICK
+  KEYBOARD
+}
+
+/// success: repetiu a sequência inteira a tempo; wrong_color: apertou uma cor fora da ordem;
+/// timeout: o tempo da fase acabou antes de terminar.
+enum ColorRoundResult {
+  success
   wrong_color
   timeout
-  abandoned
 }
 
 /// Uma partida das cores: dados gerais e o resultado consolidado.
 model ColorSession {
-  id                    String               @id @default(uuid(7)) @map("_id")
-  playerId              String               @map("player_id")
-  player                User                 @relation(fields: [playerId], references: [id])
-  status                ColorSessionStatus   @default(in_progress)
-  /// Pontuação final informada pelo ESP32 (o serviço só guarda, não recalcula).
-  score                 Int                  @default(0)
-  roundsCompleted       Int                  @default(0) @map("rounds_completed")
-  maxSequenceLength     Int                  @default(0) @map("max_sequence_length")
-  totalErrors           Int                  @default(0) @map("total_errors")
-  averageResponseTimeMs Float?               @map("average_response_time_ms")
-  durationMs            Int?                 @map("duration_ms")
-  gameOverReason        ColorGameOverReason? @map("game_over_reason")
-  startedAt             DateTime             @default(now()) @map("started_at")
-  finishedAt            DateTime?            @map("finished_at")
+  id                String             @id @default(uuid(7)) @map("_id")
+  playerId          String             @map("player_id")
+  player            User               @relation(fields: [playerId], references: [id])
+  status            ColorSessionStatus @default(in_progress)
+  inputSource       ColorInput?        @map("input_source")
+  /// Soma dos pontos das fases (até 100 por fase: 0 a 500 numa partida completa).
+  score             Int                @default(0)
+  /// Fases certas.
+  roundsCompleted   Int                @default(0) @map("rounds_completed")
+  /// Fases em que apertou uma cor fora da ordem.
+  totalErrors       Int                @default(0) @map("total_errors")
+  /// Fases em que o tempo acabou.
+  timeouts          Int                @default(0)
+  /// A maior sequência repetida certa (0 se não acertou nenhuma).
+  maxSequenceLength Int                @default(0) @map("max_sequence_length")
+  /// Média de ms por cor, só das fases certas.
+  averageMsPerColor Float?             @map("average_ms_per_color")
+  /// Versão da regra de pontos (VERSAO_PONTUACAO_CORES em packages/contracts), para comparar partidas.
+  scoringVersion    String             @default("fases-v1") @map("scoring_version")
+  startedAt         DateTime           @default(now()) @map("started_at")
+  finishedAt        DateTime?          @map("finished_at")
 
   rounds      ColorRound[]
   gameResults GameResult[]
@@ -167,26 +184,29 @@ model ColorSession {
   @@map("color_sessions")
 }
 
-/// Uma rodada das cores, inclusive a que terminou o jogo.
+/// Uma fase das cores.
 model ColorRound {
-  id               String       @id @default(uuid(7)) @map("_id")
-  sessionId        String       @map("session_id")
-  session          ColorSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  roundNumber      Int          @map("round_number")
-  sequenceLength   Int          @map("sequence_length")
-  /// Cores (números do ESP32) da sequência mostrada e da que a pessoa apertou. Vazias quando não
-  /// foram registradas (o MongoDB não aceita lista opcional no Prisma).
-  expectedSequence Int[]        @default([]) @map("expected_sequence")
-  playerSequence   Int[]        @default([]) @map("player_sequence")
-  isCorrect        Boolean      @map("is_correct")
-  responseTimeMs   Int?         @map("response_time_ms")
-  scoreAfterRound  Int          @default(0) @map("score_after_round")
-  createdAt        DateTime     @default(now()) @map("created_at")
+  id               String           @id @default(uuid(7)) @map("_id")
+  sessionId        String           @map("session_id")
+  session          ColorSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  roundNumber      Int              @map("round_number")
+  sequenceLength   Int              @map("sequence_length")
+  /// A sequência mostrada e as cores que a pessoa apertou (para no primeiro erro). Cores de 0 a 4:
+  /// cinza, amarelo, verde, vermelho, azul.
+  expectedSequence Int[]            @map("expected_sequence")
+  playerSequence   Int[]            @default([]) @map("player_sequence")
+  /// Do começo da vez da pessoa até o último aperto; null se não apertou nada.
+  responseTimeMs   Int?             @map("response_time_ms")
+  result           ColorRoundResult
+  /// 0 a 100 (packages/contracts: pontuarFaseCores).
+  score            Int              @default(0)
+  createdAt        DateTime         @default(now()) @map("created_at")
 
   // Também serve de índice por session_id (é o prefixo).
   @@unique([sessionId, roundNumber])
   @@map("color_rounds")
 }
+
 
 // --- Jogo de ritmo (rastreamento ocular) ------------------------------------------------------
 // Partida → fases → alvos. rhythm_targets é a fonte da verdade; rhythm_phases e rhythm_sessions

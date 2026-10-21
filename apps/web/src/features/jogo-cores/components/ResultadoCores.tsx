@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, Clock, RotateCcw, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Check, CheckCircle2, Clock, LoaderCircle, RotateCcw, X } from 'lucide-react'
 import { pontuarFaseCores, resumirFasesCores, type FaseCores, type ResultadoFaseCores } from '@iris/contracts'
 import { CORES_JOGO } from '../cores.config'
 import { TOTAL_FASES } from '../fases'
@@ -9,8 +9,23 @@ const TEXTO: Record<ResultadoFaseCores, string> = {
   demorou: 'O tempo acabou',
 }
 
-// Resultado da partida das cores: os pontos e como foi cada fase.
-export default function ResultadoCores({ fases, onVoltar, onJogarDeNovo }: { fases: FaseCores[]; onVoltar?: () => void; onJogarDeNovo: () => void }) {
+/** A gravação da partida no banco. 'nada': nenhuma fase jogada, não há o que gravar. */
+export type Salvamento = 'nada' | 'salvando' | 'salva' | 'erro'
+
+// Resultado da partida das cores: os pontos, como foi cada fase e se a partida foi gravada.
+export default function ResultadoCores({
+  fases,
+  salvamento,
+  aoTentarSalvar,
+  onVoltar,
+  onJogarDeNovo,
+}: {
+  fases: FaseCores[]
+  salvamento: Salvamento
+  aoTentarSalvar: () => void
+  onVoltar?: () => void
+  onJogarDeNovo: () => void
+}) {
   const r = resumirFasesCores(fases)
 
   return (
@@ -21,6 +36,7 @@ export default function ResultadoCores({ fases, onVoltar, onJogarDeNovo }: { fas
         </button>
       )}
       <h1 className="font-display text-2xl font-semibold text-[var(--color-navy)]">{fases.length === TOTAL_FASES ? 'Partida concluída' : 'Partida encerrada'}</h1>
+      <EstadoSalvamento salvamento={salvamento} aoTentarSalvar={aoTentarSalvar} />
 
       <section className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-sm">
         <p className="font-display text-4xl font-semibold text-[var(--color-good)]">
@@ -65,6 +81,32 @@ export default function ResultadoCores({ fases, onVoltar, onJogarDeNovo }: { fas
         className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[var(--color-navy)] px-4 py-3 text-base font-semibold text-[var(--color-surface)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-navy)] focus-visible:ring-offset-2"
       >
         <RotateCcw size={18} /> Jogar de novo
+      </button>
+    </div>
+  )
+}
+
+function EstadoSalvamento({ salvamento, aoTentarSalvar }: { salvamento: Salvamento; aoTentarSalvar: () => void }) {
+  if (salvamento === 'nada') return null
+  if (salvamento === 'salvando') {
+    return (
+      <p className="-mt-2 flex items-center gap-1.5 text-sm text-[var(--color-ink-soft)]" role="status">
+        <LoaderCircle size={16} className="animate-spin" /> Salvando a partida…
+      </p>
+    )
+  }
+  if (salvamento === 'salva') {
+    return (
+      <p className="-mt-2 flex items-center gap-1.5 text-sm text-[var(--color-good)]" role="status">
+        <CheckCircle2 size={16} /> Partida salva
+      </p>
+    )
+  }
+  return (
+    <div className="-mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-[var(--color-warn-bg)] px-3 py-2 text-sm text-[var(--color-warn)]" role="alert">
+      <AlertTriangle size={16} /> Não foi possível salvar a partida.
+      <button type="button" onClick={aoTentarSalvar} className="cursor-pointer font-semibold underline underline-offset-2">
+        Tentar de novo
       </button>
     </div>
   )

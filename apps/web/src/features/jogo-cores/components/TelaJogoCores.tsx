@@ -2,14 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
 import { AlertTriangle, ArrowLeft, Check, Clock, Cpu, Keyboard, MousePointerClick, Plug, Square, X, Zap } from 'lucide-react'
-import { RITMO_IDEAL_POR_COR_MS, pontuarFaseCores, type FaseCores } from '@iris/contracts'
+import { RITMO_IDEAL_POR_COR_MS, pontuarFaseCores, type FaseCores, type PartidaCores } from '@iris/contracts'
 import PainelSimulacao from '@/components/PainelSimulacao'
+import { salvarPartidaCores } from '@/lib/api/cores'
 import { simulacaoLigada } from '@/lib/serial/simulador'
 import { CORES_JOGO } from '../cores.config'
 import { TOTAL_FASES } from '../fases'
 import { useGeniusSerial, type EventoCaixaCores } from '../hooks/useGeniusSerial'
 import { usePartidaCores, type EtapaCores } from '../usePartidaCores'
-import ResultadoCores from './ResultadoCores'
+import ResultadoCores, { type Salvamento } from './ResultadoCores'
 import estilos from './cores.module.css'
 
 interface Props {
@@ -21,6 +22,7 @@ const css = (vars: Record<string, string | number>) => vars as CSSProperties
 // O jogo das cores em 5 fases: em cada uma, o site mostra uma sequência (3, 4, 5, 6 e 7 cores) e a
 // pessoa repete. Os botões são os da caixa do ESP32, pela USB (hooks/useGeniusSerial.ts). Sem a caixa, o
 // modo simulação (?simular na URL, só em desenvolvimento) deixa clicar nas cores ou usar as teclas 1 a 5.
+// No fim, a partida é gravada no banco (lib/api/cores.ts).
 export default function TelaJogoCores({ onVoltar }: Props) {
   const [simular] = useState(simulacaoLigada)
   const tocarSom = useSom()
@@ -39,7 +41,26 @@ export default function TelaJogoCores({ onVoltar }: Props) {
     enviarRef.current({ cmd: 'erro' })
   }, [tocarSom])
   const jogo = usePartidaCores({ aoAcender, aoErrar })
-  const { etapa, apertar, comecar } = jogo
+  const { etapa, apertar, comecar, comoPartida, fases } = jogo
+
+  // Gravação no banco, no fim da partida (para o jogador escolhido). O resultado de cada partida fica
+  // guardado pelo id dela; repetir é seguro, porque o serviço não grava o mesmo id duas vezes.
+  const [gravadas, setGravadas] = useState<Record<string, 'salva' | 'erro'>>({})
+  const enviada = useRef<string | null>(null)
+  const salvar = useCallback((partida: PartidaCores) => {
+    salvarPartidaCores(partida).then(
+      () => setGravadas((g) => ({ ...g, [partida.id]: 'salva' })),
+      () => setGravadas((g) => ({ ...g, [partida.id]: 'erro' })),
+    )
+  }, [])
+  const fim = etapa.tipo === 'fim'
+  useEffect(() => {
+    if (!fim || fases.length === 0) return
+    const partida = comoPartida()
+    if (enviada.current === partida.id) return // uma vez por partida
+    enviada.current = partida.id
+    salvar(partida)
+  }, [fim, fases.length, comoPartida, salvar])
 
   const aoEventoCaixa = useCallback(
     (evento: EventoCaixaCores, agora: number) => {
@@ -73,7 +94,15 @@ export default function TelaJogoCores({ onVoltar }: Props) {
     return () => window.removeEventListener('keydown', aoTeclar)
   }, [simular, apertar, comecar])
 
-  if (etapa.tipo === 'fim') return <ResultadoCores fases={jogo.fases} onVoltar={onVoltar} onJogarDeNovo={jogo.reiniciar} />
+  if (etapa.tipo === 'fim') {
+    const partida = comoPartida()
+    const salvamento: Salvamento = fases.length === 0 ? 'nada' : (gravadas[partida.id] ?? 'salvando')
+    const tentarDeNovo = () => {
+      setGravadas((g) => Object.fromEntries(Object.entries(g).filter(([id]) => id !== partida.id)))
+      salvar(partida)
+    }
+    return <ResultadoCores fases={fases} salvamento={salvamento} aoTentarSalvar={tentarDeNovo} onVoltar={onVoltar} onJogarDeNovo={jogo.reiniciar} />
+  }
 
   const pontos = jogo.fases.reduce((s, f) => s + pontuarFaseCores(f), 0)
   const faseAtual = etapa.tipo === 'inicio' ? null : etapa.fase.numero
