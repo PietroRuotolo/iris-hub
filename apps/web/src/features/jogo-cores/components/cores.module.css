@@ -1,0 +1,73 @@
+/*
+ * Animações do jogo das cores. As cores vêm dos tokens (no componente). Com movimento reduzido, as
+ * animações viram uma troca simples (no fim do arquivo).
+ */
+
+/* Um botão de cor: apagado fica fraco; aceso, brilha e cresce um pouco. */
+.botao {
+  transition: transform 0.12s ease-out, filter 0.12s ease-out, opacity 0.12s ease-out, box-shadow 0.12s ease-out;
+}
+.apagado { opacity: 0.42; filter: saturate(0.75); }
+.aceso {
+  opacity: 1;
+  transform: scale(1.08);
+  filter: brightness(1.12);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--cor) 30%, transparent), 0 10px 28px color-mix(in srgb, var(--cor) 45%, transparent);
+}
+.clicavel { cursor: pointer; }
+.clicavel:active { transform: scale(0.95); }
+
+/* O anúncio da fase. */
+.anuncio { animation: anuncio 1.3s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+@keyframes anuncio {
+  0% { transform: scale(0.6); opacity: 0; }
+  25%, 80% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.06); opacity: 0; }
+}
+
+/* O resultado da fase. */
+.surgir { animation: surgir 0.45s cubic-bezier(0.2, 1.3, 0.4, 1) both; animation-delay: var(--atraso, 0s); }
+@keyframes surgir {
+  from { transform: translateY(14px) scale(0.85); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.tremer { animation: tremer 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+@keyframes tremer {
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(4px); }
+  30%, 50%, 70% { transform: translateX(-8px); }
+  40%, 60% { transform: translateX(8px); }
+}
+
+/* A barra do tempo que resta na vez da pessoa. */
+.cronometro { animation: cronometro var(--limite) linear forwards; transform-origin: left; }
+@keyframes cronometro {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+/* A fase atual na trilha pulsa. */
+.atual { animation: atual 1.4s ease-in-out infinite; }
+@keyframes atual {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-navy) 35%, transparent); }
+  50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--color-navy) 0%, transparent); }
+}
+
+/* O botão redondo de começar, com um "afundar" ao apertar. */
+.comecar {
+  box-shadow: 0 8px 0 color-mix(in srgb, var(--color-navy) 75%, black), 0 14px 24px color-mix(in srgb, var(--color-navy) 30%, transparent);
+  transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
+}
+.comecar:hover { transform: translateY(-2px); }
+.comecar:active {
+  transform: translateY(6px);
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--color-navy) 75%, black), 0 4px 10px color-mix(in srgb, var(--color-navy) 30%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .botao { transition: none; }
+  .aceso { transform: none; }
+  .anuncio, .surgir, .tremer, .atual { animation: none; }
+  .cronometro { animation: none; transform: scaleX(0.5); }
+}

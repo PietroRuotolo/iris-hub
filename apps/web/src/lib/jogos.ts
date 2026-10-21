@@ -157,51 +157,47 @@ export const JOGOS: Jogo[] = [
       ],
     },
   },
-  {
+    {
     id: 'jogo-cores',
     chave: 'cores',
     rota: '/jogo-cores',
     rotaJogar: '/jogo-cores',
     nome: 'Jogo das cores',
-    tipo: 'Hardware ESP32 (Genius)',
-    descricao: 'Jogo de memória sequencial com estímulos visuais e sonoros de 5 cores, jogado nos botões do ESP32.',
+    tipo: 'Hardware ESP32 (memória de cores)',
+    descricao: 'Desafio de memória em 5 fases rápidas: veja a sequência de cores e repita nos botões do ESP32.',
     status: 'disponivel',
     Icone: Palette,
     apresentacao: {
       aviso:
-        'Conecta ao ESP32 pelo navegador (Web Serial, 115200 bps). O som das cores é gerado no próprio navegador e sincronizado com os botões físicos.',
+        'Conecta ao ESP32 pelo navegador (Web Serial, 115200 bps). O site sorteia e mostra as sequências e confere a resposta; a caixa acende as luzes e avisa os botões. O som é gerado no próprio navegador.',
       secoes: [
         {
           titulo: 'O que é',
           texto:
-            'Jogo de memória estilo Genius com 5 cores e sons distintos. O circuito sorteia sequências que crescem a cada acerto, até o primeiro erro.',
+            'Teste de memória de trabalho e rapidez com 5 cores e sons distintos: em cada fase uma sequência nova, uma cor a mais que a anterior.',
         },
         {
           titulo: 'Jogar',
-          texto: 'Conecte o ESP32 pela USB e clique em "Iniciar partida".',
+          texto: 'Conecte o ESP32 pela USB e clique em "Começar".',
           link: { href: '/jogo-cores', label: 'Jogar agora' },
         },
         {
           titulo: 'Como funciona',
           ordenada: true,
           itens: [
-            'Conexão: escolha a porta serial do ESP32 no botão de conexão USB.',
-            'Estímulo: observe a ordem das luzes e dos sons das 5 cores.',
-            'Reprodução: aperte os botões físicos na mesma ordem.',
-            'Progressão: cada rodada certa acrescenta uma cor à sequência, até o primeiro erro.',
+            '5 fases, com sequências de 3, 4, 5, 6 e 7 cores.',
+            'Memorize: as cores acendem uma a uma, cada fase um pouco mais rápido.',
+            'Repita: aperte os botões na mesma ordem antes de o tempo acabar.',
+            'Acertar vale de 60 a 100 pontos pela rapidez; errar zera a fase, e o jogo segue até a 5ª.',
           ],
         },
         {
           titulo: 'Dados registrados',
-          itens: ['Maior sequência repetida sem erro', 'Tempo de resposta de cada rodada', 'Pontuação final informada pelo ESP32'],
+          itens: ['A sequência e os apertos de cada fase', 'Tempo de resposta (ms por cor)', 'Maior sequência certa e pontos (0 a 500)'],
         },
         {
           titulo: 'Requisitos',
-          itens: [
-            'Navegador com Web Serial (Chrome ou Edge)',
-            'Cabo USB ligado ao computador',
-            'ESP32 com o firmware do Genius de 5 cores',
-          ],
+          itens: ['Navegador com Web Serial (Chrome ou Edge)', 'Cabo USB ligado ao computador', 'ESP32 com o firmware do jogo das cores'],
         },
       ],
     },
