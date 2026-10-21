@@ -7,6 +7,7 @@ export const ROTULO_FAIXA: Record<FaixaReflexo, string> = {
   lento: 'Podia ser mais rápido',
 }
 
+
 export function classificarTempo(tempoMs: number): FaixaReflexo {
   if (tempoMs < 200) return 'excelente'
   if (tempoMs < 350) return 'bom'

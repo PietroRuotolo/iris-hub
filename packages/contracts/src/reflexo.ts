@@ -17,6 +17,8 @@ export const TEMPO_MINIMO_REACAO_MS = 100
 export const TEMPO_REACAO_IDEAL_MS = 150
 /** Limite alto de propósito: só barra valores absurdos (bug ou entrada forjada). */
 export const TEMPO_MAXIMO_MS = 60_000
+/** Quantas fases tem uma partida (uma ordem do mestre em cada). */
+export const TOTAL_FASES_REFLEXO = 5
 
 /** A ordem do mestre: apertar ou não apertar. */
 export type OrdemMestre = 'apertar' | 'nao_apertar'
@@ -41,6 +43,8 @@ export interface RodadaReflexo {
   esperaMs: number
   /** Tempo para apertar (ou para segurar) depois da ordem. */
   janelaMs: number
+  
+  apertouAposMs: number | null
   resultado: ResultadoRodada
   /** Da ordem ao botão; null se não apertou ou se apertou antes da ordem. */
   tempoReacaoMs: number | null
@@ -69,7 +73,7 @@ export function pontuarRodada(r: Pick<RodadaReflexo, 'resultado' | 'tempoReacaoM
   if (r.resultado === 'segurou') return 100
   if (r.resultado !== 'acerto' || r.tempoReacaoMs === null) return 0
   const rapidez = Math.min(1, Math.max(0, (r.janelaMs - r.tempoReacaoMs) / Math.max(1, r.janelaMs - TEMPO_REACAO_IDEAL_MS)))
-  return Math.round((60 + 40 * rapidez) * 10) / 10
+     return Math.round(60 + 40 * rapidez) // inteiro: a soma das fases na tela sempre bate com o total
 }
 
 export interface ResumoReflexo {

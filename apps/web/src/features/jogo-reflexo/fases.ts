@@ -1,9 +1,10 @@
 // As 5 fases do "mestre mandou". Todas iguais: uma espera e uma ordem do mestre, "APERTE!" ou "NÃO
 // APERTE!". Só muda qual das duas ordens sai, sorteada. Lógica pura: com o mesmo `aleatorio`, a mesma partida.
 
-import type { OrdemMestre } from '@iris/contracts'
+import { TOTAL_FASES_REFLEXO, type OrdemMestre } from '@iris/contracts'
 
-export const TOTAL_FASES = 5
+export const TOTAL_FASES = TOTAL_FASES_REFLEXO
+
 /** Quantas das 5 fases são "NÃO APERTE!". */
 export const FASES_NAO_APERTAR = 2
 /** A espera antes da ordem é sorteada entre estes dois valores (ms). */

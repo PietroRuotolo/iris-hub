@@ -2,14 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
 import { AlertTriangle, ArrowLeft, Cpu, Gauge, Hand, MousePointerClick, Plug, Pointer, Rabbit, ShieldCheck, Square, Turtle, X, Zap, type LucideIcon } from 'lucide-react'
-import { pontuarRodada, type AcionamentoReflexo, type RodadaReflexo } from '@iris/contracts'
+import { pontuarRodada, type AcionamentoReflexo, type PartidaReflexo, type RodadaReflexo } from '@iris/contracts'
 import PainelSimulacao from '@/components/PainelSimulacao'
+import { salvarPartidaReflexo } from '@/lib/api/reflexo'
 import { simulacaoLigada } from '@/lib/serial/simulador'
 import { classificarTempo, type FaixaReflexo } from '../reflexo'
 import { TOTAL_FASES } from '../fases'
 import { usePartidaReflexo, type Etapa, type Toque } from '../usePartidaReflexo'
 import { useEsp32Serial, type EventoEsp32 } from '../hooks/useEsp32Serial'
-import ResultadoReflexo from './ResultadoReflexo'
+import ResultadoReflexo, { type Salvamento } from './ResultadoReflexo'
 import Trilha from './Trilha'
 import estilos from './reflexo.module.css'
 
@@ -39,8 +40,27 @@ const ERRO = {
 // desenvolvimento) faz o clique na área do jogo e a barra de espaço imitarem o botão.
 export default function TelaReflexo({ onVoltar }: Props) {
   const jogo = usePartidaReflexo()
-  const { etapa, apertar, comecar } = jogo
+  const { etapa, apertar, comecar, comoPartida, rodadas } = jogo
   const [simular] = useState(simulacaoLigada)
+
+  // Gravação no banco, no fim da partida (para o jogador escolhido). O resultado de cada partida fica
+  // guardado pelo id dela; repetir é seguro, porque o serviço não grava o mesmo id duas vezes.
+  const [gravadas, setGravadas] = useState<Record<string, 'salva' | 'erro'>>({})
+  const enviada = useRef<string | null>(null)
+  const salvar = useCallback((partida: PartidaReflexo) => {
+    salvarPartidaReflexo(partida).then(
+      () => setGravadas((g) => ({ ...g, [partida.id]: 'salva' })),
+      () => setGravadas((g) => ({ ...g, [partida.id]: 'erro' })),
+    )
+  }, [])
+  const fim = etapa.tipo === 'fim'
+  useEffect(() => {
+    if (!fim || rodadas.length === 0) return
+    const partida = comoPartida()
+    if (enviada.current === partida.id) return // uma vez por partida
+    enviada.current = partida.id
+    salvar(partida)
+  }, [fim, rodadas.length, comoPartida, salvar])
 
   /** Um aperto do botão: na tela inicial começa a partida; no jogo, conta como aperto. */
   const receberAperto = useCallback(
@@ -72,7 +92,15 @@ export default function TelaReflexo({ onVoltar }: Props) {
     return () => window.removeEventListener('keydown', aoTeclar)
   }, [simular, receberAperto])
 
-  if (etapa.tipo === 'fim') return <ResultadoReflexo rodadas={jogo.rodadas} onVoltar={onVoltar} onJogarDeNovo={jogo.reiniciar} />
+  if (etapa.tipo === 'fim') {
+    const partida = comoPartida()
+    const salvamento: Salvamento = rodadas.length === 0 ? 'nada' : (gravadas[partida.id] ?? 'salvando')
+    const tentarDeNovo = () => {
+      setGravadas((g) => Object.fromEntries(Object.entries(g).filter(([id]) => id !== partida.id)))
+      salvar(partida)
+    }
+    return <ResultadoReflexo rodadas={rodadas} salvamento={salvamento} aoTentarSalvar={tentarDeNovo} onVoltar={onVoltar} onJogarDeNovo={jogo.reiniciar} />
+  }
 
   const pontos = jogo.rodadas.reduce((s, r) => s + pontuarRodada(r), 0)
   const faseAtual = etapa.tipo === 'inicio' ? null : etapa.fase.numero

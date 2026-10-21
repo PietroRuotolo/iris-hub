@@ -30,11 +30,13 @@ model User {
   @@map("users")
 }
 
-// --- Jogo do reflexo (ESP32) ------------------------------------------------------------------
-// reflex_attempts é a fonte da verdade; reflex_sessions guarda o resultado consolidado, calculado a
-// partir das tentativas no encerramento da partida (na mesma transação). Tempos em milissegundos.
-// O MongoDB não tem CHECK nem chave estrangeira: os limites (contagens, faixa da espera, tempo só
-// em success) ficam na validação do serviço, e as relações são garantidas pelo Prisma.
+// --- Jogo do reflexo, "o mestre mandou" (ESP32) -------------------------------------------------
+// Uma partida tem 5 fases; em cada uma o mestre manda APERTAR (press) ou NÃO APERTAR (hold).
+// reflex_attempts é a fonte da verdade (uma por fase); reflex_sessions guarda o resultado consolidado.
+// O site manda só o que mediu (a ordem, a espera, o tempo para responder e quando a pessoa apertou); o
+// session-service calcula o resultado, os pontos e o consolidado (packages/contracts/src/reflexo.ts), sem
+// confiar no site. Tempos em milissegundos. O MongoDB não tem CHECK nem chave estrangeira: os limites
+// ficam na validação do serviço, e as relações são garantidas pelo Prisma.
 
 enum ReflexSessionStatus {
   in_progress
@@ -43,10 +45,27 @@ enum ReflexSessionStatus {
   abandoned
 }
 
+/// A ordem do mestre: press = "APERTE!"; hold = "NÃO APERTE!".
+enum ReflexCommand {
+  press
+  hold
+}
+
+/// success: apertou a tempo; held: segurou no "NÃO APERTE!"; timeout: não apertou no "APERTE!";
+/// wrong_press: apertou no "NÃO APERTE!"; false_start: apertou antes da ordem (ou em menos de 100 ms).
 enum ReflexAttemptResult {
   success
-  false_start
+  held
   timeout
+  wrong_press
+  false_start
+}
+
+/// De onde veio o aperto.
+enum ReflexInput {
+  ESP32_BUTTON
+  SPACE_KEY
+  MOUSE_CLICK
 }
 
 /// Uma partida do reflexo: dados gerais e o resultado consolidado.
@@ -55,13 +74,21 @@ model ReflexSession {
   playerId            String              @map("player_id")
   player              User                @relation(fields: [playerId], references: [id])
   status              ReflexSessionStatus @default(in_progress)
+  inputSource         ReflexInput?        @map("input_source")
   totalAttempts       Int                 @default(0) @map("total_attempts")
+  /// Fases certas: success + held.
   validAttempts       Int                 @default(0) @map("valid_attempts")
   falseStarts         Int                 @default(0) @map("false_starts")
+  wrongPresses        Int                 @default(0) @map("wrong_presses")
+  timeouts            Int                 @default(0)
+  /// Soma dos pontos das fases (até 100 por fase: 0 a 500 numa partida completa).
+  totalScore          Float               @default(0) @map("total_score")
   /// Média dos tempos das tentativas success; null enquanto não há nenhuma.
   averageTimeMs       Float?              @map("average_time_ms")
   bestTimeMs          Int?                @map("best_time_ms")
   standardDeviationMs Float?              @map("standard_deviation_ms")
+  /// Versão da regra de pontos (VERSAO_PONTUACAO_REFLEXO em packages/contracts), para comparar partidas.
+  scoringVersion      String              @default("mestre-v1") @map("scoring_version")
   startedAt           DateTime            @default(now()) @map("started_at")
   finishedAt          DateTime?           @map("finished_at")
 
@@ -72,17 +99,25 @@ model ReflexSession {
   @@map("reflex_sessions")
 }
 
-/// Uma tentativa do reflexo, inclusive as falhas.
+/// Uma fase do reflexo (uma ordem do mestre), inclusive os erros.
 model ReflexAttempt {
   id             String              @id @default(uuid(7)) @map("_id")
   sessionId      String              @map("session_id")
   session        ReflexSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  /// A fase: 1 a 5.
   attemptNumber  Int                 @map("attempt_number")
-  /// Só em success; null em false_start e timeout.
-  reactionTimeMs Int?                @map("reaction_time_ms")
-  /// Espera sorteada pelo ESP32 (2000 a 5000 ms), quando informada.
+  command        ReflexCommand
+  /// Espera sorteada antes da ordem.
   waitTimeMs     Int?                @map("wait_time_ms")
+  /// Tempo para apertar (ou para segurar) depois da ordem.
+  windowMs       Int                 @map("window_ms")
+  /// O que o site mediu: ms da ordem até o aperto (negativo = antes da ordem; null = não apertou).
+  pressedAfterMs Int?                @map("pressed_after_ms")
   result         ReflexAttemptResult
+  /// Da ordem ao botão, quando apertou depois da ordem; null nos outros casos.
+  reactionTimeMs Int?                @map("reaction_time_ms")
+  /// 0 a 100 (packages/contracts: pontuarRodada).
+  score          Float               @default(0)
   createdAt      DateTime            @default(now()) @map("created_at")
 
   // Também serve de índice por session_id (é o prefixo).
@@ -90,7 +125,7 @@ model ReflexAttempt {
   @@map("reflex_attempts")
 }
 
-// --- Jogo das cores (Genius com ESP32) --------------------------------------------------------
+// --- Jogo das cores (ESP32) --------------------------------------------------------
 // Mesmo padrão do reflexo: color_rounds é a fonte da verdade e color_sessions o resultado
 // consolidado. O recorde não é guardado: é o maior score das partidas completed de cada jogador.
 // Os limites (contagens >= 0, total_errors <= 1, round_number e sequence_length > 0) ficam na

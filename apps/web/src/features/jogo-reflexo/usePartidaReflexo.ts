@@ -50,7 +50,15 @@ export function usePartidaReflexo() {
       if (atual.tipo !== 'espera' && atual.tipo !== 'ordem') return
       const { fase } = atual
       const { resultado, tempoReacaoMs } = avaliarRodada(fase.ordem, aposMs, fase.janelaMs)
-      const medida: RodadaReflexo = { numero: fase.numero, ordem: fase.ordem, esperaMs: fase.esperaMs, janelaMs: fase.janelaMs, resultado, tempoReacaoMs }
+     const medida: RodadaReflexo = {
+        numero: fase.numero,
+        ordem: fase.ordem,
+        esperaMs: fase.esperaMs,
+        janelaMs: fase.janelaMs,
+        apertouAposMs: aposMs === null ? null : Math.round(aposMs),
+        resultado,
+        tempoReacaoMs,
+      }
       setRodadas((r) => [...r, medida])
       if (aposMs === null) setToque(null) // sem aperto, sem onda de clique
       ir({ tipo: 'retorno', fase, resultado: medida })
