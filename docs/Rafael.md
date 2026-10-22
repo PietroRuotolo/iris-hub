@@ -34,3 +34,8 @@ Nesta branch, realizei a centralização da arquitetura do catálogo de jogos da
 
   http://localhost:3000/jogo-cores?simular
 
+
+npm run banco:resetar-ranking	                                  Só mostra quantas partidas seriam apagadas, sem apagar nada.
+npm run banco:resetar-ranking -- --sim	                        Apaga todas as partidas, e o ranking fica vazio.
+npm run banco:resetar-ranking -- email@x.com --sim	            Apaga só as partidas dessa conta.
+

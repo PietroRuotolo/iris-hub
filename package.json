@@ -28,7 +28,8 @@
     "test:e2e": "vitest run --project e2e",
     "postinstall": "prisma generate",
     "banco:conferir": "node --env-file-if-exists=.env scripts/conferir-banco.mjs",
-    "banco:migrar-so-users": "node --env-file-if-exists=.env scripts/migracoes/2026-10-11-manter-so-users.mjs"
+    "banco:migrar-so-users": "node --env-file-if-exists=.env scripts/migracoes/2026-10-11-manter-so-users.mjs",
+    "banco:resetar-ranking": "node --env-file-if-exists=.env scripts/resetar-ranking.mjs"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^0.10.22-rc.20250304",
