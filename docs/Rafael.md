@@ -26,6 +26,11 @@ Nesta branch, realizei a centralização da arquitetura do catálogo de jogos da
 ### O que farei
   - vou implementar o database para o jogo das cores e reflexo
   vai dar certo?
-  nao sei... 
-    
+  
+
+  http://localhost:3000/partida?simular
+
+  http://localhost:3000/jogo-reflexo?simular
+
+  http://localhost:3000/jogo-cores?simular
 
