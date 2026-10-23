@@ -26,10 +26,18 @@ export const FATOR_IMA = lerFatorIma(process.env.NEXT_PUBLIC_IMA_FATOR)
 export const FATOR_IMA_ALTERNANCIA = lerFatorIma(process.env.NEXT_PUBLIC_IMA_FATOR_ALTERNANCIA, FATOR_IMA_ALTERNANCIA_PADRAO)
 
 /**
- * Com o ímã forte, a bolinha não salta para o centro do alvo (nem de volta ao soltar): desliza até lá.
+ * A bolinha não salta para o centro do alvo (nem de volta ao soltar): desliza até lá, em todas as fases.
  * Tempo para percorrer ~63% do caminho (ms).
  */
 export const DESLIZE_IMA_MS = 90
+
+/** O deslize a partir de NEXT_PUBLIC_IMA_DESLIZE: "0" desliga (a bolinha volta a saltar); vazio ou qualquer outro valor liga. */
+export function lerDeslizeIma(valor: string | undefined): boolean {
+  return valor?.trim() !== '0'
+}
+
+/** A bolinha desliza até o alvo (NEXT_PUBLIC_IMA_DESLIZE). */
+export const DESLIZE_IMA = lerDeslizeIma(process.env.NEXT_PUBLIC_IMA_DESLIZE)
 
 /** O ponto desenhado, `dtMs` depois, deslizando de `atual` até `destino`. Sem um dos dois, vai direto. */
 export function deslizar(atual: Ponto | null, destino: Ponto | null, dtMs: number, tempoMs = DESLIZE_IMA_MS): Ponto | null {

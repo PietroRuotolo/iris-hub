@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FATOR_IMA_ALTERNANCIA_PADRAO, FATOR_IMA_PADRAO, deslizar, grudarOlhar, lerFatorIma, raiosDoIma } from './ima'
+import { FATOR_IMA_ALTERNANCIA_PADRAO, FATOR_IMA_PADRAO, deslizar, grudarOlhar, lerDeslizeIma, lerFatorIma, raiosDoIma } from './ima'
 
 const alvo = { cx: 100, cy: 100, ...raiosDoIma(50, 1.6) } // gruda a 80 px, solta a 95 px
 
@@ -44,5 +44,13 @@ describe('ímã do olhar', () => {
     expect(p![0]).toBeCloseTo(100, 0) // em ~0,5 s chega
     expect(deslizar(null, [100, 0], 16)).toEqual([100, 0])
     expect(deslizar([0, 0], null, 16)).toBeNull()
+  })
+
+  it('o deslize vem ligado; só "0" desliga', () => {
+    expect(lerDeslizeIma(undefined)).toBe(true)
+    expect(lerDeslizeIma('1')).toBe(true)
+    expect(lerDeslizeIma('')).toBe(true)
+    expect(lerDeslizeIma('0')).toBe(false)
+    expect(lerDeslizeIma(' 0 ')).toBe(false)
   })
 })
