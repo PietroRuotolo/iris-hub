@@ -6,6 +6,7 @@ import { pontuarRodada, type AcionamentoReflexo, type PartidaReflexo, type Rodad
 import PainelSimulacao from '@/components/PainelSimulacao'
 import { salvarPartidaReflexo } from '@/lib/api/reflexo'
 import { simulacaoLigada } from '@/lib/serial/simulador'
+import { modoTeste } from '@/lib/serial/teste'
 import { classificarTempo, type FaixaReflexo } from '../reflexo'
 import { TOTAL_FASES } from '../fases'
 import { usePartidaReflexo, type Etapa, type Toque } from '../usePartidaReflexo'
@@ -36,12 +37,16 @@ const ERRO = {
 } as const
 
 // A partida do "mestre mandou": 5 fases iguais, uma ordem em cada ("APERTE!" ou "NÃO APERTE!"). O botão
-// é o do ESP32, pela USB (hooks/useEsp32Serial.ts). Sem o ESP32, o modo simulação (?simular na URL, só em
-// desenvolvimento) faz o clique na área do jogo e a barra de espaço imitarem o botão.
+// é o do ESP32, pela USB (hooks/useEsp32Serial.ts). Sem o ESP32, o modo teste (?teste na URL, também em
+// produção) e o modo simulação (?simular, só em desenvolvimento) fazem o clique na área do jogo e a barra
+// de espaço imitarem o botão. Nos dois, a partida conta pontos e é gravada normalmente.
 export default function TelaReflexo({ onVoltar }: Props) {
   const jogo = usePartidaReflexo()
   const { etapa, apertar, comecar, comoPartida, rodadas } = jogo
   const [simular] = useState(simulacaoLigada)
+  const [teste] = useState(() => modoTeste())
+  // Espaço e clique valem como o botão.
+  const semEsp32 = simular || teste
 
   // Gravação no banco, no fim da partida (para o jogador escolhido). O resultado de cada partida fica
   // guardado pelo id dela; repetir é seguro, porque o serviço não grava o mesmo id duas vezes.
@@ -78,11 +83,11 @@ export default function TelaReflexo({ onVoltar }: Props) {
     [receberAperto],
   )
   const esp = useEsp32Serial(aoEventoEsp32)
-  const podeJogar = esp.conectado || simular
+  const podeJogar = esp.conectado || semEsp32
 
-  // No modo simulação, a barra de espaço = botão.
+  // No modo teste e no de simulação, a barra de espaço = botão.
   useEffect(() => {
-    if (!simular) return
+    if (!semEsp32) return
     const aoTeclar = (e: KeyboardEvent) => {
       if (e.code !== 'Space' || e.repeat) return
       e.preventDefault()
@@ -90,7 +95,7 @@ export default function TelaReflexo({ onVoltar }: Props) {
     }
     window.addEventListener('keydown', aoTeclar)
     return () => window.removeEventListener('keydown', aoTeclar)
-  }, [simular, receberAperto])
+  }, [semEsp32, receberAperto])
 
   if (etapa.tipo === 'fim') {
     const partida = comoPartida()
@@ -105,7 +110,7 @@ export default function TelaReflexo({ onVoltar }: Props) {
   const pontos = jogo.rodadas.reduce((s, r) => s + pontuarRodada(r), 0)
   const faseAtual = etapa.tipo === 'inicio' ? null : etapa.fase.numero
   const jogando = etapa.tipo !== 'inicio'
-  const comMouse = jogando && simular
+  const comMouse = jogando && semEsp32
   const caiuNoJogo = jogando && !podeJogar // o cabo saiu no meio da partida
 
   const aoApertar = (e: PointerEvent<HTMLDivElement>) => {
@@ -148,6 +153,12 @@ export default function TelaReflexo({ onVoltar }: Props) {
         </div>
       </div>
 
+      {teste && !simular && (
+        <p className="rounded-xl bg-[var(--color-warn-bg)] px-4 py-3 text-sm text-[var(--color-ink)]" role="note">
+          Modo teste: aperte a barra de espaço (ou clique na área do jogo), que vale como o botão. A partida conta pontos e é salva normalmente.
+        </p>
+      )}
+
       {simular && (
         <PainelSimulacao>
           Sem o ESP32: clique na área do jogo ou aperte a barra de espaço, que vale como o botão.
@@ -173,13 +184,13 @@ export default function TelaReflexo({ onVoltar }: Props) {
         } ${fundo(etapa)}`}
       >
         {etapa.tipo === 'inicio' ? (
-          <Inicio esp={esp} simular={simular} aoComecar={() => comecar(esp.conectado ? 'ESP32_BUTTON' : 'MOUSE_CLICK')} />
+          <Inicio esp={esp} simular={semEsp32} aoComecar={() => comecar(esp.conectado ? 'ESP32_BUTTON' : 'MOUSE_CLICK')} />
         ) : (
           <Arena etapa={etapa} toque={jogo.toque} />
         )}
       </div>
 
-      <Dica conectado={esp.conectado} simular={simular} />
+      <Dica conectado={esp.conectado} simular={semEsp32} />
     </div>
   )
 }
