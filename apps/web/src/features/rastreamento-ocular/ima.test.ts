@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FATOR_IMA_PADRAO, grudarOlhar, lerFatorIma, raiosDoIma } from './ima'
+import { FATOR_IMA_ALTERNANCIA_PADRAO, FATOR_IMA_PADRAO, deslizar, grudarOlhar, lerFatorIma, raiosDoIma } from './ima'
 
 const alvo = { cx: 100, cy: 100, ...raiosDoIma(50, 1.6) } // gruda a 80 px, solta a 95 px
 
@@ -29,5 +29,20 @@ describe('ímã do olhar', () => {
     expect(lerFatorIma('abc')).toBe(FATOR_IMA_PADRAO)
     expect(lerFatorIma('9')).toBe(FATOR_IMA_PADRAO)
     expect(raiosDoIma(50, 1)).toEqual({ captura: 50, soltura: 50 })
+    // A Alternância tem o próprio padrão (mais forte).
+    expect(lerFatorIma(undefined, FATOR_IMA_ALTERNANCIA_PADRAO)).toBe(2.2)
+    expect(lerFatorIma('2.5', FATOR_IMA_ALTERNANCIA_PADRAO)).toBe(2.5)
+    expect(lerFatorIma('0.5', FATOR_IMA_ALTERNANCIA_PADRAO)).toBe(2.2)
+  })
+
+  it('deslizar: a bolinha anda aos poucos até o destino, sem saltar', () => {
+    const passo = deslizar([0, 0], [100, 0], 16)!
+    expect(passo[0]).toBeGreaterThan(0)
+    expect(passo[0]).toBeLessThan(25) // um quadro (16 ms) anda só uma parte do caminho
+    let p: [number, number] | null = [0, 0]
+    for (let i = 0; i < 30; i++) p = deslizar(p, [100, 0], 16)
+    expect(p![0]).toBeCloseTo(100, 0) // em ~0,5 s chega
+    expect(deslizar(null, [100, 0], 16)).toEqual([100, 0])
+    expect(deslizar([0, 0], null, 16)).toBeNull()
   })
 })

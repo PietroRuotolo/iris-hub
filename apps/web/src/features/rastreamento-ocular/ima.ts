@@ -6,19 +6,37 @@ import type { Ponto } from './features'
 
 /** Força padrão do ímã do jogo: gruda a até 1,6 × o raio do alvo. */
 export const FATOR_IMA_PADRAO = 1.6
+/** Força padrão do ímã na Alternância (fase 3): os alvos pulam entre os cantos, onde a calibração erra mais. */
+export const FATOR_IMA_ALTERNANCIA_PADRAO = 2.2
 /** Quanto a mais do raio de captura a bolinha precisa se afastar para soltar. */
 export const FOLGA_SOLTURA = 0.3
 
 /**
- * O fator do ímã a partir de NEXT_PUBLIC_IMA_FATOR (de 1 a 3). 1 desliga o ímã (gruda só dentro do
+ * O fator do ímã a partir de uma variável de ambiente (de 1 a 3). 1 desliga o ímã (gruda só dentro do
  * alvo); vazio ou inválido usa o padrão.
  */
-export function lerFatorIma(valor: string | undefined): number {
+export function lerFatorIma(valor: string | undefined, padrao = FATOR_IMA_PADRAO): number {
   const numero = Number(valor)
-  return valor && Number.isFinite(numero) && numero >= 1 && numero <= 3 ? numero : FATOR_IMA_PADRAO
+  return valor && Number.isFinite(numero) && numero >= 1 && numero <= 3 ? numero : padrao
 }
 
+/** O ímã do jogo (NEXT_PUBLIC_IMA_FATOR). */
 export const FATOR_IMA = lerFatorIma(process.env.NEXT_PUBLIC_IMA_FATOR)
+/** O ímã da Alternância, mais forte (NEXT_PUBLIC_IMA_FATOR_ALTERNANCIA). */
+export const FATOR_IMA_ALTERNANCIA = lerFatorIma(process.env.NEXT_PUBLIC_IMA_FATOR_ALTERNANCIA, FATOR_IMA_ALTERNANCIA_PADRAO)
+
+/**
+ * Com o ímã forte, a bolinha não salta para o centro do alvo (nem de volta ao soltar): desliza até lá.
+ * Tempo para percorrer ~63% do caminho (ms).
+ */
+export const DESLIZE_IMA_MS = 90
+
+/** O ponto desenhado, `dtMs` depois, deslizando de `atual` até `destino`. Sem um dos dois, vai direto. */
+export function deslizar(atual: Ponto | null, destino: Ponto | null, dtMs: number, tempoMs = DESLIZE_IMA_MS): Ponto | null {
+  if (!atual || !destino) return destino
+  const f = 1 - Math.exp(-Math.max(0, dtMs) / tempoMs)
+  return [atual[0] + (destino[0] - atual[0]) * f, atual[1] + (destino[1] - atual[1]) * f]
+}
 
 export interface Imantavel {
   cx: number
