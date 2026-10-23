@@ -6,6 +6,7 @@ import { RITMO_IDEAL_POR_COR_MS, pontuarFaseCores, type FaseCores, type PartidaC
 import PainelSimulacao from '@/components/PainelSimulacao'
 import { salvarPartidaCores } from '@/lib/api/cores'
 import { simulacaoLigada } from '@/lib/serial/simulador'
+import { modoTeste } from '@/lib/serial/teste'
 import { CORES_JOGO } from '../cores.config'
 import { TOTAL_FASES } from '../fases'
 import { useGeniusSerial, type EventoCaixaCores } from '../hooks/useGeniusSerial'
@@ -21,10 +22,14 @@ const css = (vars: Record<string, string | number>) => vars as CSSProperties
 
 // O jogo das cores em 5 fases: em cada uma, o site mostra uma sequência (3, 4, 5, 6 e 7 cores) e a
 // pessoa repete. Os botões são os da caixa do ESP32, pela USB (hooks/useGeniusSerial.ts). Sem a caixa, o
-// modo simulação (?simular na URL, só em desenvolvimento) deixa clicar nas cores ou usar as teclas 1 a 5.
+// modo teste (?teste na URL, também em produção) e o modo simulação (?simular, só em desenvolvimento)
+// deixam usar as teclas 1 a 5 (uma por cor) ou clicar nas cores; a partida conta pontos e é gravada normalmente.
 // No fim, a partida é gravada no banco (lib/api/cores.ts).
 export default function TelaJogoCores({ onVoltar }: Props) {
   const [simular] = useState(simulacaoLigada)
+  const [teste] = useState(() => modoTeste())
+  // Teclas 1 a 5 e clique valem como os botões da caixa.
+  const semEsp32 = simular || teste
   const tocarSom = useSom()
 
   // O ESP32 fica num ref para os callbacks da partida (que acendem as luzes da caixa) não dependerem dele.
@@ -74,11 +79,11 @@ export default function TelaJogoCores({ onVoltar }: Props) {
   useEffect(() => {
     enviarRef.current = esp.enviar
   }, [esp.enviar])
-  const podeJogar = esp.conectado || simular
+  const podeJogar = esp.conectado || semEsp32
 
-  // No modo simulação, as teclas 1 a 5 são os botões (e o espaço começa a partida).
+  // No modo teste e no de simulação, as teclas 1 a 5 são os botões (e o espaço começa a partida).
   useEffect(() => {
-    if (!simular) return
+    if (!semEsp32) return
     const aoTeclar = (e: KeyboardEvent) => {
       if (e.repeat) return
       const cor = CORES_JOGO.find((c) => c.tecla === e.key)
@@ -92,7 +97,7 @@ export default function TelaJogoCores({ onVoltar }: Props) {
     }
     window.addEventListener('keydown', aoTeclar)
     return () => window.removeEventListener('keydown', aoTeclar)
-  }, [simular, apertar, comecar])
+  }, [semEsp32, apertar, comecar])
 
   if (etapa.tipo === 'fim') {
     const partida = comoPartida()
@@ -108,7 +113,7 @@ export default function TelaJogoCores({ onVoltar }: Props) {
   const faseAtual = etapa.tipo === 'inicio' ? null : etapa.fase.numero
   const jogando = etapa.tipo !== 'inicio'
   const caiuNoJogo = jogando && !podeJogar // o cabo saiu no meio da partida
-  const clicavel = simular && etapa.tipo === 'vez'
+  const clicavel = semEsp32 && etapa.tipo === 'vez'
 
   return (
     <div className="flex w-full flex-col gap-5">
@@ -144,6 +149,12 @@ export default function TelaJogoCores({ onVoltar }: Props) {
         </div>
       </div>
 
+      {teste && !simular && (
+        <p className="rounded-xl bg-[var(--color-warn-bg)] px-4 py-3 text-sm text-[var(--color-ink)]" role="note">
+          Modo teste: use as teclas 1 a 5 (uma para cada cor) ou clique nas cores, que valem como os botões da caixa. Espaço começa a partida. A
+          partida conta pontos e é salva normalmente.
+        </p>
+      )}
       {simular && <PainelSimulacao>Sem o ESP32: clique nas cores ou use as teclas 1 a 5, que valem como os botões da caixa.</PainelSimulacao>}
 
       {caiuNoJogo && (
@@ -159,7 +170,7 @@ export default function TelaJogoCores({ onVoltar }: Props) {
         className={`relative isolate flex min-h-[26rem] select-none flex-col items-center justify-center gap-6 overflow-hidden rounded-3xl p-6 shadow-sm transition-colors duration-300 sm:min-h-[28rem] ${fundo(etapa)}`}
       >
         {etapa.tipo === 'inicio' ? (
-          <Inicio esp={esp} simular={simular} aoComecar={() => comecar(esp.conectado ? 'ESP32_BUTTON' : 'MOUSE_CLICK')} />
+          <Inicio esp={esp} simular={semEsp32} aoComecar={() => comecar(esp.conectado ? 'ESP32_BUTTON' : 'MOUSE_CLICK')} />
         ) : etapa.tipo === 'anuncio' ? (
           <Anuncio numero={etapa.fase.numero} cores={etapa.fase.sequencia.length} />
         ) : etapa.tipo === 'retorno' ? (
@@ -167,7 +178,7 @@ export default function TelaJogoCores({ onVoltar }: Props) {
         ) : (
           <>
             <Situacao etapa={etapa} />
-            <Botoes acesa={jogo.corAcesa} clicavel={clicavel} aoApertar={(cor, e) => apertar(cor, e.timeStamp, 'MOUSE_CLICK')} />
+            <Botoes acesa={jogo.corAcesa} clicavel={clicavel} mostrarTeclas={semEsp32} aoApertar={(cor, e) => apertar(cor, e.timeStamp, 'MOUSE_CLICK')} />
             {etapa.tipo === 'vez' && (
               <span className="absolute inset-x-0 bottom-0 h-2 bg-[var(--color-bg)]" aria-hidden="true">
                 <span className={`block h-full bg-[var(--color-navy)] ${estilos.cronometro}`} style={css({ '--limite': `${etapa.fase.limiteMs}ms` })} />
@@ -177,7 +188,7 @@ export default function TelaJogoCores({ onVoltar }: Props) {
         )}
       </div>
 
-      <Dica conectado={esp.conectado} simular={simular} />
+      <Dica conectado={esp.conectado} simular={semEsp32} />
     </div>
   )
 }
@@ -187,8 +198,23 @@ function fundo(etapa: EtapaCores): string {
   return etapa.resultado.resultado === 'acerto' ? 'bg-[var(--color-good-bg)]' : 'bg-[var(--color-warn-bg)]'
 }
 
-/** Os 5 botões de cor. Acendem na sequência e nos apertos; no modo simulação, dá para clicar na vez da pessoa. */
-function Botoes({ acesa, clicavel, aoApertar, tamanho = 'grande' }: { acesa: number | null; clicavel: boolean; aoApertar?: (cor: number, e: PointerEvent) => void; tamanho?: 'grande' | 'pequeno' }) {
+/**
+ * Os 5 botões de cor. Acendem na sequência e nos apertos; sem o ESP32 (?teste, ?simular), dá para clicar na
+ * vez da pessoa, e cada botão mostra a tecla dele (1 a 5).
+ */
+function Botoes({
+  acesa,
+  clicavel,
+  aoApertar,
+  mostrarTeclas = false,
+  tamanho = 'grande',
+}: {
+  acesa: number | null
+  clicavel: boolean
+  aoApertar?: (cor: number, e: PointerEvent) => void
+  mostrarTeclas?: boolean
+  tamanho?: 'grande' | 'pequeno'
+}) {
   // No celular, 5 botões de 52 px com 8 px entre eles cabem na arena (até 320 px de largura).
   const medida = tamanho === 'grande' ? 'h-[3.25rem] w-[3.25rem] sm:h-24 sm:w-24' : 'h-9 w-9'
   return (
@@ -203,7 +229,13 @@ function Botoes({ acesa, clicavel, aoApertar, tamanho = 'grande' }: { acesa: num
           onPointerDown={clicavel && aoApertar ? (e) => e.button === 0 && aoApertar(c.id, e) : undefined}
           className={`rounded-2xl outline-none ${medida} ${estilos.botao} ${acesa === c.id ? estilos.aceso : acesa === null && tamanho === 'pequeno' ? '' : estilos.apagado} ${clicavel ? estilos.clicavel : ''} disabled:cursor-default`}
           style={css({ background: c.cor, '--cor': c.cor })}
-        />
+        >
+          {mostrarTeclas && (
+            <span className="font-display text-lg font-extrabold text-[var(--color-surface)] drop-shadow sm:text-3xl" aria-hidden="true">
+              {c.tecla}
+            </span>
+          )}
+        </button>
       ))}
     </div>
   )
