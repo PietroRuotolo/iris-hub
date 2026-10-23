@@ -15,7 +15,8 @@ import { MENSAGEM_PROBLEMA, type Problema } from '@/features/rastreamento-ocular
 import type { LeituraOlhar } from '@/lib/mediapipe/useFaceLandmarker'
 import { avaliarAlvo, fimDoAlvo, fixacaoPerto, type AlvoEmJogo, type AmostraOlhar, type TentativaMedida } from '../avaliacao'
 import { raioEmPx, type AlvoPlanejado, type ConfigFase } from '../fases'
-import { grudarOlhar, raiosDoIma } from '@/features/rastreamento-ocular/ima'
+import { manterNaTela, type PontoNaTela } from '@/features/rastreamento-ocular/bordas'
+import { FATOR_IMA, deslizar, grudarOlhar, raiosDoIma } from '@/features/rastreamento-ocular/ima'
 
 type Alvo = AlvoEmJogo & { planejado: AlvoPlanejado }
 type Retorno = { x: number; y: number; texto: string; tipo: 'acerto' | 'erro' | 'invalido'; ate: number }
@@ -23,7 +24,8 @@ type Retorno = { x: number; y: number; texto: string; tipo: 'acerto' | 'erro' | 
 interface Vista {
   agora: number
   alvos: Alvo[]
-  olhar: Ponto | null
+  /** A bolinha desenhada: depois do ímã, segurada na tela (manterNaTela). */
+  olhar: PontoNaTela | null
   retornos: Retorno[]
   avaliados: number
   acertos: number
@@ -36,6 +38,8 @@ interface Vista {
 /** Quanto o anel de aproximação é maior que o alvo quando ele aparece. */
 const ANEL_INICIAL = 1.2
 const DURACAO_RETORNO_MS = 800
+/** Raio da bolinha do olhar (px). */
+const RAIO_BOLINHA = 12
 /**
  * Correção contínua: depois de avaliar cada alvo, se o olhar ficou parado perto dele, corrige esta
  * fração do desalinhamento (no máximo CORRECAO_MAXIMA_PX por alvo). Vale só para os alvos seguintes.
@@ -82,10 +86,10 @@ export default function TelaFase({
   aoTerminar: (tentativas: TentativaMedida[], modelo: MapeamentoOlhar) => void
 }) {
   const [vista, setVista] = useState<Vista | null>(null)
-  const props = useRef({ planejados, layout, viewport, pxPorCm, erroCalibracaoPx, modelo, poseReferencia, limitesPose, raioMinFracao, pausadaFora, lerLeitura, aoTerminar })
+  const props = useRef({ planejados, layout, viewport, pxPorCm, erroCalibracaoPx, modelo, poseReferencia, limitesPose, raioMinFracao, pausadaFora, lerLeitura, aoTerminar, fatorIma: config.fatorIma })
 
   useEffect(() => {
-    props.current = { planejados, layout, viewport, pxPorCm, erroCalibracaoPx, modelo, poseReferencia, limitesPose, raioMinFracao, pausadaFora, lerLeitura, aoTerminar }
+    props.current = { planejados, layout, viewport, pxPorCm, erroCalibracaoPx, modelo, poseReferencia, limitesPose, raioMinFracao, pausadaFora, lerLeitura, aoTerminar, fatorIma: config.fatorIma }
   })
 
   useEffect(() => {
@@ -105,12 +109,17 @@ export default function TelaFase({
         batidaEm: inicio + planejado.batidaMs,
         janelaMs: JANELA_ACERTO_MS,
         permanenciaMinMs: PERMANENCIA_MINIMA_MS,
-        // Ímã: perto o bastante do alvo, o olhar conta como dentro (e a bolinha gruda nele).
-        ...raiosDoIma(raio),
+        // Ímã: perto o bastante do alvo, o olhar conta como dentro (e a bolinha gruda nele). A fase
+        // pode ter o próprio, mais forte (a Alternância).
+        ...raiosDoIma(raio, p.fatorIma ?? FATOR_IMA),
       }
     })
     // Em qual alvo (na tela) a bolinha está grudada, para soltar só um pouco mais longe.
     let grudadoEm: Alvo | null = null
+    // Com o ímã próprio da fase (forte), a bolinha desenhada desliza até o alvo em vez de saltar.
+    const deslizarBolinha = p.fatorIma !== undefined
+    let desenhado: Ponto | null = null
+    let ultimoDesenho = performance.now()
     let fimDaFase = Math.max(...alvos.map(fimDoAlvo)) + 600
     let modelo = p.modelo
     const suavizar = criarSuavizador()
@@ -256,10 +265,13 @@ export default function TelaFase({
       const indiceGrudado = grudadoEm ? naTela.indexOf(grudadoEm) : -1
       const grudado = grudarOlhar(olhar, imantaveis, indiceGrudado === -1 ? null : indiceGrudado)
       grudadoEm = grudado.preso === null ? null : naTela[grudado.preso]
+      desenhado = deslizarBolinha ? deslizar(desenhado, grudado.ponto, agora - ultimoDesenho) : grudado.ponto
+      ultimoDesenho = agora
       setVista({
         agora,
         alvos: naTela,
-        olhar: grudado.ponto,
+        // Só o desenho fica na tela: a avaliação acima usou o olhar estimado de verdade.
+        olhar: manterNaTela(desenhado, props.current.viewport, RAIO_BOLINHA),
         retornos,
         avaliados: tentativas.length,
         acertos,
@@ -327,7 +339,18 @@ export default function TelaFase({
         })}
 
         {vista?.olhar && (
-          <circle cx={vista.olhar[0]} cy={vista.olhar[1]} r={12} fill="var(--color-navy)" fillOpacity={0.25} stroke="var(--color-navy)" strokeOpacity={0.5} />
+          // Com o olhar estimado fora da tela, a bolinha fica vazada na borda.
+          <circle
+            cx={vista.olhar.ponto[0]}
+            cy={vista.olhar.ponto[1]}
+            r={RAIO_BOLINHA}
+            fill="var(--color-navy)"
+            fillOpacity={vista.olhar.fora ? 0 : 0.25}
+            stroke="var(--color-navy)"
+            strokeOpacity={vista.olhar.fora ? 0.9 : 0.5}
+            strokeWidth={vista.olhar.fora ? 2 : 1}
+            strokeDasharray={vista.olhar.fora ? '4 3' : undefined}
+          />
         )}
 
         {vista?.retornos.map((r, i) => (

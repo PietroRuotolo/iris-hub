@@ -3,6 +3,7 @@
 // momento da batida e quanto tempo antes dela o alvo aparece.
 
 import { FASES_JOGO } from '@iris/contracts'
+import { FATOR_IMA_ALTERNANCIA } from '@/features/rastreamento-ocular/ima'
 
 export interface AlvoPlanejado {
   numero: number
@@ -20,6 +21,8 @@ export interface ConfigFase {
   nome: string
   descricao: string
   gerar: (aleatorio?: () => number) => AlvoPlanejado[]
+  /** Ímã próprio da fase, mais forte, com a bolinha deslizando até o alvo (sem: NEXT_PUBLIC_IMA_FATOR, sem deslizar). */
+  fatorIma?: number
 }
 
 type Passo = { x: number; y: number; raioCm: number; intervaloMs: number; antecedenciaMs: number }
@@ -76,6 +79,8 @@ export const FASES: ConfigFase[] = [
     nome: nome(3),
     descricao: 'Acompanhe os alvos que mudam de lado e de altura seguindo o ritmo.',
     gerar: () => montar([...ZIGUE, ...ZIGUE, ...ZIGUE].map((p) => ({ ...p, raioCm: 2.8, intervaloMs: 1400, antecedenciaMs: 1000 }))),
+    // Ímã mais forte: os alvos pulam entre os cantos, onde a calibração erra mais.
+    fatorIma: FATOR_IMA_ALTERNANCIA,
   },
   {
     fase: 4,
