@@ -16,7 +16,7 @@ import type { LeituraOlhar } from '@/lib/mediapipe/useFaceLandmarker'
 import { avaliarAlvo, fimDoAlvo, fixacaoPerto, type AlvoEmJogo, type AmostraOlhar, type TentativaMedida } from '../avaliacao'
 import { raioEmPx, type AlvoPlanejado, type ConfigFase } from '../fases'
 import { manterNaTela, type PontoNaTela } from '@/features/rastreamento-ocular/bordas'
-import { FATOR_IMA, deslizar, grudarOlhar, raiosDoIma } from '@/features/rastreamento-ocular/ima'
+import { DESLIZE_IMA, FATOR_IMA, deslizar, grudarOlhar, raiosDoIma } from '@/features/rastreamento-ocular/ima'
 
 type Alvo = AlvoEmJogo & { planejado: AlvoPlanejado }
 type Retorno = { x: number; y: number; texto: string; tipo: 'acerto' | 'erro' | 'invalido'; ate: number }
@@ -116,8 +116,8 @@ export default function TelaFase({
     })
     // Em qual alvo (na tela) a bolinha está grudada, para soltar só um pouco mais longe.
     let grudadoEm: Alvo | null = null
-    // Com o ímã próprio da fase (forte), a bolinha desenhada desliza até o alvo em vez de saltar.
-    const deslizarBolinha = p.fatorIma !== undefined
+    // A bolinha desenhada desliza até o alvo em vez de saltar, em todas as fases (NEXT_PUBLIC_IMA_DESLIZE=0 desliga).
+    const deslizarBolinha = DESLIZE_IMA
     let desenhado: Ponto | null = null
     let ultimoDesenho = performance.now()
     let fimDaFase = Math.max(...alvos.map(fimDoAlvo)) + 600

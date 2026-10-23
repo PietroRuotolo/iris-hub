@@ -21,7 +21,7 @@ export interface ConfigFase {
   nome: string
   descricao: string
   gerar: (aleatorio?: () => number) => AlvoPlanejado[]
-  /** Ímã próprio da fase, mais forte, com a bolinha deslizando até o alvo (sem: NEXT_PUBLIC_IMA_FATOR, sem deslizar). */
+  /** Força do ímã própria da fase (sem: NEXT_PUBLIC_IMA_FATOR). O deslize da bolinha vale para todas as fases. */
   fatorIma?: number
 }
 

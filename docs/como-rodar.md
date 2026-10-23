@@ -246,8 +246,9 @@ desenhado) vale **metade dos pontos**, e a nota de precisão usa sempre a distâ
 telas de calibração a bolinha mostra o olhar de verdade. Regra em
 `apps/web/src/features/rastreamento-ocular/ima.ts`. Na **Alternância (fase 3)**, em que os alvos
 pulam entre os cantos (onde a calibração erra mais), o ímã é mais forte, `NEXT_PUBLIC_IMA_FATOR_ALTERNANCIA`
-(padrão **2,2**; de 1 a 3), e a bolinha **desliza** até o alvo em vez de saltar. As outras fases não mudam.
-O acerto só pelo ímã continua valendo metade. Como toda `NEXT_PUBLIC_`, o valor entra no site na
+(padrão **2,2**; de 1 a 3). Em **todas as fases**, a bolinha **desliza** até o alvo em vez de saltar
+(`NEXT_PUBLIC_IMA_DESLIZE`, padrão 1; 0 volta ao salto). O deslize é só no desenho: não muda acertos nem
+pontos. O acerto só pelo ímã continua valendo metade. Como toda `NEXT_PUBLIC_`, o valor entra no site na
 hora do build: na Vercel, mude a variável e faça um novo deploy; local, reinicie o `npm run dev:all`.
 
 **Testar sem câmera (só em desenvolvimento):** abra `http://localhost:3000/partida?simular`. O mouse
