@@ -234,6 +234,11 @@ fica nele por 250 ms. Cada acerto vale `50 + 30 × notaTempo + 20 × notaPrecisa
 alvos sem rastreamento suficiente não contam como erro. A fórmula fica em
 `packages/contracts/src/sessoes.ts`.
 
+**A bolinha não sai da tela:** quando o olhar estimado cai fora da tela, a bolinha fica encostada na
+borda mais próxima, vazada (só o contorno tracejado), no jogo e nas telas de calibração. É só o desenho:
+a avaliação dos alvos e os ajustes da calibração usam o olhar estimado de verdade
+(`apps/web/src/features/rastreamento-ocular/bordas.ts`).
+
 **Ímã:** perto o bastante do alvo, a bolinha gruda no centro dele e o olhar conta como dentro. O alcance é
 `NEXT_PUBLIC_IMA_FATOR` × o raio do alvo (padrão **1,6**; de 1 a 3, e 1 desliga); já grudada, ela só solta
 0,3 raio mais longe, para não tremer na borda. Um acerto **só pelo ímã** (o olhar, em média, fora do alvo

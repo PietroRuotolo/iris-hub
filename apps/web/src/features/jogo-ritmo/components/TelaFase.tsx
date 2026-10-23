@@ -15,6 +15,7 @@ import { MENSAGEM_PROBLEMA, type Problema } from '@/features/rastreamento-ocular
 import type { LeituraOlhar } from '@/lib/mediapipe/useFaceLandmarker'
 import { avaliarAlvo, fimDoAlvo, fixacaoPerto, type AlvoEmJogo, type AmostraOlhar, type TentativaMedida } from '../avaliacao'
 import { raioEmPx, type AlvoPlanejado, type ConfigFase } from '../fases'
+import { manterNaTela, type PontoNaTela } from '@/features/rastreamento-ocular/bordas'
 import { grudarOlhar, raiosDoIma } from '@/features/rastreamento-ocular/ima'
 
 type Alvo = AlvoEmJogo & { planejado: AlvoPlanejado }
@@ -23,7 +24,8 @@ type Retorno = { x: number; y: number; texto: string; tipo: 'acerto' | 'erro' | 
 interface Vista {
   agora: number
   alvos: Alvo[]
-  olhar: Ponto | null
+  /** A bolinha desenhada: depois do ímã, segurada na tela (manterNaTela). */
+  olhar: PontoNaTela | null
   retornos: Retorno[]
   avaliados: number
   acertos: number
@@ -36,6 +38,8 @@ interface Vista {
 /** Quanto o anel de aproximação é maior que o alvo quando ele aparece. */
 const ANEL_INICIAL = 1.2
 const DURACAO_RETORNO_MS = 800
+/** Raio da bolinha do olhar (px). */
+const RAIO_BOLINHA = 12
 /**
  * Correção contínua: depois de avaliar cada alvo, se o olhar ficou parado perto dele, corrige esta
  * fração do desalinhamento (no máximo CORRECAO_MAXIMA_PX por alvo). Vale só para os alvos seguintes.
@@ -259,7 +263,8 @@ export default function TelaFase({
       setVista({
         agora,
         alvos: naTela,
-        olhar: grudado.ponto,
+        // Só o desenho fica na tela: a avaliação acima usou o olhar estimado de verdade.
+        olhar: manterNaTela(grudado.ponto, props.current.viewport, RAIO_BOLINHA),
         retornos,
         avaliados: tentativas.length,
         acertos,
@@ -327,7 +332,18 @@ export default function TelaFase({
         })}
 
         {vista?.olhar && (
-          <circle cx={vista.olhar[0]} cy={vista.olhar[1]} r={12} fill="var(--color-navy)" fillOpacity={0.25} stroke="var(--color-navy)" strokeOpacity={0.5} />
+          // Com o olhar estimado fora da tela, a bolinha fica vazada na borda.
+          <circle
+            cx={vista.olhar.ponto[0]}
+            cy={vista.olhar.ponto[1]}
+            r={RAIO_BOLINHA}
+            fill="var(--color-navy)"
+            fillOpacity={vista.olhar.fora ? 0 : 0.25}
+            stroke="var(--color-navy)"
+            strokeOpacity={vista.olhar.fora ? 0.9 : 0.5}
+            strokeWidth={vista.olhar.fora ? 2 : 1}
+            strokeDasharray={vista.olhar.fora ? '4 3' : undefined}
+          />
         )}
 
         {vista?.retornos.map((r, i) => (
