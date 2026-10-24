@@ -40,7 +40,7 @@ export default function JogoCoresApresentacao({ onIniciar, onVoltar }: Props) {
             <span
               key={c.id}
               className={`h-14 w-14 rounded-2xl sm:h-16 sm:w-16 ${estilos.botao} ${i === 2 ? estilos.aceso : ''}`}
-              style={{ background: c.cor, ['--cor' as string]: c.cor }}
+                            style={{ background: c.cor, ['--cor' as string]: c.cor, ['--brilho' as string]: c.brilho ?? c.cor }}
             />
           ))}
         </div>

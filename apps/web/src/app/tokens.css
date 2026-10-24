@@ -30,7 +30,7 @@
 
   
   /* As 5 cores dos botões do jogo das cores (as mesmas da caixa do ESP32). */
-  --color-cor-cinza: #8C99A3;
+    --color-cor-branco: #FFFFFF;
   --color-cor-amarelo: #E2B23A;
   --color-cor-verde: #4E9B6F;
   --color-cor-vermelho: #CB4B3C;

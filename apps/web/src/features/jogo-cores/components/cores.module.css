@@ -5,6 +5,7 @@
 
 /* Um botão de cor: apagado fica fraco; aceso, brilha e cresce um pouco. */
 .botao {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-navy) 18%, transparent);
   transition: transform 0.12s ease-out, filter 0.12s ease-out, opacity 0.12s ease-out, box-shadow 0.12s ease-out;
 }
 .apagado { opacity: 0.42; filter: saturate(0.75); }
@@ -12,7 +13,10 @@
   opacity: 1;
   transform: scale(1.08);
   filter: brightness(1.12);
-  box-shadow: 0 0 0 6px color-mix(in srgb, var(--cor) 30%, transparent), 0 10px 28px color-mix(in srgb, var(--cor) 45%, transparent);
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--color-navy) 18%, transparent),
+    0 0 0 6px color-mix(in srgb, var(--brilho, var(--cor)) 30%, transparent),
+    0 10px 28px color-mix(in srgb, var(--brilho, var(--cor)) 45%, transparent);
 }
 .clicavel { cursor: pointer; }
 .clicavel:active { transform: scale(0.95); }
