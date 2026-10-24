@@ -6,7 +6,7 @@ import { RITMO_IDEAL_POR_COR_MS, pontuarFaseCores, type FaseCores, type PartidaC
 import PainelSimulacao from '@/components/PainelSimulacao'
 import { salvarPartidaCores } from '@/lib/api/cores'
 import { simulacaoLigada } from '@/lib/serial/simulador'
-import { CORES_JOGO } from '../cores.config'
+import { CONTORNO_COR, CORES_JOGO } from '../cores.config'
 import { TOTAL_FASES } from '../fases'
 import { useGeniusSerial, type EventoCaixaCores } from '../hooks/useGeniusSerial'
 import { usePartidaCores, type EtapaCores } from '../usePartidaCores'
@@ -189,10 +189,11 @@ function fundo(etapa: EtapaCores): string {
 
 /** Os 5 botões de cor. Acendem na sequência e nos apertos; no modo simulação, dá para clicar na vez da pessoa. */
 function Botoes({ acesa, clicavel, aoApertar, tamanho = 'grande' }: { acesa: number | null; clicavel: boolean; aoApertar?: (cor: number, e: PointerEvent) => void; tamanho?: 'grande' | 'pequeno' }) {
-  // No celular, 5 botões de 52 px com 8 px entre eles cabem na arena (até 320 px de largura).
-  const medida = tamanho === 'grande' ? 'h-[3.25rem] w-[3.25rem] sm:h-24 sm:w-24' : 'h-9 w-9'
+  // A coluna do site só fica larga a partir de lg (antes disso ela tem no máximo 448 px): no celular, 5
+  // botões de 52 px; de sm a lg, 56 px; em lg, 96 px. Assim os 5 sempre cabem na arena.
+  const medida = tamanho === 'grande' ? 'h-[3.25rem] w-[3.25rem] sm:h-14 sm:w-14 lg:h-24 lg:w-24' : 'h-9 w-9'
   return (
-    <div className={`flex items-center justify-center ${tamanho === 'grande' ? 'gap-2 sm:gap-5' : 'gap-2'}`}>
+    <div className={`flex items-center justify-center ${tamanho === 'grande' ? 'gap-2 sm:gap-3 lg:gap-5' : 'gap-2'}`}>
       {CORES_JOGO.map((c) => (
         <button
           key={c.id}
@@ -202,7 +203,7 @@ function Botoes({ acesa, clicavel, aoApertar, tamanho = 'grande' }: { acesa: num
           aria-label={clicavel ? `${c.nome} (tecla ${c.tecla})` : c.nome}
           onPointerDown={clicavel && aoApertar ? (e) => e.button === 0 && aoApertar(c.id, e) : undefined}
           className={`rounded-2xl outline-none ${medida} ${estilos.botao} ${acesa === c.id ? estilos.aceso : acesa === null && tamanho === 'pequeno' ? '' : estilos.apagado} ${clicavel ? estilos.clicavel : ''} disabled:cursor-default`}
-          style={css({ background: c.cor, '--cor': c.cor })}
+          style={css({ background: c.cor, '--cor': c.cor, '--brilho': c.brilho ?? c.cor })}
         />
       ))}
     </div>
@@ -228,7 +229,7 @@ function Situacao({ etapa }: { etapa: Extract<EtapaCores, { tipo: 'mostrar' } | 
           <span
             key={i}
             className="h-2.5 w-2.5 rounded-full transition-colors"
-            style={{ background: i < etapa.apertos.length ? CORES_JOGO[etapa.apertos[i]].cor : 'var(--color-bg)' }}
+            style={i < etapa.apertos.length ? { background: CORES_JOGO[etapa.apertos[i]].cor, boxShadow: CONTORNO_COR } : { background: 'var(--color-bg)' }}
           />
         ))}
       </div>
@@ -286,7 +287,8 @@ function Retorno({ fase }: { fase: FaseCores }) {
               <span
                 key={i}
                 className={`h-7 w-7 rounded-lg ${errouAqui ? 'ring-4 ring-[var(--color-warn)] ring-offset-2 ring-offset-[var(--color-warn-bg)]' : ''}`}
-                style={{ background: CORES_JOGO[cor].cor }}
+                // Na cor errada, o anel de aviso (ring) já é o contorno.
+                style={errouAqui ? { background: CORES_JOGO[cor].cor } : { background: CORES_JOGO[cor].cor, boxShadow: CONTORNO_COR }}
                 title={CORES_JOGO[cor].nome}
               />
             )

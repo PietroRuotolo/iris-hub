@@ -1,7 +1,8 @@
 import { AlertTriangle, ArrowLeft, Check, CheckCircle2, Clock, LoaderCircle, RotateCcw, X } from 'lucide-react'
 import { pontuarFaseCores, resumirFasesCores, type FaseCores, type ResultadoFaseCores } from '@iris/contracts'
-import { CORES_JOGO } from '../cores.config'
+import { CONTORNO_COR, CORES_JOGO } from '../cores.config'
 import { TOTAL_FASES } from '../fases'
+
 
 const TEXTO: Record<ResultadoFaseCores, string> = {
   acerto: 'Acertou',
@@ -57,7 +58,7 @@ export default function ResultadoCores({
                   <span className="w-14 shrink-0 text-[var(--color-ink-soft)]">Fase {f.numero}</span>
                   <span className="flex shrink-0 gap-1" aria-label={f.sequencia.map((c) => CORES_JOGO[c].nome).join(', ')}>
                     {f.sequencia.map((c, i) => (
-                      <span key={i} className="h-3.5 w-3.5 rounded" style={{ background: CORES_JOGO[c].cor }} />
+                      <span key={i} className="h-3.5 w-3.5 rounded" style={{ background: CORES_JOGO[c].cor, boxShadow: CONTORNO_COR }} />
                     ))}
                   </span>
                   <span className={`flex min-w-0 flex-1 items-center gap-1.5 ${certo ? 'text-[var(--color-good)]' : 'text-[var(--color-warn)]'}`}>
